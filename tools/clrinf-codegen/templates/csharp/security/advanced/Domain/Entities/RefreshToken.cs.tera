@@ -1,0 +1,35 @@
+using {{ project_namespace }}.Domain.Common.Entities;
+
+namespace {{ project_namespace }}.Domain.Entities;
+
+public class RefreshToken : Entity<int>
+{
+    public int UserId { get; set; }
+    public string Token { get; set; } = string.Empty;
+    public DateTime Expires { get; set; }
+    public string CreatedByIp { get; set; } = string.Empty;
+    public DateTime? Revoked { get; set; }
+    public string? RevokedByIp { get; set; }
+    public string? ReplacedByToken { get; set; }
+    public string? ReasonRevoked { get; set; }
+
+    public virtual User User { get; set; } = default!;
+
+    public RefreshToken()
+    {
+    }
+
+    public RefreshToken(int id, int userId, string token, DateTime expires, DateTime createdDate, string createdByIp, DateTime? revoked, string? revokedByIp, string? replacedByToken, string? reasonRevoked)
+        : base(id)
+    {
+        UserId = userId;
+        Token = token;
+        Expires = expires;
+        CreatedDate = createdDate;
+        CreatedByIp = createdByIp;
+        Revoked = revoked;
+        RevokedByIp = revokedByIp;
+        ReplacedByToken = replacedByToken;
+        ReasonRevoked = reasonRevoked;
+    }
+}

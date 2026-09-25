@@ -1,0 +1,29 @@
+# Event-Driven Cache Invalidation Rules: Müşteri İlişkileri Yönetimi (CRM)
+domain: crm
+version: 1.0.0
+
+rules:
+  - event_type: "com.clrinf.crm.ContactCreated.v1"
+    description: "Yeni bir kişi/kontak eklendiğinde kontak listesi önbelleğini geçersiz kıl"
+    invalidate:
+      - pattern: "crm:contacts:list"
+      - pattern: "crm:contacts:tenant:{data.tenant_id}"
+
+  - event_type: "com.clrinf.crm.ContactUpdated.v1"
+    description: "Kontak detayları güncellendiğinde kontak detay önbelleğini geçersiz kıl"
+    invalidate:
+      - pattern: "crm:contact:{data.contact_id}"
+      - pattern: "crm:contacts:list"
+
+  - event_type: "com.clrinf.crm.DealStageChanged.v1"
+    description: "Fırsat aşaması değiştiğinde fırsat detay, pipeline ve satış hunisi önbelleklerini geçersiz kıl"
+    invalidate:
+      - pattern: "crm:deal:{data.deal_id}"
+      - pattern: "crm:deals:pipeline"
+      - pattern: "crm:deals:tenant:{data.tenant_id}:summary"
+
+  - event_type: "com.clrinf.crm.ActivityLogged.v1"
+    description: "Yeni aktivite girildiğinde ilgili kontak ve fırsat aktivite geçmişini geçersiz kıl"
+    invalidate:
+      - pattern: "crm:activities:deal:{data.deal_id}"
+      - pattern: "crm:activities:contact:{data.contact_id}"

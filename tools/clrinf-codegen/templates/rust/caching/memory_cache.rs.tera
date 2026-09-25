@@ -1,0 +1,56 @@
+{# @clrinf:generated — Rust Cache Module Template #}
+// @clrinf:generated — Bu dosya clrinf-codegen tarafından üretilmiştir.
+// Modül: Caching | Provider: {{ provider | default(value="memory") }}
+
+use std::collections::HashMap;
+use std::sync::Mutex;
+use std::time::{Duration, Instant};
+
+/// In-memory cache using HashMap with TTL support.
+/// For production, replace with a Redis or distributed cache adapter.
+pub struct MemoryCache {
+    entries: Mutex<HashMap<String, CacheEntry>>,
+    default_ttl: Duration,
+}
+
+struct CacheEntry {
+    value: Vec<u8>,
+    expires_at: Instant,
+}
+
+impl MemoryCache {
+    pub fn new(default_ttl_secs: u64) -> Self {
+        Self {
+            entries: Mutex::new(HashMap::new()),
+            default_ttl: Duration::from_secs(default_ttl_secs),
+        }
+    }
+
+    pub fn set(&self, key: &str, value: Vec<u8>, ttl: Option<Duration>) {
+        let mut entries = self.entries.lock().unwrap();
+        entries.insert(key.to_string(), CacheEntry {
+            value,
+            expires_at: Instant::now() + ttl.unwrap_or(self.default_ttl),
+        });
+    }
+
+    pub fn get(&self, key: &str) -> Option<Vec<u8>> {
+        let mut entries = self.entries.lock().unwrap();
+        if let Some(entry) = entries.get(key) {
+            if entry.expires_at > Instant::now() {
+                return Some(entry.value.clone());
+            }
+            entries.remove(key);
+        }
+        None
+    }
+
+    pub fn remove(&self, key: &str) {
+        self.entries.lock().unwrap().remove(key);
+    }
+
+    pub fn remove_by_prefix(&self, prefix: &str) {
+        let mut entries = self.entries.lock().unwrap();
+        entries.retain(|k, _| !k.starts_with(prefix));
+    }
+}

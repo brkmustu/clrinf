@@ -1,0 +1,48 @@
+using {{ project_namespace }}.Application.Common.Attributes;
+using {{ project_namespace }}.Application.Common.Pipeline;
+using {{ project_namespace }}.Application.Modules.Users.DTOs;
+using {{ project_namespace }}.Application.Modules.Users.Responses;
+using {{ project_namespace }}.Application.Services.Repositories;
+using {{ project_namespace }}.Application.Services.Security.Encryption;
+using {{ project_namespace }}.Domain.Entities;
+
+namespace {{ project_namespace }}.Application.Modules.Users.Commands.CreateUser;
+
+[RequireAuthorization("Admin")]
+public record CreateUserCommand(CreateUserDto UserDto) : ICommand<CreatedUserResponse>;
+
+public class CreateUserCommandHandler : ICommandHandler<CreateUserCommand, CreatedUserResponse>
+{
+    private readonly IUserRepository _userRepository;
+
+    public CreateUserCommandHandler(IUserRepository userRepository)
+    {
+        _userRepository = userRepository;
+    }
+
+    public async ValueTask<CreatedUserResponse> HandleAsync(CreateUserCommand request, CancellationToken cancellationToken)
+    {
+        byte[] passwordHash, passwordSalt;
+        HashingHelper.CreatePasswordHash(request.UserDto.Password, out passwordHash, out passwordSalt);
+
+        User user = new()
+        {
+            FirstName = request.UserDto.FirstName,
+            LastName = request.UserDto.LastName,
+            Email = request.UserDto.Email,
+            PasswordHash = passwordHash,
+            PasswordSalt = passwordSalt,
+            Status = true
+        };
+
+        User createdUser = await _userRepository.AddAsync(user);
+
+        return new CreatedUserResponse
+        {
+            Id = createdUser.Id,
+            FirstName = createdUser.FirstName,
+            LastName = createdUser.LastName,
+            Email = createdUser.Email
+        };
+    }
+}

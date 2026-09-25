@@ -1,0 +1,72 @@
+# .NET / C# Derleme Çıktıları
+[Bb]in/
+[Oo]bj/
+out/
+publish/
+
+# Visual Studio & Rider IDE Dosyaları
+.vs/
+.idea/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+*.DotSettings.user
+
+# Visual Studio Code
+.vscode/
+*.code-workspace
+
+# Yerel Yapılandırma ve Sır Dosyaları
+appsettings.Local.json
+appsettings.*.local.json
+secrets.json
+*.secrets.json
+.env
+.env.local
+.env.*.local
+
+# Paket Yöneticisi ve Yerel Paket Dizinleri
+packages/
+nupkg/
+*.nupkg
+*.snupkg
+
+# Test ve Kapsama Çıktıları
+TestResults/
+*.coverage
+*.trx
+*.html
+reports/
+
+# Loglar ve Geçici Dosyalar
+logs/
+*.log
+*.err
+*.tmp
+*.temp
+
+# Frontend / Angular (UI seçeneği aktifleştirilirse)
+node_modules/
+.angular/
+dist/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# İşletim Sistemi Dosyaları
+Thumbs.db
+Desktop.ini
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+
+# Benchmark ve Profiling
+BenchmarkDotNet.Artifacts/
+*.vsp
+*.psess
+*.vspx
+*.sap
+*.profiling

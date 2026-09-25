@@ -1,0 +1,34 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.clrinf.com/stok/commands/ReleaseStock.v1.schema.json",
+  "title": "ReleaseStockCommandV1",
+  "description": "Command instructing the inventory service to release previously reserved stock (compensating action).",
+  "type": "object",
+  "x-command-type": "com.clrinf.stok.ReleaseStock.v1",
+  "x-domain": "stok",
+  "required": [
+    "order_id",
+    "sku",
+    "quantity",
+    "reason"
+  ],
+  "properties": {
+    "order_id": {
+      "type": "string",
+      "description": "Identifier of the order to release"
+    },
+    "sku": {
+      "type": "string",
+      "description": "Stock keeping unit code"
+    },
+    "quantity": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Quantity to release"
+    },
+    "reason": {
+      "type": "string",
+      "description": "Reason for cancellation/release"
+    }
+  }
+}

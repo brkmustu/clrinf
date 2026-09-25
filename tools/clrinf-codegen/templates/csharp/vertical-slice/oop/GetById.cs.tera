@@ -1,0 +1,35 @@
+namespace {{ project_namespace }}.Modules.{{ module_name }};
+
+using {{ project_namespace }}.Common.Pipeline;
+using {{ project_namespace }}.Data;
+using Microsoft.EntityFrameworkCore;
+using System.Collections.Generic;
+
+public static class GetById
+{
+    public sealed record Query({{ entity.id_type }} Id) : IQuery<Response>;
+
+    public sealed record Response(
+        {{ entity.id_type }} Id{% for prop in entity.properties %},
+        {{ prop.type }} {{ prop.name }}{% endfor %}
+    );
+
+    internal sealed class Handler({{ db_context_name }} db) :
+        IQueryHandler<Query, Response>
+    {
+        public async ValueTask<Response> HandleAsync(Query request, CancellationToken ct)
+        {
+            var entity = await db.{{ entity.name_plural }}
+                .AsNoTracking()
+                .FirstOrDefaultAsync(x => x.Id.Equals(request.Id), ct);
+
+            if (entity is null)
+                throw new KeyNotFoundException($"{{ entity.name }} with Id '{request.Id}' was not found.");
+
+            return new Response(
+                entity.Id{% for prop in entity.properties %},
+                entity.{{ prop.name }}{% endfor %}
+            );
+        }
+    }
+}

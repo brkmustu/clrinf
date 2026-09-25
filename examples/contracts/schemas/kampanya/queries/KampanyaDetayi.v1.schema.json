@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.clrinf.com/kampanya/queries/KampanyaDetayi.v1.schema.json",
+  "title": "KampanyaDetayiV1",
+  "description": "Belirli bir kampanyanın kullanım kotası ve kural detaylarını sorgulama.",
+  "type": "object",
+  "x-query-type": "com.clrinf.kampanya.KampanyaDetayi.v1",
+  "x-domain": "kampanya",
+  "required": ["kod"],
+  "properties": {
+    "kod": { "type": "string" }
+  }
+}

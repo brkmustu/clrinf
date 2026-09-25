@@ -1,0 +1,51 @@
+using System;
+using System.Security.Cryptography;
+using System.Threading;
+using System.Threading.Tasks;
+using {{ project_namespace }}.Application.Common.Pipeline;
+using {{ project_namespace }}.Application.Services.Repositories;
+using {{ project_namespace }}.Domain.Entities;
+
+namespace {{ project_namespace }}.Application.Modules.Auth.Commands.EnableEmailAuthenticator;
+
+public class EnableEmailAuthenticatorCommand : ICommand<Unit>
+{
+    public int UserId { get; set; }
+}
+
+internal sealed class EnableEmailAuthenticatorCommandHandler : ICommandHandler<EnableEmailAuthenticatorCommand, Unit>
+{
+    private readonly IUserRepository _userRepository;
+    private readonly IEmailAuthenticatorRepository _emailAuthenticatorRepository;
+
+    public EnableEmailAuthenticatorCommandHandler(IUserRepository userRepository, IEmailAuthenticatorRepository emailAuthenticatorRepository)
+    {
+        _userRepository = userRepository;
+        _emailAuthenticatorRepository = emailAuthenticatorRepository;
+    }
+
+    public async ValueTask<Unit> HandleAsync(EnableEmailAuthenticatorCommand request, CancellationToken cancellationToken)
+    {
+        User? user = await _userRepository.GetAsync(u => u.Id == request.UserId, cancellationToken: cancellationToken);
+        if (user == null)
+            throw new Exception("Kullanıcı bulunamadı.");
+
+        string activationKey = RandomNumberGenerator.GetInt32(100000, 999999).ToString();
+
+        EmailAuthenticator? existingAuthenticator = await _emailAuthenticatorRepository.GetAsync(e => e.UserId == user.Id, cancellationToken: cancellationToken);
+        if (existingAuthenticator != null)
+        {
+            existingAuthenticator.ActivationKey = activationKey;
+            existingAuthenticator.IsVerified = false;
+            await _emailAuthenticatorRepository.UpdateAsync(existingAuthenticator);
+        }
+        else
+        {
+            var newEmailAuthenticator = new EmailAuthenticator(user.Id, activationKey, false);
+            await _emailAuthenticatorRepository.AddAsync(newEmailAuthenticator);
+        }
+
+        // Email sending code logic here
+        return Unit.Value;
+    }
+}

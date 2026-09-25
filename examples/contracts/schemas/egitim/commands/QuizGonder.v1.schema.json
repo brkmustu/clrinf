@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "QuizGonderCommandV1",
+  "description": "Eğitmenin ders esnasında öğrenci ekranına fırlattığı canlı soru komutu.",
+  "type": "object",
+  "x-command-type": "com.clrinf.egitim.QuizGonder.v1",
+  "x-domain": "egitim",
+  "properties": {
+    "quiz_id": { "type": "string", "description": "Soru tekil kimliği" },
+    "lesson_id": { "type": "string", "description": "Ders oturum kimliği" },
+    "question": { "type": "string", "description": "Soru metni" },
+    "options": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Seçenek listesi (A, B, C, D)"
+    },
+    "correct_option_index": { "type": "integer", "minimum": 0, "description": "Doğru seçenek indeksi (0-indexed)" },
+    "points": { "type": "integer", "minimum": 1, "description": "Kazanılacak puan" }
+  },
+  "required": ["quiz_id", "lesson_id", "question", "options", "correct_option_index", "points"],
+  "additionalProperties": false
+}

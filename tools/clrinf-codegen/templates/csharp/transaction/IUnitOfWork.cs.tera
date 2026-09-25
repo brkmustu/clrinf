@@ -1,0 +1,23 @@
+{# @clrinf:generated — C# Unit of Work Interface #}
+// @clrinf:generated — Bu dosya clrinf-codegen tarafından üretilmiştir.
+// Modül: Transaction
+
+namespace {{ namespace }}.Application.Common;
+
+/// <summary>
+/// Unit of Work sözleşmesi. Veritabanı transaction'larını yönetir.
+/// </summary>
+public interface IUnitOfWork : IDisposable
+{
+    /// <summary>Yeni bir transaction başlatır.</summary>
+    Task BeginTransactionAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>Aktif transaction'ı commit eder.</summary>
+    Task CommitAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>Aktif transaction'ı rollback eder.</summary>
+    Task RollbackAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>Bekleyen değişiklikleri veritabanına yazar.</summary>
+    Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
+}

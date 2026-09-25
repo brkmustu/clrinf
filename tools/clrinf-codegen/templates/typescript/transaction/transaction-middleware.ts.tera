@@ -1,0 +1,24 @@
+{# @clrinf:generated — TypeScript Transaction Middleware Template #}
+// @clrinf:generated — Bu dosya clrinf-codegen tarafından üretilmiştir.
+// Modül: Transaction | Provider: {{ provider | default(value="native") }}
+
+import type { UnitOfWork } from "@clrinf/core";
+
+/**
+ * Transaction middleware for command handlers.
+ * Wraps handler execution in a begin/commit/rollback lifecycle.
+ */
+export async function withTransaction<T>(
+  uow: UnitOfWork,
+  handler: () => Promise<T>,
+): Promise<T> {
+  await uow.begin();
+  try {
+    const result = await handler();
+    await uow.commit();
+    return result;
+  } catch (error) {
+    await uow.rollback();
+    throw error;
+  }
+}

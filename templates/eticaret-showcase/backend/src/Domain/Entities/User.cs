@@ -1,0 +1,31 @@
+using EticaretApp.Domain.Common.Entities;
+
+namespace EticaretApp.Domain.Entities;
+
+public class User : Entity<int>
+{
+    public string FirstName { get; set; } = string.Empty;
+    public string LastName { get; set; } = string.Empty;
+    public string Email { get; set; } = string.Empty;
+    public byte[] PasswordSalt { get; set; } = Array.Empty<byte>();
+    public byte[] PasswordHash { get; set; } = Array.Empty<byte>();
+    public bool Status { get; set; } = true;
+
+    public virtual ICollection<UserOperationClaim> UserOperationClaims { get; set; } = new HashSet<UserOperationClaim>();
+    public virtual ICollection<RefreshToken> RefreshTokens { get; set; } = new HashSet<RefreshToken>();
+
+    public User()
+    {
+    }
+
+    public User(int id, string firstName, string lastName, string email, byte[] passwordSalt, byte[] passwordHash, bool status)
+        : base(id)
+    {
+        FirstName = firstName;
+        LastName = lastName;
+        Email = email;
+        PasswordSalt = passwordSalt;
+        PasswordHash = passwordHash;
+        Status = status;
+    }
+}

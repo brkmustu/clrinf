@@ -1,0 +1,138 @@
+using System;
+using System.Threading.Tasks;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
+using {{ project_namespace }}.Application.Modules.Auth.Commands.EnableEmailAuthenticator;
+using {{ project_namespace }}.Application.Modules.Auth.Commands.EnableOtpAuthenticator;
+using {{ project_namespace }}.Application.Modules.Auth.Commands.Login;
+using {{ project_namespace }}.Application.Modules.Auth.Commands.RefreshToken;
+using {{ project_namespace }}.Application.Modules.Auth.Commands.Register;
+using {{ project_namespace }}.Application.Modules.Auth.Commands.RevokeToken;
+using {{ project_namespace }}.Application.Modules.Auth.Commands.VerifyEmailAuthenticator;
+using {{ project_namespace }}.Application.Modules.Auth.Commands.VerifyOtpAuthenticator;
+using {{ project_namespace }}.Application.Modules.Auth.DTOs;
+
+namespace {{ project_namespace }}.Api.Controllers;
+
+[Route("api/[controller]")]
+[ApiController]
+public class AuthController : BaseController
+{
+    [HttpPost("Register")]
+    public async ValueTask<IActionResult> Register([FromBody] UserForRegisterDto userForRegisterDto)
+    {
+        var command = new RegisterCommand
+        {
+            UserForRegisterDto = userForRegisterDto,
+            IpAddress = getIpAddress()
+        };
+        var result = await Dispatcher.SendAsync(command);
+        setRefreshTokenToCookie(result.RefreshToken);
+        return Ok(result);
+    }
+
+    [HttpPost("Login")]
+    public async ValueTask<IActionResult> Login([FromBody] UserForLoginDto userForLoginDto)
+    {
+        var command = new LoginCommand
+        {
+            UserForLoginDto = userForLoginDto,
+            IpAddress = getIpAddress()
+        };
+        var result = await Dispatcher.SendAsync(command);
+        if (!string.IsNullOrEmpty(result.RefreshToken))
+            setRefreshTokenToCookie(result.RefreshToken);
+
+        return Ok(result);
+    }
+
+    [HttpPost("RefreshToken")]
+    public async ValueTask<IActionResult> RefreshToken([FromQuery] string? refreshToken)
+    {
+        var token = refreshToken ?? Request.Cookies["refreshToken"] ?? string.Empty;
+        var command = new RefreshTokenCommand
+        {
+            RefreshToken = token,
+            IpAddress = getIpAddress()
+        };
+        var result = await Dispatcher.SendAsync(command);
+        setRefreshTokenToCookie(result.RefreshToken);
+        return Ok(result);
+    }
+
+    [HttpPost("RevokeToken")]
+    [Authorize]
+    public async ValueTask<IActionResult> RevokeToken([FromBody] RevokeTokenDto revokeTokenDto)
+    {
+        var command = new RevokeTokenCommand
+        {
+            Token = revokeTokenDto.Token,
+            IpAddress = getIpAddress()
+        };
+        await Dispatcher.SendAsync(command);
+        return Ok();
+    }
+
+    [HttpPost("EnableOtpAuthenticator")]
+    [Authorize]
+    public async ValueTask<IActionResult> EnableOtpAuthenticator([FromQuery] int userId)
+    {
+        var command = new EnableOtpAuthenticatorCommand { UserId = userId };
+        var result = await Dispatcher.SendAsync(command);
+        return Ok(result);
+    }
+
+    [HttpPost("VerifyOtpAuthenticator")]
+    [Authorize]
+    public async ValueTask<IActionResult> VerifyOtpAuthenticator([FromBody] VerifyOtpAuthenticatorDto dto)
+    {
+        var command = new VerifyOtpAuthenticatorCommand
+        {
+            UserId = dto.UserId,
+            Code = dto.Code
+        };
+        await Dispatcher.SendAsync(command);
+        return Ok();
+    }
+
+    [HttpPost("EnableEmailAuthenticator")]
+    [Authorize]
+    public async ValueTask<IActionResult> EnableEmailAuthenticator([FromQuery] int userId)
+    {
+        var command = new EnableEmailAuthenticatorCommand { UserId = userId };
+        await Dispatcher.SendAsync(command);
+        return Ok();
+    }
+
+    [HttpPost("VerifyEmailAuthenticator")]
+    [Authorize]
+    public async ValueTask<IActionResult> VerifyEmailAuthenticator([FromBody] VerifyEmailAuthenticatorDto dto)
+    {
+        var command = new VerifyEmailAuthenticatorCommand
+        {
+            UserId = dto.UserId,
+            ActivationKey = dto.ActivationKey
+        };
+        await Dispatcher.SendAsync(command);
+        return Ok();
+    }
+
+    private string getIpAddress()
+    {
+        if (Request.Headers.ContainsKey("X-Forwarded-For"))
+            return Request.Headers["X-Forwarded-For"]!;
+        return HttpContext.Connection.RemoteIpAddress?.MapToIPv4().ToString() ?? "127.0.0.1";
+    }
+
+    private void setRefreshTokenToCookie(string refreshToken)
+    {
+        var cookieOptions = new CookieOptions
+        {
+            HttpOnly = true,
+            Expires = DateTime.UtcNow.AddDays(7)
+        };
+        Response.Cookies.Append("refreshToken", refreshToken, cookieOptions);
+    }
+}
+

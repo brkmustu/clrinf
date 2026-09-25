@@ -1,0 +1,62 @@
+using Microsoft.AspNetCore.Authorization;
+using {{ project_namespace }}.Application.Common.Paging;
+using {{ project_namespace }}.Application.Common.Pipeline;
+using {{ project_namespace }}.Application.Modules.UserOperationClaims.Commands.CreateUserOperationClaim;
+using {{ project_namespace }}.Application.Modules.UserOperationClaims.Commands.DeleteUserOperationClaim;
+using {{ project_namespace }}.Application.Modules.UserOperationClaims.Commands.UpdateUserOperationClaim;
+using {{ project_namespace }}.Application.Modules.UserOperationClaims.DTOs;
+using {{ project_namespace }}.Application.Modules.UserOperationClaims.Queries.GetByIdUserOperationClaim;
+using {{ project_namespace }}.Application.Modules.UserOperationClaims.Queries.GetListUserOperationClaim;
+using {{ project_namespace }}.Application.Modules.UserOperationClaims.Responses;
+using Microsoft.AspNetCore.Mvc;
+
+namespace {{ project_namespace }}.Api.Controllers;
+
+[Route("api/[controller]")]
+[ApiController]
+[Authorize(Roles = "Admin")]
+public class UserOperationClaimsController : ControllerBase
+{
+    private readonly IDispatcher _dispatcher;
+
+    public UserOperationClaimsController(IDispatcher dispatcher)
+    {
+        _dispatcher = dispatcher;
+    }
+
+    [HttpGet("{id}")]
+    public async ValueTask<IActionResult> GetById([FromRoute] int id)
+    {
+        GetUserOperationClaimResponse result = await _dispatcher.QueryAsync(new GetByIdUserOperationClaimQuery(id));
+        return Ok(result);
+    }
+
+    [HttpGet]
+    public async ValueTask<IActionResult> GetList([FromQuery] int pageIndex = 0, [FromQuery] int pageSize = 10)
+    {
+        IPaginate<UserOperationClaimListItemDto> result = await _dispatcher.QueryAsync(new GetListUserOperationClaimQuery(pageIndex, pageSize));
+        return Ok(result);
+    }
+
+    [HttpPost]
+    public async ValueTask<IActionResult> Add([FromBody] CreateUserOperationClaimDto dto)
+    {
+        CreatedUserOperationClaimResponse result = await _dispatcher.SendAsync(new CreateUserOperationClaimCommand(dto));
+        return Created(uri: "", result);
+    }
+
+    [HttpPut]
+    public async ValueTask<IActionResult> Update([FromBody] UpdateUserOperationClaimDto dto)
+    {
+        UpdatedUserOperationClaimResponse result = await _dispatcher.SendAsync(new UpdateUserOperationClaimCommand(dto));
+        return Ok(result);
+    }
+
+    [HttpDelete("{id}")]
+    public async ValueTask<IActionResult> Delete([FromRoute] int id)
+    {
+        DeletedUserOperationClaimResponse result = await _dispatcher.SendAsync(new DeleteUserOperationClaimCommand(id));
+        return Ok(result);
+    }
+}
+

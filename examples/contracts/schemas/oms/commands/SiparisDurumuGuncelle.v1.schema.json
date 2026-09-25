@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.clrinf.com/oms/commands/SiparisDurumuGuncelle.v1.schema.json",
+  "title": "SiparisDurumuGuncelleV1",
+  "description": "Siparişin durumunu ilerletme komutu (HAZIRLANIYOR, PAKETLENDI, KARGODA, TESLIM_EDILDI). Cedar ABAC: WarehouseManager veya Admin rolü gerektirir.",
+  "type": "object",
+  "x-command-type": "com.clrinf.oms.SiparisDurumuGuncelle.v1",
+  "x-domain": "oms",
+  "required": ["siparisId", "yeniDurum"],
+  "properties": {
+    "siparisId": { "type": "string" },
+    "yeniDurum": {
+      "type": "string",
+      "enum": ["HAZIRLANIYOR", "PAKETLENDI", "KARGODA", "TESLIM_EDILDI", "TAMAMLANDI"]
+    },
+    "kargoTakipNo": { "type": "string", "description": "KARGODA durumuna geçerken zorunlu kargo takip barkodu" },
+    "kargoFirmasi": { "type": "string", "description": "Kargo lojistik firması (örn: Yurtiçi, DHL)" },
+    "aciklama": { "type": "string" }
+  }
+}

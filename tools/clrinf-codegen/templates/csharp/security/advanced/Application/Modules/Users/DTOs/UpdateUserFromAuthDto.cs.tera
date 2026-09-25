@@ -1,0 +1,9 @@
+namespace {{ project_namespace }}.Application.Modules.Users.DTOs;
+
+public class UpdateUserFromAuthDto
+{
+    public string FirstName { get; set; } = string.Empty;
+    public string LastName { get; set; } = string.Empty;
+    public string? Password { get; set; }
+    public string? NewPassword { get; set; }
+}

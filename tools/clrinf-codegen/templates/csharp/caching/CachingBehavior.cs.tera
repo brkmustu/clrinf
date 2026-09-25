@@ -1,0 +1,117 @@
+{# @clrinf:generated — C# Caching Pipeline Behavior #}
+// @clrinf:generated — Bu dosya clrinf-codegen tarafından üretilmiştir.
+// Modül: Caching | Provider: {{ provider | default(value="memory") }} | Dispatcher: {{ dispatcher | default(value="native") }}
+using System;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
+{% if dispatcher == "mediatr" %}
+using MediatR;
+
+namespace {{ namespace }}.Application.Common.Behaviors;
+
+/// <summary>
+/// Önbellekleme pipeline behavior'u (MediatR tabanlı).
+/// </summary>
+public sealed class CachingBehavior<TRequest, TResponse> : IPipelineBehavior<TRequest, TResponse>
+    where TRequest : notnull
+{
+    private readonly ICacheService _cacheService;
+    private readonly ILogger<CachingBehavior<TRequest, TResponse>> _logger;
+
+    public CachingBehavior(ICacheService cacheService, ILogger<CachingBehavior<TRequest, TResponse>> logger)
+    {
+        _cacheService = cacheService;
+        _logger = logger;
+    }
+
+    public async ValueTask<TResponse> HandleAsync(
+        TRequest request,
+        CancellationToken cancellationToken,
+        RequestHandlerDelegate<TResponse> next)
+    {
+        var cacheAttr = typeof(TRequest).GetCustomAttributes(typeof(CacheableAttribute), false)
+            .FirstOrDefault() as CacheableAttribute;
+
+        if (cacheAttr is null)
+            return await next();
+
+        string cacheKey = cacheAttr.CacheKey ?? $"{typeof(TRequest).Name}:{System.Text.Json.JsonSerializer.Serialize(request)}";
+
+        var cached = await _cacheService.GetAsync<TResponse>(cacheKey, cancellationToken);
+        if (cached is not null)
+        {
+            _logger.LogInformation("Cache hit for {RequestType} (key: {CacheKey})", typeof(TRequest).Name, cacheKey);
+            return cached;
+        }
+
+        var response = await next();
+        var ttl = cacheAttr.TtlSeconds > 0 ? TimeSpan.FromSeconds(cacheAttr.TtlSeconds) : (TimeSpan?)null;
+        await _cacheService.SetAsync(cacheKey, response, ttl, cancellationToken);
+        _logger.LogInformation("Cache set for {RequestType} (key: {CacheKey})", typeof(TRequest).Name, cacheKey);
+        return response;
+    }
+}
+{% else %}
+using ClrinfCS.Core;
+
+namespace {{ namespace }}.Common.Caching;
+
+/// <summary>
+/// Yerel Dispatcher uyumlu, sıfır-maliyetli önbellekleme davranışı (ClrinfCS.Core).
+/// </summary>
+public sealed class CachingBehavior<TRequest, TResponse> : IPipelineBehavior<TRequest, TResponse>
+    where TRequest : IRequest<TResponse>
+{
+    private readonly ICacheService _cacheService;
+    private readonly ILogger<CachingBehavior<TRequest, TResponse>>? _logger;
+
+    public CachingBehavior(ICacheService cacheService, ILogger<CachingBehavior<TRequest, TResponse>>? logger = null)
+    {
+        _cacheService = cacheService;
+        _logger = logger;
+    }
+
+    public async ValueTask<TResponse> HandleAsync(
+        TRequest request,
+        RequestContext context,
+        CancellationToken cancellationToken,
+        RequestHandlerDelegate<TResponse> next)
+    {
+        var cacheAttr = typeof(TRequest).GetCustomAttributes(typeof(CacheableAttribute), false)
+            .FirstOrDefault() as CacheableAttribute;
+
+        if (cacheAttr is null)
+            return await next();
+
+        string cacheKey = cacheAttr.CacheKey ?? $"{context.TenantId}:{typeof(TRequest).Name}:{System.Text.Json.JsonSerializer.Serialize(request)}";
+
+        var cached = await _cacheService.GetAsync<TResponse>(cacheKey, cancellationToken);
+        if (cached is not null)
+        {
+            _logger?.LogInformation("Cache hit for {RequestType} (key: {CacheKey})", typeof(TRequest).Name, cacheKey);
+            return cached;
+        }
+
+        var response = await next();
+        var ttl = cacheAttr.TtlSeconds > 0 ? TimeSpan.FromSeconds(cacheAttr.TtlSeconds) : (TimeSpan?)null;
+        await _cacheService.SetAsync(cacheKey, response, ttl, cancellationToken);
+        _logger?.LogInformation("Cache set for {RequestType} (key: {CacheKey})", typeof(TRequest).Name, cacheKey);
+        return response;
+    }
+}
+{% endif %}
+
+[AttributeUsage(AttributeTargets.Class, AllowMultiple = false)]
+public sealed class CacheableAttribute : Attribute
+{
+    public string? CacheKey { get; set; }
+    public int TtlSeconds { get; set; }
+}
+
+[AttributeUsage(AttributeTargets.Class, AllowMultiple = true)]
+public sealed class CacheInvalidationAttribute : Attribute
+{
+    public string Prefix { get; init; } = string.Empty;
+}

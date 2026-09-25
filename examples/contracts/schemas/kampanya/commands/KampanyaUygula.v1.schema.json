@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.clrinf.com/kampanya/commands/KampanyaUygula.v1.schema.json",
+  "title": "KampanyaUygulaV1",
+  "description": "Sepetteki ürünlere belirli bir kampanyayı uygulayarak indirim tutarını kesinleştirme komutu.",
+  "type": "object",
+  "x-command-type": "com.clrinf.kampanya.KampanyaUygula.v1",
+  "x-domain": "kampanya",
+  "required": ["kampanyaKodu", "sepetId", "sepetTutari"],
+  "properties": {
+    "kampanyaKodu": { "type": "string" },
+    "sepetId": { "type": "string" },
+    "kullaniciId": { "type": "string" },
+    "sepetTutari": { "type": "number", "minimum": 0 },
+    "kalemler": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["sku", "miktar", "birimFiyat", "kategoriYolu"],
+        "properties": {
+          "sku": { "type": "string" },
+          "miktar": { "type": "integer" },
+          "birimFiyat": { "type": "number" },
+          "kategoriYolu": { "type": "string" }
+        }
+      }
+    }
+  }
+}

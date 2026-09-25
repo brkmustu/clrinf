@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "EmanetBlokeEdildiV1",
+  "description": "Ders başlangıcında öğrenci bakiyesinden emanet (escrow) bloke edildiğini bildiren olay.",
+  "type": "object",
+  "x-event-type": "com.clrinf.egitim.EmanetBlokeEdildi.v1",
+  "x-domain": "egitim",
+  "properties": {
+    "lesson_id": { "type": "string", "description": "Ders kimliği" },
+    "student_id": { "type": "string", "description": "Öğrenci kimliği" },
+    "escrow_amount": { "type": "number", "minimum": 0, "description": "Bloke edilen tutar" },
+    "escrow_id": { "type": "string", "description": "Emanet takip no" }
+  },
+  "required": ["lesson_id", "student_id", "escrow_amount", "escrow_id"],
+  "additionalProperties": false
+}

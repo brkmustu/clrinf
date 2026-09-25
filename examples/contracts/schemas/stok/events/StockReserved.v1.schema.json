@@ -1,0 +1,34 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.clrinf.com/stok/events/StockReserved.v1.schema.json",
+  "title": "StockReservedV1",
+  "description": "Event emitted when inventory is reserved for an incoming order.",
+  "type": "object",
+  "x-event-type": "com.clrinf.stok.StockReserved.v1",
+  "x-domain": "stok",
+  "required": [
+    "order_id",
+    "sku",
+    "quantity",
+    "warehouse"
+  ],
+  "properties": {
+    "order_id": {
+      "type": "string",
+      "description": "Identifier of the order claiming reservation"
+    },
+    "sku": {
+      "type": "string",
+      "description": "Stock keeping unit code"
+    },
+    "quantity": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Reserved item count"
+    },
+    "warehouse": {
+      "type": "string",
+      "description": "Source warehouse code (e.g. IST-01)"
+    }
+  }
+}

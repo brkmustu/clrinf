@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.clrinf.com/auth/events/UserCreated.v1.schema.json",
+  "title": "UserCreatedV1",
+  "description": "Event emitted when a new user account is created in the identity service.",
+  "type": "object",
+  "x-event-type": "com.clrinf.auth.UserCreated.v1",
+  "x-domain": "auth",
+  "required": [
+    "user_id",
+    "email",
+    "roles",
+    "created_at"
+  ],
+  "properties": {
+    "user_id": {
+      "type": "string",
+      "description": "Unique user identifier (UUID)"
+    },
+    "email": {
+      "type": "string",
+      "format": "email",
+      "description": "User primary email address"
+    },
+    "roles": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Assigned initial roles"
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Creation timestamp"
+    }
+  }
+}

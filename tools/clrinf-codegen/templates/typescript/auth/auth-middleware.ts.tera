@@ -1,0 +1,37 @@
+{# @clrinf:generated — TypeScript Authentication Middleware Template #}
+// @clrinf:generated — Bu dosya clrinf-codegen tarafından üretilmiştir.
+// Modül: Authentication | Provider: {{ provider | default(value="jwt") }}
+
+import type { Claims, TokenService } from "@clrinf/core";
+import { AuthenticationError } from "@clrinf/core";
+
+export interface RequestWithClaims {
+  claims?: Claims;
+  headers?: Record<string, string | string[] | undefined>;
+}
+
+/**
+ * Authentication middleware that extracts and validates Bearer token from header.
+ */
+export function createAuthMiddleware(tokenService: TokenService) {
+  return async function authMiddleware(
+    req: RequestWithClaims,
+    next: () => Promise<unknown>
+  ): Promise<unknown> {
+    const authHeader =
+      (req.headers?.["authorization"] || req.headers?.["Authorization"]) as string | undefined;
+
+    if (!authHeader) {
+      throw new AuthenticationError("Authorization header is missing", "MISSING_CREDENTIALS");
+    }
+
+    const match = authHeader.match(/^Bearer\s+(.+)$/i);
+    if (!match) {
+      throw new AuthenticationError("Invalid authorization format, expected Bearer token", "INVALID_TOKEN");
+    }
+
+    const token = match[1];
+    req.claims = await tokenService.verifyToken(token);
+    return next();
+  };
+}

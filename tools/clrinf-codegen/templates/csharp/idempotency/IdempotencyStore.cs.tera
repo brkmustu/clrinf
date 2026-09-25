@@ -1,0 +1,98 @@
+{# @clrinf:generated — C# Idempotency Store Interface #}
+// @clrinf:generated — Bu dosya clrinf-codegen tarafından üretilmiştir.
+// Modül: Idempotency | Provider: {{ provider | default(value="memory") }}
+
+namespace {{ namespace }}.Infrastructure.Idempotency;
+
+/// <summary>
+/// Idempotency sözleşmesi: tekrarlanan isteklerin güvenli işlenmesini sağlar.
+/// </summary>
+public interface IIdempotencyStore
+{
+    /// <summary>Bir idempotency slot'u almayı dener.</summary>
+    Task<IdempotencyClaim> ClaimAsync(string tenantId, string operation, string key, CancellationToken cancellationToken = default);
+
+    /// <summary>İşlem tamamlandığında sonucu kaydeder.</summary>
+    Task CompleteAsync(string tenantId, string operation, string key, string token, object result, CancellationToken cancellationToken = default);
+
+    /// <summary>Hata durumunda slot'u serbest bırakır.</summary>
+    Task ReleaseAsync(string tenantId, string operation, string key, string token, CancellationToken cancellationToken = default);
+}
+
+/// <summary>Idempotency claim sonucu.</summary>
+public abstract record IdempotencyClaim;
+public sealed record AcquiredClaim(string Token) : IdempotencyClaim;
+public sealed record CompletedClaim(object Result) : IdempotencyClaim;
+public sealed record BusyClaim : IdempotencyClaim;
+
+/// <summary>
+/// ConcurrentDictionary tabanlı in-memory idempotency store.
+/// </summary>
+public sealed class MemoryIdempotencyStore : IIdempotencyStore
+{
+    private readonly System.Collections.Concurrent.ConcurrentDictionary<string, IdempotencyEntry> _entries = new();
+    private readonly int _capacity;
+    private readonly TimeSpan _ttl;
+
+    public MemoryIdempotencyStore(int capacity = 1000, TimeSpan? ttl = null)
+    {
+        _capacity = capacity;
+        _ttl = ttl ?? TimeSpan.FromMinutes(5);
+    }
+
+    public Task<IdempotencyClaim> ClaimAsync(string tenantId, string operation, string key, CancellationToken cancellationToken = default)
+    {
+        var id = $"{tenantId}:{operation}:{key}";
+        Evict();
+
+        if (_entries.TryGetValue(id, out var existing))
+        {
+            if (existing.IsCompleted)
+                return Task.FromResult<IdempotencyClaim>(new CompletedClaim(existing.Result!));
+            return Task.FromResult<IdempotencyClaim>(new BusyClaim());
+        }
+
+        if (_entries.Count >= _capacity)
+            throw new InvalidOperationException("Idempotency store capacity exceeded.");
+
+        var token = Guid.NewGuid().ToString();
+        _entries[id] = new IdempotencyEntry { Token = token };
+        return Task.FromResult<IdempotencyClaim>(new AcquiredClaim(token));
+    }
+
+    public Task CompleteAsync(string tenantId, string operation, string key, string token, object result, CancellationToken cancellationToken = default)
+    {
+        var id = $"{tenantId}:{operation}:{key}";
+        if (_entries.TryGetValue(id, out var entry) && entry.Token == token)
+        {
+            entry.Result = result;
+            entry.IsCompleted = true;
+            entry.ExpiresAt = DateTime.UtcNow.Add(_ttl);
+        }
+        return Task.CompletedTask;
+    }
+
+    public Task ReleaseAsync(string tenantId, string operation, string key, string token, CancellationToken cancellationToken = default)
+    {
+        var id = $"{tenantId}:{operation}:{key}";
+        if (_entries.TryGetValue(id, out var entry) && entry.Token == token)
+            _entries.TryRemove(id, out _);
+        return Task.CompletedTask;
+    }
+
+    private void Evict()
+    {
+        var now = DateTime.UtcNow;
+        foreach (var kv in _entries)
+            if (kv.Value.IsCompleted && kv.Value.ExpiresAt <= now)
+                _entries.TryRemove(kv.Key, out _);
+    }
+
+    private sealed class IdempotencyEntry
+    {
+        public string Token { get; set; } = string.Empty;
+        public object? Result { get; set; }
+        public bool IsCompleted { get; set; }
+        public DateTime ExpiresAt { get; set; }
+    }
+}

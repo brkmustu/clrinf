@@ -1,0 +1,34 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.clrinf.com/auth/events/PolicyUpdated.v1.schema.json",
+  "title": "PolicyUpdatedV1",
+  "description": "Event emitted when an authorization policy (Cedar/ABAC) is created or modified.",
+  "type": "object",
+  "x-event-type": "com.clrinf.auth.PolicyUpdated.v1",
+  "x-domain": "auth",
+  "required": [
+    "policy_id",
+    "policy_name",
+    "version",
+    "updated_at"
+  ],
+  "properties": {
+    "policy_id": {
+      "type": "string",
+      "description": "Policy identifier"
+    },
+    "policy_name": {
+      "type": "string",
+      "description": "Human-readable policy name"
+    },
+    "version": {
+      "type": "integer",
+      "description": "Incremented policy version"
+    },
+    "updated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Update timestamp"
+    }
+  }
+}

@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.clrinf.com/_error.schema.json",
+  "title": "StandardErrorEnvelope",
+  "description": "Standard cross-service error envelope for HTTP, gRPC, and message rejection.",
+  "type": "object",
+  "required": [
+    "error_code",
+    "message",
+    "correlation_id",
+    "tenant_id",
+    "retryable"
+  ],
+  "properties": {
+    "error_code": {
+      "type": "string",
+      "description": "Domain-specific standard error code (e.g. STOCK_INSUFFICIENT)"
+    },
+    "message": {
+      "type": "string",
+      "description": "Human-readable error description"
+    },
+    "correlation_id": {
+      "type": "string",
+      "description": "Correlation identifier of the failed request/event"
+    },
+    "tenant_id": {
+      "type": "string",
+      "description": "Tenant identifier"
+    },
+    "retryable": {
+      "type": "boolean",
+      "description": "True if caller can retry with exponential backoff; False if fatal/compensating action required"
+    },
+    "details": {
+      "type": "object",
+      "description": "Additional domain-specific diagnostic key-value pairs"
+    }
+  }
+}

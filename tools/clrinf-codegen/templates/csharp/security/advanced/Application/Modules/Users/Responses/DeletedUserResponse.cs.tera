@@ -1,0 +1,6 @@
+namespace {{ project_namespace }}.Application.Modules.Users.Responses;
+
+public class DeletedUserResponse
+{
+    public int Id { get; set; }
+}

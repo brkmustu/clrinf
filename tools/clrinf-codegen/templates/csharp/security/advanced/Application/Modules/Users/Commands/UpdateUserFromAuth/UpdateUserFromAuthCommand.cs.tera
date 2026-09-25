@@ -1,0 +1,54 @@
+using {{ project_namespace }}.Application.Common.Pipeline;
+using {{ project_namespace }}.Application.Modules.Users.DTOs;
+using {{ project_namespace }}.Application.Modules.Users.Responses;
+using {{ project_namespace }}.Application.Services.Repositories;
+using {{ project_namespace }}.Application.Services.Security.Encryption;
+using {{ project_namespace }}.Domain.Entities;
+
+namespace {{ project_namespace }}.Application.Modules.Users.Commands.UpdateUserFromAuth;
+
+public record UpdateUserFromAuthCommand(int UserId, UpdateUserFromAuthDto Dto) : ICommand<UpdatedUserFromAuthResponse>;
+
+public class UpdateUserFromAuthCommandHandler : ICommandHandler<UpdateUserFromAuthCommand, UpdatedUserFromAuthResponse>
+{
+    private readonly IUserRepository _userRepository;
+
+    public UpdateUserFromAuthCommandHandler(IUserRepository userRepository)
+    {
+        _userRepository = userRepository;
+    }
+
+    public async ValueTask<UpdatedUserFromAuthResponse> HandleAsync(UpdateUserFromAuthCommand request, CancellationToken cancellationToken)
+    {
+        User? user = await _userRepository.GetAsync(u => u.Id == request.UserId, cancellationToken: cancellationToken);
+        if (user == null)
+            throw new Exception("Kullanıcı bulunamadı.");
+
+        if (!string.IsNullOrEmpty(request.Dto.Password))
+        {
+            if (!HashingHelper.VerifyPasswordHash(request.Dto.Password, user.PasswordHash, user.PasswordSalt))
+                throw new Exception("Mevcut şifre hatalı.");
+        }
+
+        user.FirstName = request.Dto.FirstName;
+        user.LastName = request.Dto.LastName;
+
+        if (!string.IsNullOrEmpty(request.Dto.NewPassword))
+        {
+            byte[] passwordHash, passwordSalt;
+            HashingHelper.CreatePasswordHash(request.Dto.NewPassword, out passwordHash, out passwordSalt);
+            user.PasswordHash = passwordHash;
+            user.PasswordSalt = passwordSalt;
+        }
+
+        User updatedUser = await _userRepository.UpdateAsync(user);
+
+        return new UpdatedUserFromAuthResponse
+        {
+            Id = updatedUser.Id,
+            FirstName = updatedUser.FirstName,
+            LastName = updatedUser.LastName,
+            Email = updatedUser.Email
+        };
+    }
+}

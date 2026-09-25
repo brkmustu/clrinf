@@ -1,0 +1,109 @@
+{# @clrinf:generated — C# Logging Pipeline Behavior #}
+// @clrinf:generated — Bu dosya clrinf-codegen tarafından üretilmiştir.
+// Modül: Logging | Provider: {{ provider | default(value="structured") }} | Dispatcher: {{ dispatcher | default(value="native") }}
+using System;
+using System.Diagnostics;
+using System.Threading;
+using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
+{% if dispatcher == "mediatr" %}
+using MediatR;
+
+namespace {{ namespace }}.Application.Common.Behaviors;
+
+public sealed class LoggingBehavior<TRequest, TResponse> : IPipelineBehavior<TRequest, TResponse>
+    where TRequest : notnull
+{
+    private readonly ILogger<LoggingBehavior<TRequest, TResponse>> _logger;
+
+    public LoggingBehavior(ILogger<LoggingBehavior<TRequest, TResponse>> logger)
+    {
+        _logger = logger;
+    }
+
+    public async ValueTask<TResponse> HandleAsync(
+        TRequest request,
+        CancellationToken cancellationToken,
+        RequestHandlerDelegate<TResponse> next)
+    {
+        var requestType = typeof(TRequest).Name;
+        _logger.LogInformation("⏳ Handling {RequestType}", requestType);
+
+        var sw = Stopwatch.StartNew();
+        try
+        {
+            var response = await next();
+            sw.Stop();
+            _logger.LogInformation("✅ Handled {RequestType} in {ElapsedMs}ms", requestType, sw.ElapsedMilliseconds);
+            return response;
+        }
+        catch (Exception ex)
+        {
+            sw.Stop();
+            _logger.LogError(ex, "❌ Failed {RequestType} after {ElapsedMs}ms", requestType, sw.ElapsedMilliseconds);
+            throw;
+        }
+    }
+}
+{% else %}
+using ClrinfCS.Core;
+
+namespace {{ namespace }}.Common.Logging;
+
+public sealed class LoggingBehavior<TRequest, TResponse> : IPipelineBehavior<TRequest, TResponse>
+    where TRequest : IRequest<TResponse>
+{
+    private readonly ILogger<LoggingBehavior<TRequest, TResponse>>? _logger;
+
+    public LoggingBehavior(ILogger<LoggingBehavior<TRequest, TResponse>>? logger = null)
+    {
+        _logger = logger;
+    }
+
+    public async ValueTask<TResponse> HandleAsync(
+        TRequest request,
+        RequestContext context,
+        CancellationToken cancellationToken,
+        RequestHandlerDelegate<TResponse> next)
+    {
+        var requestType = typeof(TRequest).Name;
+        if (_logger is not null)
+        {
+            _logger.LogInformation("[clrinf:log] [{CorrelationId}] ⏳ Handling {RequestType} (Tenant: {TenantId})", context.CorrelationId, requestType, context.TenantId);
+        }
+        else
+        {
+            Console.WriteLine($"[clrinf:log] [{context.CorrelationId}] ⏳ Handling {requestType} (Tenant: {context.TenantId})");
+        }
+
+        var sw = Stopwatch.StartNew();
+        try
+        {
+            var response = await next();
+            sw.Stop();
+            if (_logger is not null)
+            {
+                _logger.LogInformation("[clrinf:log] [{CorrelationId}] ✅ Handled {RequestType} in {ElapsedMs}ms", context.CorrelationId, requestType, sw.ElapsedMilliseconds);
+            }
+            else
+            {
+                Console.WriteLine($"[clrinf:log] [{context.CorrelationId}] ✅ Handled {requestType} in {sw.ElapsedMilliseconds}ms");
+            }
+            return response;
+        }
+        catch (Exception ex)
+        {
+            sw.Stop();
+            if (_logger is not null)
+            {
+                _logger.LogError(ex, "[clrinf:log] [{CorrelationId}] ❌ Failed {RequestType} after {ElapsedMs}ms: {Message}", context.CorrelationId, requestType, sw.ElapsedMilliseconds, ex.Message);
+            }
+            else
+            {
+                Console.WriteLine($"[clrinf:log] [{context.CorrelationId}] ❌ Failed {requestType} after {sw.ElapsedMilliseconds}ms: {ex.Message}");
+            }
+            throw;
+        }
+    }
+}
+{% endif %}

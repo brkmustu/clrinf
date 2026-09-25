@@ -1,0 +1,22 @@
+# Event-Driven Cache Invalidation Rules: Kampanya & İndirim Motoru
+domain: kampanya
+version: 1.0.0
+
+rules:
+  - event_type: "com.clrinf.kampanya.KampanyaOlusturuldu.v1"
+    description: "Yeni kampanya oluşturulduğunda aktif kampanyalar ve kategori önbelleğini geçersiz kıl"
+    invalidate:
+      - pattern: "kampanya:active"
+      - pattern: "kampanya:code:{data.kod}"
+      - pattern: "kampanya:category:{data.hedefKategori}"
+
+  - event_type: "com.clrinf.kampanya.KampanyaTukendi.v1"
+    description: "Kampanya kotası tükendiğinde aktif kampanyalar ve kampanya detayını geçersiz kıl"
+    invalidate:
+      - pattern: "kampanya:active"
+      - pattern: "kampanya:code:{data.kod}"
+
+  - event_type: "com.clrinf.kampanya.KampanyaUygulandi.v1"
+    description: "Kampanya kuponu kullanıldığında kullanım sayaç önbelleğini geçersiz kıl"
+    invalidate:
+      - pattern: "kampanya:usage:{data.kod}"

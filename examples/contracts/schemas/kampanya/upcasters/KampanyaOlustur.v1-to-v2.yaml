@@ -1,0 +1,21 @@
+# clrinf-contracts/schemas/kampanya/upcasters/KampanyaOlustur.v1-to-v2.yaml
+from: "com.clrinf.kampanya.KampanyaOlustur.v1"
+to: "com.clrinf.kampanya.KampanyaOlustur.v2"
+description: "v1 kampanya modellerini birleştirilebilir ve kural tabanlı v2 formatına yükselten upcaster."
+mappings:
+  - target_field: "birlestirilebilir"
+    source_field: null
+    default_value: false
+    type: "boolean"
+  - target_field: "birlestirmeTuru"
+    source_field: null
+    default_value: "SERBEST"
+    type: "string"
+  - target_field: "uygulamaSirasi"
+    source_field: null
+    default_value: 1
+    type: "integer"
+  - target_field: "izinliKampanyaKodlari"
+    source_field: null
+    default_value: []
+    type: "array"

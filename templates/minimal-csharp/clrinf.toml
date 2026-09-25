@@ -1,0 +1,51 @@
+# clrinf Project Manifest
+# Bu dosya projenizin cross-cutting concern modüllerini yönetir.
+# Detaylı bilgi: https://github.com/brkmustu/clrinf
+
+[project]
+name = "MinimalCSharp"
+lang = "csharp"
+arch = "clean-cqrs"
+deployment = "monolith"
+host_type = "api"
+dispatcher = "native"
+
+# ─── Cross-Cutting Concern Modülleri ─────────────────────────────────────────
+# Her modül bağımsız olarak etkinleştirilebilir/devre dışı bırakılabilir.
+# Modül eklemek için: clrinf-codegen module add <modül_adı> [--provider <provider>]
+# Modül çıkarmak için: clrinf-codegen module remove <modül_adı>
+
+[modules.caching]
+enabled = false
+provider = "memory"        # "memory" | "redis" | "distributed"
+default_ttl_seconds = 300
+
+[modules.logging]
+enabled = true
+provider = "structured"    # "structured" | "console" | "opentelemetry"
+
+[modules.transaction]
+enabled = true
+provider = "native"        # "native" | "saga"
+
+[modules.authentication]
+enabled = false
+provider = "jwt"           # "jwt" | "oauth2" | "apikey"
+
+[modules.authorization]
+enabled = false
+provider = "policy"        # "policy" | "rbac" | "abac"
+
+[modules.error_handling]
+enabled = true
+
+[modules.validation]
+enabled = true
+
+[modules.idempotency]
+enabled = false
+provider = "memory"        # "memory" | "redis" | "database"
+
+[modules.outbox]
+enabled = false
+provider = "database"      # "database" | "memory"

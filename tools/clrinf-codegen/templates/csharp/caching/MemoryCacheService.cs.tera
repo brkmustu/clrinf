@@ -1,0 +1,68 @@
+{# @clrinf:generated — C# In-Memory Cache Service Implementation #}
+// @clrinf:generated — Bu dosya clrinf-codegen tarafından üretilmiştir.
+// Modül: Caching | Provider: Memory
+using System.Collections.Concurrent;
+using Microsoft.Extensions.Logging;
+
+namespace {{ namespace }}.Infrastructure.Caching;
+
+/// <summary>
+/// ConcurrentDictionary tabanlı in-memory cache servisi.
+/// Geliştirme ve tek-proses dağıtım senaryoları için uygundur.
+/// Üretim ortamında Redis veya distributed cache ile değiştirilmelidir.
+/// </summary>
+public sealed class MemoryCacheService : ICacheService
+{
+    private readonly ConcurrentDictionary<string, CacheEntry> _cache = new();
+    private readonly ILogger<MemoryCacheService> _logger;
+    private readonly TimeSpan _defaultTtl = TimeSpan.FromSeconds({{ default_ttl_seconds | default(value=300) }});
+
+    public MemoryCacheService(ILogger<MemoryCacheService> logger)
+    {
+        _logger = logger;
+    }
+
+    public Task SetAsync<T>(string key, T value, TimeSpan? expiration = null, CancellationToken cancellationToken = default)
+    {
+        var entry = new CacheEntry(
+            Value: value!,
+            ExpiresAt: DateTime.UtcNow.Add(expiration ?? _defaultTtl)
+        );
+        _cache.AddOrUpdate(key, entry, (_, _) => entry);
+        _logger.LogDebug("Cache SET: {Key}", key);
+        return Task.CompletedTask;
+    }
+
+    public Task<T?> GetAsync<T>(string key, CancellationToken cancellationToken = default)
+    {
+        if (_cache.TryGetValue(key, out var entry))
+        {
+            if (entry.ExpiresAt > DateTime.UtcNow)
+            {
+                _logger.LogDebug("Cache HIT: {Key}", key);
+                return Task.FromResult((T?)entry.Value);
+            }
+            _cache.TryRemove(key, out _);
+        }
+        _logger.LogDebug("Cache MISS: {Key}", key);
+        return Task.FromResult(default(T));
+    }
+
+    public Task RemoveAsync(string key, CancellationToken cancellationToken = default)
+    {
+        _cache.TryRemove(key, out _);
+        _logger.LogDebug("Cache REMOVE: {Key}", key);
+        return Task.CompletedTask;
+    }
+
+    public Task RemoveByPrefixAsync(string prefix, CancellationToken cancellationToken = default)
+    {
+        var keysToRemove = _cache.Keys.Where(k => k.StartsWith(prefix, StringComparison.OrdinalIgnoreCase));
+        foreach (var key in keysToRemove)
+            _cache.TryRemove(key, out _);
+        _logger.LogDebug("Cache REMOVE_BY_PREFIX: {Prefix}", prefix);
+        return Task.CompletedTask;
+    }
+
+    private sealed record CacheEntry(object Value, DateTime ExpiresAt);
+}

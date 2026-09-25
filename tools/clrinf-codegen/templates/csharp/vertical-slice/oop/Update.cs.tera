@@ -1,0 +1,33 @@
+namespace {{ project_namespace }}.Modules.{{ module_name }};
+
+using {{ project_namespace }}.Common.Pipeline;
+using {{ project_namespace }}.Data;
+using System.Collections.Generic;
+
+public static class Update
+{
+    public sealed record Command(
+        {{ entity.id_type }} Id,
+{% for prop in entity.properties %}        {{ prop.type }} {{ prop.name }}{% if not loop.last %},{% endif %}
+{% endfor %}    ) : ICommand<Response>;
+
+    public sealed record Response({{ entity.id_type }} Id);
+
+    internal sealed class Handler({{ db_context_name }} db) :
+        ICommandHandler<Command, Response>
+    {
+        public async ValueTask<Response> HandleAsync(Command request, CancellationToken ct)
+        {
+            var entity = await db.{{ entity.name_plural }}.FindAsync(new object[] { request.Id }, ct);
+            if (entity is null)
+                throw new KeyNotFoundException($"{{ entity.name }} with Id '{request.Id}' was not found.");
+
+{% for prop in entity.properties %}            entity.{{ prop.name }} = request.{{ prop.name }};
+{% endfor %}
+            db.{{ entity.name_plural }}.Update(entity);
+            await db.SaveChangesAsync(ct);
+
+            return new Response(entity.Id);
+        }
+    }
+}

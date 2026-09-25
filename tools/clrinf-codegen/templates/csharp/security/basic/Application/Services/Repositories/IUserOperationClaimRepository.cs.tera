@@ -1,0 +1,8 @@
+using {{ project_namespace }}.Application.Common.Repositories;
+using {{ project_namespace }}.Domain.Entities;
+
+namespace {{ project_namespace }}.Application.Services.Repositories;
+
+public interface IUserOperationClaimRepository : IAsyncRepository<UserOperationClaim, int>, IRepository<UserOperationClaim, int>
+{
+}

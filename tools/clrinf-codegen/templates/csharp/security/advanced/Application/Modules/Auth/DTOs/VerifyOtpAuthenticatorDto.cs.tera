@@ -1,0 +1,7 @@
+namespace {{ project_namespace }}.Application.Modules.Auth.DTOs;
+
+public class VerifyOtpAuthenticatorDto
+{
+    public int UserId { get; set; }
+    public string Code { get; set; } = string.Empty;
+}

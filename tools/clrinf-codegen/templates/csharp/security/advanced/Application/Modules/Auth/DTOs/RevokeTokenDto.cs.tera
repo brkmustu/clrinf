@@ -1,0 +1,6 @@
+namespace {{ project_namespace }}.Application.Modules.Auth.DTOs;
+
+public class RevokeTokenDto
+{
+    public string Token { get; set; } = string.Empty;
+}

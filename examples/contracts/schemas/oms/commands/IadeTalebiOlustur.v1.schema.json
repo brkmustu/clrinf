@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.clrinf.com/oms/commands/IadeTalebiOlustur.v1.schema.json",
+  "title": "IadeTalebiOlusturV1",
+  "description": "Teslim edilmiş bir sipariş için müşteri RMA iade talebi oluşturma komutu.",
+  "type": "object",
+  "x-command-type": "com.clrinf.oms.IadeTalebiOlustur.v1",
+  "x-domain": "oms",
+  "required": ["siparisId", "iadeNedeni"],
+  "properties": {
+    "siparisId": { "type": "string" },
+    "iadeNedeni": { "type": "string" },
+    "iadeEdilecekSkular": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["sku", "miktar"],
+        "properties": {
+          "sku": { "type": "string" },
+          "miktar": { "type": "integer", "minimum": 1 }
+        }
+      }
+    }
+  }
+}

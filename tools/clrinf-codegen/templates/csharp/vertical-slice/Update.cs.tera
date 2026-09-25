@@ -1,0 +1,35 @@
+namespace {{ project_namespace }}.Modules.{{ module_name }};
+
+using {{ project_namespace }}.Common.Pipeline;
+using {{ project_namespace }}.Common.Functional;
+using {{ project_namespace }}.Domain.Common.Exceptions;
+using {{ project_namespace }}.Domain.Entities;
+using {{ project_namespace }}.Data;
+
+public static class Update
+{
+    public sealed record Command(
+        {{ entity.id_type }} Id,
+{% for prop in entity.properties %}        {{ prop.type }} {{ prop.name }}{% if not loop.last %},{% endif %}
+{% endfor %}    ) : ICommand<Result<Response, DomainError>>;
+
+    public sealed record Response({{ entity.id_type }} Id);
+
+    internal sealed class Handler({{ db_context_name }} db) :
+        ICommandHandler<Command, Result<Response, DomainError>>
+    {
+        public async ValueTask<Result<Response, DomainError>> HandleAsync(Command request, CancellationToken ct)
+        {
+            var entity = await db.{{ entity.name_plural }}.FindAsync(new object[] { request.Id }, ct);
+            if (entity is null)
+                return Result<Response, DomainError>.Failure(new DomainError("{{ entity.name }}.NotFound", $"{{ entity.name }} with Id '{request.Id}' was not found."));
+
+{% for prop in entity.properties %}            entity.{{ prop.name }} = request.{{ prop.name }};
+{% endfor %}
+            db.{{ entity.name_plural }}.Update(entity);
+            await db.SaveChangesAsync(ct);
+
+            return Result<Response, DomainError>.Success(new Response(entity.Id));
+        }
+    }
+}

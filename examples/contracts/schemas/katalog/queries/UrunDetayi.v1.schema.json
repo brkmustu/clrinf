@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.clrinf.com/katalog/queries/UrunDetayi.v1.schema.json",
+  "title": "UrunDetayiV1",
+  "description": "Tekil ürün detay sorgusu.",
+  "type": "object",
+  "x-query-type": "com.clrinf.katalog.UrunDetayi.v1",
+  "x-domain": "katalog",
+  "required": ["sku"],
+  "properties": {
+    "sku": {
+      "type": "string",
+      "description": "Stok tutma birimi kodu"
+    }
+  }
+}

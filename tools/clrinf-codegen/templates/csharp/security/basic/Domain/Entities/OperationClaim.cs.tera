@@ -1,0 +1,19 @@
+using {{ project_namespace }}.Domain.Common.Entities;
+
+namespace {{ project_namespace }}.Domain.Entities;
+
+public class OperationClaim : Entity<int>
+{
+    public string Name { get; set; } = string.Empty;
+
+    public virtual ICollection<UserOperationClaim> UserOperationClaims { get; set; } = new HashSet<UserOperationClaim>();
+
+    public OperationClaim()
+    {
+    }
+
+    public OperationClaim(int id, string name) : base(id)
+    {
+        Name = name;
+    }
+}

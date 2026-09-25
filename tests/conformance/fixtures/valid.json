@@ -1,0 +1,31 @@
+{
+  "context": {
+    "tenant_id": "tenant-example",
+    "correlation_id": "workflow-example",
+    "causation_id": "request-example"
+  },
+  "error": {
+    "error_code": "DOCUMENT_NOT_FOUND",
+    "message": "The requested document does not exist.",
+    "correlation_id": "workflow-example",
+    "tenant_id": "tenant-example",
+    "retryable": false
+  },
+  "event": {
+    "specversion": "1.0",
+    "id": "103f99ad-b918-4059-af30-9f0bdf602547",
+    "source": "clrinf/document-service",
+    "type": "com.clrinf.documents.DocumentApproved.v1",
+    "time": "2026-09-09T03:00:00Z",
+    "datacontenttype": "application/json",
+    "tenantid": "tenant-example",
+    "correlationid": "workflow-example",
+    "causationid": "request-example",
+    "data": {
+      "document_id": "document-example",
+      "revision": 1
+    },
+    "is_error": false,
+    "is_compensation": false
+  }
+}

@@ -1,0 +1,32 @@
+using {{ project_namespace }}.Application.Common.Pipeline;
+using {{ project_namespace }}.Application.Modules.UserOperationClaims.Responses;
+using {{ project_namespace }}.Application.Services.Repositories;
+using {{ project_namespace }}.Domain.Entities;
+
+namespace {{ project_namespace }}.Application.Modules.UserOperationClaims.Queries.GetByIdUserOperationClaim;
+
+public record GetByIdUserOperationClaimQuery(int Id) : IQuery<GetUserOperationClaimResponse>;
+
+public class GetByIdUserOperationClaimQueryHandler : IQueryHandler<GetByIdUserOperationClaimQuery, GetUserOperationClaimResponse>
+{
+    private readonly IUserOperationClaimRepository _userOperationClaimRepository;
+
+    public GetByIdUserOperationClaimQueryHandler(IUserOperationClaimRepository userOperationClaimRepository)
+    {
+        _userOperationClaimRepository = userOperationClaimRepository;
+    }
+
+    public async ValueTask<GetUserOperationClaimResponse> HandleAsync(GetByIdUserOperationClaimQuery request, CancellationToken cancellationToken)
+    {
+        UserOperationClaim? uoc = await _userOperationClaimRepository.GetAsync(c => c.Id == request.Id, cancellationToken: cancellationToken);
+        if (uoc == null)
+            throw new Exception("Kullanıcı yetki ilişkisi bulunamadı.");
+
+        return new GetUserOperationClaimResponse
+        {
+            Id = uoc.Id,
+            UserId = uoc.UserId,
+            OperationClaimId = uoc.OperationClaimId
+        };
+    }
+}

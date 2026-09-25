@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.clrinf.com/kampanya/events/KampanyaTukendi.v1.schema.json",
+  "title": "KampanyaTukendiV1",
+  "description": "Kampanyanın maksimum kullanım kotası veya bütçesi tükendiğinde yayımlanan CloudEvent.",
+  "type": "object",
+  "x-event-type": "com.clrinf.kampanya.KampanyaTukendi.v1",
+  "x-domain": "kampanya",
+  "required": ["kod", "toplamKullanimSayisi", "tukenmeZamani"],
+  "properties": {
+    "kod": { "type": "string" },
+    "toplamKullanimSayisi": { "type": "integer" },
+    "tukenmeZamani": { "type": "string", "format": "date-time" }
+  }
+}

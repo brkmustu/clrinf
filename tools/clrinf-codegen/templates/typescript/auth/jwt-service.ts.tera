@@ -1,0 +1,106 @@
+{# @clrinf:generated — TypeScript JWT Token Service Template #}
+// @clrinf:generated — Bu dosya clrinf-codegen tarafından üretilmiştir.
+// Modül: Authentication | Provider: {{ provider | default(value="jwt") }}
+
+import type { Claims, TokenService } from "@clrinf/core";
+import { AuthenticationError } from "@clrinf/core";
+
+export interface JwtConfig {
+  secret: string;
+  issuer?: string;
+  audience?: string;
+  expiresInSeconds?: number;
+}
+
+/**
+ * Lightweight standard-compliant JWT token service.
+ */
+export class JwtTokenService implements TokenService {
+  private readonly secret: Uint8Array;
+  private readonly issuer: string;
+  private readonly audience: string;
+  private readonly expiresInSeconds: number;
+
+  constructor(config: JwtConfig) {
+    this.secret = new TextEncoder().encode(config.secret);
+    this.issuer = config.issuer ?? "{{ jwt_issuer | default(value="clrinf") }}";
+    this.audience = config.audience ?? "{{ jwt_audience | default(value="clrinf-api") }}";
+    this.expiresInSeconds = config.expiresInSeconds ?? {{ jwt_expiration_minutes | default(value=60) }} * 60;
+  }
+
+  async createToken(claims: Claims): Promise<string> {
+    const header = { alg: "HS256", typ: "JWT" };
+    const now = Math.floor(Date.now() / 1000);
+    const payload: Claims = {
+      ...claims,
+      iat: claims.iat || now,
+      exp: claims.exp || now + this.expiresInSeconds,
+    };
+
+    const encodeBase64Url = (obj: unknown): string => {
+      const json = JSON.stringify(obj);
+      const b64 = Buffer.from(json).toString("base64url");
+      return b64;
+    };
+
+    const headerB64 = encodeBase64Url(header);
+    const payloadB64 = encodeBase64Url(payload);
+    const dataToSign = `${headerB64}.${payloadB64}`;
+
+    const key = await crypto.subtle.importKey(
+      "raw",
+      this.secret,
+      { name: "HMAC", hash: "SHA-256" },
+      false,
+      ["sign"]
+    );
+    const signature = await crypto.subtle.sign(
+      "HMAC",
+      key,
+      new TextEncoder().encode(dataToSign)
+    );
+    const sigB64 = Buffer.from(signature).toString("base64url");
+
+    return `${dataToSign}.${sigB64}`;
+  }
+
+  async verifyToken(token: string): Promise<Claims> {
+    const parts = token.split(".");
+    if (parts.length !== 3) {
+      throw new AuthenticationError("Malformed token", "INVALID_TOKEN");
+    }
+
+    const [headerB64, payloadB64, sigB64] = parts;
+    const dataToVerify = `${headerB64}.${payloadB64}`;
+
+    const key = await crypto.subtle.importKey(
+      "raw",
+      this.secret,
+      { name: "HMAC", hash: "SHA-256" },
+      false,
+      ["verify"]
+    );
+
+    const sigBuf = Buffer.from(sigB64, "base64url");
+    const valid = await crypto.subtle.verify(
+      "HMAC",
+      key,
+      sigBuf,
+      new TextEncoder().encode(dataToVerify)
+    );
+
+    if (!valid) {
+      throw new AuthenticationError("Invalid signature", "INVALID_TOKEN");
+    }
+
+    const payloadJson = Buffer.from(payloadB64, "base64url").toString("utf-8");
+    const claims = JSON.parse(payloadJson) as Claims;
+
+    const now = Math.floor(Date.now() / 1000);
+    if (claims.exp && claims.exp < now) {
+      throw new AuthenticationError("Token expired", "TOKEN_EXPIRED");
+    }
+
+    return claims;
+  }
+}

@@ -1,0 +1,42 @@
+using System;
+using System.Threading;
+using System.Threading.Tasks;
+using {{ project_namespace }}.Application.Common.Pipeline;
+using {{ project_namespace }}.Application.Services.Repositories;
+using {{ project_namespace }}.Domain.Entities;
+
+namespace {{ project_namespace }}.Application.Modules.Auth.Commands.RevokeToken;
+
+public class RevokeTokenCommand : ICommand<Unit>
+{
+    public string Token { get; set; } = string.Empty;
+    public string IpAddress { get; set; } = string.Empty;
+}
+
+internal sealed class RevokeTokenCommandHandler : ICommandHandler<RevokeTokenCommand, Unit>
+{
+    private readonly IRefreshTokenRepository _refreshTokenRepository;
+
+    public RevokeTokenCommandHandler(IRefreshTokenRepository refreshTokenRepository)
+    {
+        _refreshTokenRepository = refreshTokenRepository;
+    }
+
+    public async ValueTask<Unit> HandleAsync(RevokeTokenCommand request, CancellationToken cancellationToken)
+    {
+        {{ project_namespace }}.Domain.Entities.RefreshToken? refreshToken = await _refreshTokenRepository.GetAsync(r => r.Token == request.Token, cancellationToken: cancellationToken);
+        if (refreshToken == null)
+            throw new Exception("Token bulunamadı.");
+
+        if (refreshToken.Revoked != null)
+            throw new Exception("Token zaten iptal edilmiş.");
+
+        refreshToken.Revoked = DateTime.UtcNow;
+        refreshToken.RevokedByIp = request.IpAddress;
+        refreshToken.ReasonRevoked = "İstek üzerine iptal edildi";
+
+        await _refreshTokenRepository.UpdateAsync(refreshToken);
+        return Unit.Value;
+    }
+}
+

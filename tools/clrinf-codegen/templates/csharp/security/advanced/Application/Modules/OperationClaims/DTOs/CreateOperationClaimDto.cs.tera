@@ -1,0 +1,6 @@
+namespace {{ project_namespace }}.Application.Modules.OperationClaims.DTOs;
+
+public class CreateOperationClaimDto
+{
+    public string Name { get; set; } = string.Empty;
+}

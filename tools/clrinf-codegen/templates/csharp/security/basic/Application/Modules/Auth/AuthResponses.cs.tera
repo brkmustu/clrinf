@@ -1,0 +1,17 @@
+using System;
+
+namespace {{ project_namespace }}.Application.Modules.Auth;
+
+public class LoggedResponse
+{
+    public string AccessToken { get; set; } = string.Empty;
+    public DateTime Expiration { get; set; }
+    public string RefreshToken { get; set; } = string.Empty;
+}
+
+public class RegisteredResponse
+{
+    public string AccessToken { get; set; } = string.Empty;
+    public DateTime Expiration { get; set; }
+    public string RefreshToken { get; set; } = string.Empty;
+}

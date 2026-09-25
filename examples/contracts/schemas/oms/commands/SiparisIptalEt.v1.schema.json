@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.clrinf.com/oms/commands/SiparisIptalEt.v1.schema.json",
+  "title": "SiparisIptalEtV1",
+  "description": "Onaylanmış veya hazırlık aşamasındaki bir siparişi iptal ederek rezerve/tahsisli stoğu geri yükleme komutu.",
+  "type": "object",
+  "x-command-type": "com.clrinf.oms.SiparisIptalEt.v1",
+  "x-domain": "oms",
+  "required": ["siparisId", "iptalGerekcesi"],
+  "properties": {
+    "siparisId": { "type": "string" },
+    "iptalGerekcesi": { "type": "string" },
+    "iptalEdenKullanici": { "type": "string" }
+  }
+}

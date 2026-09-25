@@ -1,0 +1,55 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.clrinf.com/katalog/commands/UrunOlustur.v1.schema.json",
+  "title": "UrunOlusturV1",
+  "description": "Ürün kataloğuna yeni bir ürün kaydı oluşturma komutu.",
+  "type": "object",
+  "x-command-type": "com.clrinf.katalog.UrunOlustur.v1",
+  "x-domain": "katalog",
+  "required": ["sku", "baslik", "birimFiyat", "paraBirimi", "kategoriYolu"],
+  "properties": {
+    "sku": {
+      "type": "string",
+      "description": "Stok tutma birimi kodu (benzersiz)"
+    },
+    "baslik": {
+      "type": "string",
+      "description": "Ürün başlığı"
+    },
+    "aciklama": {
+      "type": "string",
+      "description": "Ürün açıklaması (isteğe bağlı)"
+    },
+    "birimFiyat": {
+      "type": "number",
+      "minimum": 0,
+      "description": "Birim satış fiyatı"
+    },
+    "paraBirimi": {
+      "type": "string",
+      "description": "Para birimi kodu (ISO 4217, örn: TRY, USD)"
+    },
+    "vergiorani": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1,
+      "description": "Vergi oranı (0.0 ile 1.0 arasında, örn: 0.18 = %18 KDV)"
+    },
+    "kategoriYolu": {
+      "type": "string",
+      "description": "Kategori hiyerarşisi (örn: Elektronik/Sensör/Optik)"
+    },
+    "varyantlar": {
+      "type": "array",
+      "description": "Ürün varyantları (renk, beden vb.)",
+      "items": {
+        "type": "object",
+        "required": ["ad", "deger"],
+        "properties": {
+          "ad": { "type": "string" },
+          "deger": { "type": "string" }
+        }
+      }
+    }
+  }
+}

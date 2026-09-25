@@ -1,0 +1,89 @@
+# ==========================================
+# clrinf Umbrella / Monorepo Root .gitignore
+# ==========================================
+
+# Operating System Files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+Desktop.ini
+
+# IDE & Editor Configurations
+.vs/
+.idea/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+*.code-workspace
+*.swp
+*.swo
+*~
+.directory
+
+# VS Code settings (allow sharing workspace config if desired)
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+
+# Environment Variables & Secrets
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.env.*.local
+*.pem
+*.key
+*.cert
+*.pfx
+secrets.json
+*.secrets.json
+
+# Generic Logs & Temp Files
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+*.tmp
+*.temp
+
+# Generic Build Artifacts & Dependencies across tools
+node_modules/
+dist/
+build/
+out/
+publish/
+target/
+.turbo/
+.cache/
+TestResults/
+BenchmarkDotNet.Artifacts/
+[Bb]in/
+[Oo]bj/
+*.dll
+*.pdb
+*.cache
+
+# AI & Agent Artifacts / Internal Context
+!.context/
+.agents/
+.claude/
+.gemini/
+.opencode/
+
+
+# graft's local graph cache — regenerable, not committed (run `graft build`).
+/graft/
+
+# graft's local repository settings — not committed.
+/.graft/

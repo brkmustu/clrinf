@@ -1,0 +1,30 @@
+namespace {{ project_namespace }}.Modules.{{ module_name }};
+
+using {{ project_namespace }}.Common.Pipeline;
+using {{ project_namespace }}.Data;
+
+public static class Create
+{
+    public sealed record Command(
+{% for prop in entity.properties %}        {{ prop.type }} {{ prop.name }}{% if not loop.last %},{% endif %}
+{% endfor %}    ) : ICommand<Response>;
+
+    public sealed record Response({{ entity.id_type }} Id);
+
+    internal sealed class Handler({{ db_context_name }} db) :
+        ICommandHandler<Command, Response>
+    {
+        public async ValueTask<Response> HandleAsync(Command request, CancellationToken ct)
+        {
+            var entity = new {{ entity.name }}
+            {
+{% for prop in entity.properties %}                {{ prop.name }} = request.{{ prop.name }},
+{% endfor %}            };
+
+            db.{{ entity.name_plural }}.Add(entity);
+            await db.SaveChangesAsync(ct);
+
+            return new Response(entity.Id);
+        }
+    }
+}

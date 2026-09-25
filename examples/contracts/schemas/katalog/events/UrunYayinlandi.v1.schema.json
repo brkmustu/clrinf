@@ -1,0 +1,58 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.clrinf.com/katalog/events/UrunYayinlandi.v1.schema.json",
+  "title": "UrunYayinlandiV1",
+  "description": "Bir ürünün katalogda yayınlandığında yayımlanan olay.",
+  "type": "object",
+  "x-event-type": "com.clrinf.katalog.UrunYayinlandi.v1",
+  "x-domain": "katalog",
+  "required": ["sku", "baslik", "birimFiyat", "paraBirimi", "kategoriYolu", "yayinTarihi"],
+  "properties": {
+    "sku": {
+      "type": "string",
+      "description": "Stok tutma birimi kodu"
+    },
+    "baslik": {
+      "type": "string",
+      "description": "Ürün başlığı"
+    },
+    "aciklama": {
+      "type": "string",
+      "description": "Ürün açıklaması"
+    },
+    "birimFiyat": {
+      "type": "number",
+      "minimum": 0,
+      "description": "Yayınlama anındaki birim fiyatı"
+    },
+    "paraBirimi": {
+      "type": "string",
+      "description": "Para birimi kodu (ISO 4217)"
+    },
+    "vergiorani": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1,
+      "description": "Vergi oranı"
+    },
+    "kategoriYolu": {
+      "type": "string",
+      "description": "Kategori hiyerarşisi"
+    },
+    "varyantlar": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "ad": { "type": "string" },
+          "deger": { "type": "string" }
+        }
+      }
+    },
+    "yayinTarihi": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Ürünün katalogda yayınlandığı tarih (ISO 8601 UTC)"
+    }
+  }
+}

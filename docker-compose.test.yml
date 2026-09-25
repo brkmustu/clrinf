@@ -1,0 +1,50 @@
+# Isolated generic transport integration; no commerce services or production volumes.
+# Internal container ports follow the clrinf 5170x scheme for external (host) exposure.
+# Within this compose network, services communicate on their container-internal ports.
+services:
+  nats:
+    image: nats:2.10.29-alpine
+    command: ["-m", "8222"]
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "-", "http://127.0.0.1:8222/healthz"]
+      interval: 1s
+      timeout: 2s
+      retries: 30
+
+  event-inspector:
+    build:
+      context: ./clrinfjs
+    environment:
+      PORT: "4200"
+      HOST: "0.0.0.0"
+      INSPECTOR_ALLOW_UNAUTHENTICATED: "true"
+      NATS_URL: nats://nats:4222
+    depends_on:
+      nats:
+        condition: service_healthy
+
+  streaming-service:
+    build:
+      context: ./clrinfex
+    environment:
+      PORT: "4000"
+      NATS_URL: nats://nats:4222
+    depends_on:
+      nats:
+        condition: service_healthy
+
+  test-runner:
+    image: oven/bun:1.2.23-alpine
+    working_dir: /app
+    volumes:
+      - ./tests/e2e:/app:ro
+      - ./tests/conformance/fixtures:/fixtures:ro
+    environment:
+      INSPECTOR_URL: http://event-inspector:4200
+      STREAMING_URL: http://streaming-service:4000
+      CLRINF_CONFORMANCE_DIR: /fixtures
+      CLRINF_E2E_STRICT: "1"
+    command: ["bun", "test", "transport.test.ts"]
+    depends_on:
+      - event-inspector
+      - streaming-service

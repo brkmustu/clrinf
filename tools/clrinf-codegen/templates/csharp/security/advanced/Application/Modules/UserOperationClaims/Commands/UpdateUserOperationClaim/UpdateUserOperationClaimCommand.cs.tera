@@ -1,0 +1,38 @@
+using {{ project_namespace }}.Application.Common.Pipeline;
+using {{ project_namespace }}.Application.Modules.UserOperationClaims.DTOs;
+using {{ project_namespace }}.Application.Modules.UserOperationClaims.Responses;
+using {{ project_namespace }}.Application.Services.Repositories;
+using {{ project_namespace }}.Domain.Entities;
+
+namespace {{ project_namespace }}.Application.Modules.UserOperationClaims.Commands.UpdateUserOperationClaim;
+
+public record UpdateUserOperationClaimCommand(UpdateUserOperationClaimDto Dto) : ICommand<UpdatedUserOperationClaimResponse>;
+
+public class UpdateUserOperationClaimCommandHandler : ICommandHandler<UpdateUserOperationClaimCommand, UpdatedUserOperationClaimResponse>
+{
+    private readonly IUserOperationClaimRepository _userOperationClaimRepository;
+
+    public UpdateUserOperationClaimCommandHandler(IUserOperationClaimRepository userOperationClaimRepository)
+    {
+        _userOperationClaimRepository = userOperationClaimRepository;
+    }
+
+    public async ValueTask<UpdatedUserOperationClaimResponse> HandleAsync(UpdateUserOperationClaimCommand request, CancellationToken cancellationToken)
+    {
+        UserOperationClaim? uoc = await _userOperationClaimRepository.GetAsync(c => c.Id == request.Dto.Id, cancellationToken: cancellationToken);
+        if (uoc == null)
+            throw new Exception("Kullanıcı yetki ilişkisi bulunamadı.");
+
+        uoc.UserId = request.Dto.UserId;
+        uoc.OperationClaimId = request.Dto.OperationClaimId;
+
+        UserOperationClaim updated = await _userOperationClaimRepository.UpdateAsync(uoc);
+
+        return new UpdatedUserOperationClaimResponse
+        {
+            Id = updated.Id,
+            UserId = updated.UserId,
+            OperationClaimId = updated.OperationClaimId
+        };
+    }
+}

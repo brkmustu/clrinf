@@ -1,0 +1,49 @@
+using {{ project_namespace }}.Application.Common.Attributes;
+using {{ project_namespace }}.Application.Common.Pipeline;
+using {{ project_namespace }}.Application.Services.Repositories;
+using {{ project_namespace }}.Application.Services.Security.Encryption;
+using {{ project_namespace }}.Domain.Entities;
+
+namespace {{ project_namespace }}.Application.Modules.Users;
+
+[RequireAuthorization("Admin")]
+public record UpdateUserCommand(UpdateUserDto UserDto) : ICommand<UpdatedUserResponse>;
+
+public class UpdateUserCommandHandler : ICommandHandler<UpdateUserCommand, UpdatedUserResponse>
+{
+    private readonly IUserRepository _userRepository;
+
+    public UpdateUserCommandHandler(IUserRepository userRepository)
+    {
+        _userRepository = userRepository;
+    }
+
+    public async ValueTask<UpdatedUserResponse> HandleAsync(UpdateUserCommand request, CancellationToken cancellationToken)
+    {
+        User? user = await _userRepository.GetAsync(u => u.Id == request.UserDto.Id, cancellationToken: cancellationToken);
+        if (user == null)
+            throw new Exception("Kullanıcı bulunamadı.");
+
+        user.FirstName = request.UserDto.FirstName;
+        user.LastName = request.UserDto.LastName;
+        user.Email = request.UserDto.Email;
+
+        if (!string.IsNullOrEmpty(request.UserDto.Password))
+        {
+            byte[] passwordHash, passwordSalt;
+            HashingHelper.CreatePasswordHash(request.UserDto.Password, out passwordHash, out passwordSalt);
+            user.PasswordHash = passwordHash;
+            user.PasswordSalt = passwordSalt;
+        }
+
+        User updatedUser = await _userRepository.UpdateAsync(user);
+
+        return new UpdatedUserResponse
+        {
+            Id = updatedUser.Id,
+            FirstName = updatedUser.FirstName,
+            LastName = updatedUser.LastName,
+            Email = updatedUser.Email
+        };
+    }
+}

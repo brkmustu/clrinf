@@ -1,0 +1,34 @@
+@WebAPI_HostAddress = http://localhost:5000
+
+### Get List Stoklar
+GET /api/Stoklar?PageIndex=0&PageSize=10
+Accept: application/json
+
+### Get Stok By Id
+GET /api/Stoklar/1
+Accept: application/json
+
+### Create Stok
+POST /api/Stoklar
+Content-Type: application/json
+
+{
+  "sku": "Sample Sku",
+  "miktar": "Sample Miktar",
+  "rezerveMiktar": "Sample RezerveMiktar"
+}
+
+### Update Stok
+PUT /api/Stoklar
+Content-Type: application/json
+
+{
+  "id": 1,
+  "sku": "Updated Sku",
+  "miktar": "Updated Miktar",
+  "rezerveMiktar": "Updated RezerveMiktar"
+}
+
+### Delete Stok
+DELETE /api/Stoklar/1
+Accept: application/json

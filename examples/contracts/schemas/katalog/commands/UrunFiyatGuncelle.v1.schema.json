@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.clrinf.com/katalog/commands/UrunFiyatGuncelle.v1.schema.json",
+  "title": "UrunFiyatGuncelleV1",
+  "description": "Mevcut bir ürünün birim fiyatını güncelleme komutu. Cedar ABAC: FiyatYoneticisi veya YoneticiAdmin rolü gerektirir.",
+  "type": "object",
+  "x-command-type": "com.clrinf.katalog.UrunFiyatGuncelle.v1",
+  "x-domain": "katalog",
+  "required": ["sku", "eskiFiyat", "yeniFiyat", "paraBirimi", "guncellemeGerekce"],
+  "properties": {
+    "sku": {
+      "type": "string",
+      "description": "Stok tutma birimi kodu"
+    },
+    "eskiFiyat": {
+      "type": "number",
+      "minimum": 0,
+      "description": "Mevcut birim fiyatı (değişiklik öncesi)"
+    },
+    "yeniFiyat": {
+      "type": "number",
+      "minimum": 0,
+      "description": "Yeni birim fiyatı"
+    },
+    "paraBirimi": {
+      "type": "string",
+      "description": "Para birimi kodu (ISO 4217)"
+    },
+    "guncellemeGerekce": {
+      "type": "string",
+      "description": "Fiyat güncelleme gerekçesi (denetim izi için zorunlu)"
+    },
+    "gecerlilikBaslangic": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Yeni fiyatın geçerlilik başlangıç tarihi (ISO 8601 UTC)"
+    },
+    "gecerlilikBitis": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Yeni fiyatın geçerlilik bitiş tarihi (null ise süresiz)"
+    }
+  }
+}

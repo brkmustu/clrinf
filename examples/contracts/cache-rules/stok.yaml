@@ -1,0 +1,21 @@
+# Event-Driven Cache Invalidation Rules: Stok & Satınalma
+domain: stok
+version: 1.0.0
+
+rules:
+  - event_type: "com.clrinf.stok.StockReserved.v1"
+    description: "Invalidate inventory balance for affected SKU and warehouse"
+    invalidate:
+      - pattern: "stok:availability:{data.sku}"
+      - pattern: "stok:warehouse:{data.warehouse}:sku:{data.sku}"
+
+  - event_type: "com.clrinf.stok.StockReleased.v1"
+    description: "Invalidate inventory balance when stock is released"
+    invalidate:
+      - pattern: "stok:availability:{data.sku}"
+
+  - event_type: "com.clrinf.stok.StockCommitted.v1"
+    description: "Invalidate summary reports when stock is committed"
+    invalidate:
+      - pattern: "stok:availability:{data.sku}"
+      - pattern: "stok:warehouse:{data.warehouse}:summary"

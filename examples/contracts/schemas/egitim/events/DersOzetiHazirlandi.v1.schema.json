@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "DersOzetiHazirlandiV1",
+  "description": "Ders sonu otomatik üretilen ders özeti ve ödev listesi olayı.",
+  "type": "object",
+  "x-event-type": "com.clrinf.egitim.DersOzetiHazirlandi.v1",
+  "x-domain": "egitim",
+  "properties": {
+    "lesson_id": { "type": "string", "description": "Ders kimliği" },
+    "summary": { "type": "string", "description": "Ders özeti metni" },
+    "key_takeaways": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Kazanılan temel kavramlar"
+    },
+    "action_items": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Bir sonraki derse kadar yapılması gereken ödevler"
+    },
+    "badge_unlocked": { "type": "string", "description": "Kazanılan rozet adı (Örn: 'WebRTC Master')" }
+  },
+  "required": ["lesson_id", "summary", "key_takeaways", "action_items"],
+  "additionalProperties": false
+}

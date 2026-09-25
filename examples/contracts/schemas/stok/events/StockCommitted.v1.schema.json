@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.clrinf.com/stok/events/StockCommitted.v1.schema.json",
+  "title": "StockCommittedV1",
+  "description": "Event emitted when reserved stock is permanently committed (deducted) after successful payment.",
+  "type": "object",
+  "x-event-type": "com.clrinf.stok.StockCommitted.v1",
+  "x-domain": "stok",
+  "required": [
+    "order_id",
+    "sku",
+    "quantity",
+    "warehouse",
+    "committed_at"
+  ],
+  "properties": {
+    "order_id": {
+      "type": "string",
+      "description": "Identifier of the finalized order"
+    },
+    "sku": {
+      "type": "string",
+      "description": "Stock keeping unit code"
+    },
+    "quantity": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Committed item count"
+    },
+    "warehouse": {
+      "type": "string",
+      "description": "Warehouse code where stock was deducted"
+    },
+    "committed_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Timestamp of commitment"
+    }
+  }
+}

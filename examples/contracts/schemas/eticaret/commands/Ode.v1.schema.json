@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.clrinf.com/eticaret/commands/Ode.v1.schema.json",
+  "title": "OdeV1",
+  "description": "Sepetteki ürünler için 5 adımlı OdemeSaga iş akışını başlatan checkout komutu.",
+  "type": "object",
+  "x-command-type": "com.clrinf.eticaret.Ode.v1",
+  "x-domain": "eticaret",
+  "required": ["sepetId", "teslimatAdresi", "odemeYontemi", "korelasyonId"],
+  "properties": {
+    "sepetId": {
+      "type": "string",
+      "description": "Ödemesi yapılacak kilitlenecek sepet ID"
+    },
+    "teslimatAdresi": {
+      "type": "string",
+      "description": "Sipariş teslimat adresi"
+    },
+    "odemeYontemi": {
+      "type": "string",
+      "description": "Ödeme yöntemi (KREDI_KARTI, HAVALE, CARI)"
+    },
+    "korelasyonId": {
+      "type": "string",
+      "description": "Tekrarlı istekleri engelleyen benzersiz correlation ID"
+    },
+    "odemeHatasiniSimuleEt": {
+      "type": "boolean",
+      "default": false,
+      "description": "Telafi edici işlem testi için ödeme adımını başarısız yapma bayrağı"
+    }
+  }
+}

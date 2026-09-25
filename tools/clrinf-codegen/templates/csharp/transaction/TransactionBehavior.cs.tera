@@ -1,0 +1,92 @@
+{# @clrinf:generated — C# Transaction Pipeline Behavior #}
+// @clrinf:generated — Bu dosya clrinf-codegen tarafından üretilmiştir.
+// Modül: Transaction | Provider: {{ provider | default(value="native") }} | Dispatcher: {{ dispatcher | default(value="native") }}
+using System;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
+{% if dispatcher == "mediatr" %}
+using MediatR;
+
+namespace {{ namespace }}.Application.Common.Behaviors;
+
+public sealed class TransactionBehavior<TRequest, TResponse> : IPipelineBehavior<TRequest, TResponse>
+    where TRequest : notnull
+{
+    private readonly IUnitOfWork _unitOfWork;
+    private readonly ILogger<TransactionBehavior<TRequest, TResponse>> _logger;
+
+    public TransactionBehavior(IUnitOfWork unitOfWork, ILogger<TransactionBehavior<TRequest, TResponse>> logger)
+    {
+        _unitOfWork = unitOfWork;
+        _logger = logger;
+    }
+
+    public async ValueTask<TResponse> HandleAsync(
+        TRequest request,
+        CancellationToken cancellationToken,
+        RequestHandlerDelegate<TResponse> next)
+    {
+        if (typeof(TRequest).GetInterfaces().Any(i => i.Name == "IQuery"))
+            return await next();
+
+        _logger.LogDebug("⏳ Transaction başlatılıyor: {RequestType}", typeof(TRequest).Name);
+        await _unitOfWork.BeginTransactionAsync(cancellationToken);
+
+        try
+        {
+            var response = await next();
+            await _unitOfWork.CommitAsync(cancellationToken);
+            _logger.LogDebug("✅ Transaction commit edildi: {RequestType}", typeof(TRequest).Name);
+            return response;
+        }
+        catch (Exception ex)
+        {
+            await _unitOfWork.RollbackAsync(cancellationToken);
+            _logger.LogError(ex, "❌ Transaction rollback: {RequestType}", typeof(TRequest).Name);
+            throw;
+        }
+    }
+}
+{% else %}
+using ClrinfCS.Core;
+
+namespace {{ namespace }}.Common.Transaction;
+
+public sealed class TransactionBehavior<TRequest, TResponse> : IPipelineBehavior<TRequest, TResponse>
+    where TRequest : IRequest<TResponse>
+{
+    private readonly IUnitOfWork _unitOfWork;
+
+    public TransactionBehavior(IUnitOfWork unitOfWork)
+    {
+        _unitOfWork = unitOfWork;
+    }
+
+    public async ValueTask<TResponse> HandleAsync(
+        TRequest request,
+        RequestContext context,
+        CancellationToken cancellationToken,
+        RequestHandlerDelegate<TResponse> next)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        if (typeof(TRequest).GetInterfaces().Any(i => i.Name.EndsWith("Query")))
+            return await next();
+
+        await _unitOfWork.BeginTransactionAsync(cancellationToken);
+        try
+        {
+            var response = await next();
+            await _unitOfWork.CommitAsync(cancellationToken);
+            return response;
+        }
+        catch
+        {
+            await _unitOfWork.RollbackAsync(cancellationToken);
+            throw;
+        }
+    }
+}
+{% endif %}

@@ -1,0 +1,61 @@
+{# @clrinf:generated — Rust JWT Token Service Template #}
+// @clrinf:generated — Bu dosya clrinf-codegen tarafından üretilmiştir.
+// Modül: Authentication | Provider: {{ provider | default(value="jwt") }}
+
+use clrinf_core::auth::{AuthError, AuthResult, Claims, TokenService};
+use jsonwebtoken::{decode, encode, DecodingKey, EncodingKey, Header, Validation};
+use std::future::Future;
+use std::pin::Pin;
+
+/// JWT token service implementation using HMAC-SHA256.
+pub struct JwtTokenService {
+    secret: Vec<u8>,
+    validation: Validation,
+}
+
+impl JwtTokenService {
+    pub fn new(secret: &str) -> Self {
+        let mut validation = Validation::default();
+        validation.validate_exp = true;
+        Self {
+            secret: secret.as_bytes().to_vec(),
+            validation,
+        }
+    }
+}
+
+impl TokenService for JwtTokenService {
+    fn create_token(
+        &self,
+        claims: &Claims,
+    ) -> Pin<Box<dyn Future<Output = AuthResult<String>> + Send + '_>> {
+        let claims = claims.clone();
+        Box::pin(async move {
+            encode(
+                &Header::default(),
+                &claims,
+                &EncodingKey::from_secret(&self.secret),
+            )
+            .map_err(|e| AuthError::InvalidToken(e.to_string()))
+        })
+    }
+
+    fn verify_token(
+        &self,
+        token: &str,
+    ) -> Pin<Box<dyn Future<Output = AuthResult<Claims>> + Send + '_>> {
+        let token = token.to_string();
+        Box::pin(async move {
+            let data = decode::<Claims>(
+                &token,
+                &DecodingKey::from_secret(&self.secret),
+                &self.validation,
+            )
+            .map_err(|e| match e.kind() {
+                jsonwebtoken::errors::ErrorKind::ExpiredSignature => AuthError::TokenExpired,
+                _ => AuthError::InvalidToken(e.to_string()),
+            })?;
+            Ok(data.claims)
+        })
+    }
+}

@@ -1,0 +1,59 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.clrinf.com/kampanya/commands/KampanyaOlustur.v1.schema.json",
+  "title": "KampanyaOlusturV1",
+  "description": "Yeni bir pazarlama kampanyası veya indirim kuralı tanımlama komutu. Cedar ABAC: MarketingLead veya Admin rolü gerektirir.",
+  "type": "object",
+  "x-command-type": "com.clrinf.kampanya.KampanyaOlustur.v1",
+  "x-domain": "kampanya",
+  "required": ["kod", "baslik", "tur", "deger", "baslangicTarihi"],
+  "properties": {
+    "kod": {
+      "type": "string",
+      "description": "Kampanya benzersiz kodu (örn: YAZ2026, SENSOR15)"
+    },
+    "baslik": {
+      "type": "string",
+      "description": "Kampanya başlığı ve promosyon metni"
+    },
+    "aciklama": {
+      "type": "string",
+      "description": "Kampanya koşulları ve detaylı açıklama"
+    },
+    "tur": {
+      "type": "string",
+      "enum": ["YUZDESEL", "SABIT_TUTAR", "KATEGORI_INDIRIMI"],
+      "description": "İndirim hesaplama türü"
+    },
+    "deger": {
+      "type": "number",
+      "minimum": 0,
+      "description": "İndirim değeri (yüzde ise 0.15 = %15, sabit tutar ise dolar/TL tutarı)"
+    },
+    "hedefKategori": {
+      "type": "string",
+      "description": "Yalnızca belirli kategoriye uygulanacaksa kategori yolu"
+    },
+    "minimumSepetTutari": {
+      "type": "number",
+      "minimum": 0,
+      "default": 0,
+      "description": "Kampanyanın geçerli olması için gereken minimum sepet tutarı"
+    },
+    "maksimumKullanimSayisi": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Toplam kampanya kullanım kotası (dolunca tükenir)"
+    },
+    "baslangicTarihi": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Geçerlilik başlangıç tarihi (ISO 8601 UTC)"
+    },
+    "bitisTarihi": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Geçerlilik bitiş tarihi (ISO 8601 UTC)"
+    }
+  }
+}

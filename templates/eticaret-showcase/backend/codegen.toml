@@ -1,0 +1,192 @@
+[project]
+name        = "EticaretApp"
+description = "clrinf E-Ticaret & PIM FullStack FP Referans Mimarisi"
+
+[backend]
+secured     = true
+arch_style  = "clean-cqrs"
+paradigm    = "fp"
+api_style   = "controller"
+path        = "./src"
+db_context  = "BaseDbContext"
+namespace   = "EticaretApp"
+
+[backend.layers]
+domain      = "Domain"
+application = "Application"
+persistence = "Persistence"
+webapi      = "WebAPI"
+
+[backend.structure]
+mode        = "module"
+folder_name = "Moduller"
+
+[ui]
+type        = "angular"
+path        = "./ui"
+base_url    = "http://localhost:5000"
+http_client = "fetch"
+
+[ui.structure]
+mode   = "direct"
+prefix = ""
+
+[ui.dirs]
+components = "components"
+services   = "services"
+store      = "store"
+models     = "models"
+pages      = "pages"
+
+[ui.state]
+strategy = "signals"
+
+[[modules]]
+name        = "Urun"
+id_type     = "int"
+generate_ui = false
+
+  [modules.backend]
+  caching     = true
+  logging     = true
+  transaction = true
+  secured     = true
+
+  [[modules.properties]]
+  name     = "Sku"
+  type     = "string"
+  required = true
+
+  [[modules.properties]]
+  name     = "Baslik"
+  type     = "string"
+  required = true
+
+  [[modules.properties]]
+  name     = "BirimFiyat"
+  type     = "decimal"
+  required = true
+
+  [[modules.properties]]
+  name     = "KategoriYolu"
+  type     = "string"
+  required = true
+
+  [[modules.properties]]
+  name     = "MusaitStok"
+  type     = "int"
+  required = true
+
+[[modules]]
+name        = "Sepet"
+id_type     = "int"
+generate_ui = false
+
+  [modules.backend]
+  caching     = true
+  logging     = true
+  transaction = true
+  secured     = true
+
+  [[modules.properties]]
+  name     = "KullaniciId"
+  type     = "string"
+  required = true
+
+  [[modules.properties]]
+  name     = "ToplamTutar"
+  type     = "decimal"
+  required = true
+
+  [[modules.properties]]
+  name     = "IndirimTutari"
+  type     = "decimal"
+  required = true
+
+[[modules]]
+name        = "Siparis"
+id_type     = "int"
+generate_ui = false
+
+  [modules.backend]
+  caching     = true
+  logging     = true
+  transaction = true
+  secured     = true
+
+  [[modules.properties]]
+  name     = "SiparisNo"
+  type     = "string"
+  required = true
+
+  [[modules.properties]]
+  name     = "KullaniciId"
+  type     = "string"
+  required = true
+
+  [[modules.properties]]
+  name     = "ToplamTutar"
+  type     = "decimal"
+  required = true
+
+  [[modules.properties]]
+  name     = "Durum"
+  type     = "string"
+  required = true
+
+  [[modules.properties]]
+  name     = "KargoTakipNo"
+  type     = "string"
+  required = false
+
+[[modules]]
+name        = "Stok"
+id_type     = "int"
+generate_ui = false
+
+  [modules.backend]
+  caching     = true
+  logging     = true
+  transaction = true
+  secured     = true
+
+  [[modules.properties]]
+  name     = "Sku"
+  type     = "string"
+  required = true
+
+  [[modules.properties]]
+  name     = "Miktar"
+  type     = "int"
+  required = true
+
+  [[modules.properties]]
+  name     = "RezerveMiktar"
+  type     = "int"
+  required = true
+
+[[modules]]
+name        = "Kampanya"
+id_type     = "int"
+generate_ui = false
+
+  [modules.backend]
+  caching     = true
+  logging     = true
+  transaction = true
+  secured     = true
+
+  [[modules.properties]]
+  name     = "Kod"
+  type     = "string"
+  required = true
+
+  [[modules.properties]]
+  name     = "Baslik"
+  type     = "string"
+  required = true
+
+  [[modules.properties]]
+  name     = "Deger"
+  type     = "decimal"
+  required = true

@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.clrinf.com/kampanya/commands/KampanyaDurumGuncelle.v1.schema.json",
+  "title": "KampanyaDurumGuncelleV1",
+  "description": "Mevcut bir kampanyayı aktifleştirme veya durdurma komutu.",
+  "type": "object",
+  "x-command-type": "com.clrinf.kampanya.KampanyaDurumGuncelle.v1",
+  "x-domain": "kampanya",
+  "required": ["kod", "aktif"],
+  "properties": {
+    "kod": { "type": "string", "description": "Kampanya kodu" },
+    "aktif": { "type": "boolean", "description": "Yeni durum (true: aktif, false: pasif)" },
+    "gerekce": { "type": "string", "description": "Durum değişikliği gerekçesi" }
+  }
+}

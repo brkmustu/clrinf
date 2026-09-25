@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.clrinf.com/eticaret/events/SepetGuncellendi.v1.schema.json",
+  "title": "SepetGuncellendiV1",
+  "description": "Sepet içeriği, kuponu veya toplam tutarı değiştiğinde yayımlanan olay.",
+  "type": "object",
+  "x-event-type": "com.clrinf.eticaret.SepetGuncellendi.v1",
+  "x-domain": "eticaret",
+  "required": ["sepetId", "kalemler", "araToplam", "indirimTutari", "genelToplam", "guncellenmeTarihi"],
+  "properties": {
+    "sepetId": { "type": "string", "description": "Sepet kimliği" },
+    "kullaniciId": { "type": "string", "description": "Müşteri ID" },
+    "kalemler": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["sku", "miktar", "birimFiyat", "toplamFiyat"],
+        "properties": {
+          "sku": { "type": "string" },
+          "miktar": { "type": "integer" },
+          "birimFiyat": { "type": "number" },
+          "toplamFiyat": { "type": "number" }
+        }
+      }
+    },
+    "kuponKodu": { "type": "string", "description": "Uygulanan kupon" },
+    "araToplam": { "type": "number" },
+    "indirimTutari": { "type": "number" },
+    "genelToplam": { "type": "number" },
+    "guncellenmeTarihi": { "type": "string", "format": "date-time" }
+  }
+}

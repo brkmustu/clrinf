@@ -1,0 +1,74 @@
+{# @clrinf:generated — TypeScript Authorization Middleware & Cedar Engine Template #}
+// @clrinf:generated — Bu dosya clrinf-codegen tarafından üretilmiştir.
+// Modül: Authorization | Provider: {{ provider | default(value="cedar") }}
+
+import type { AuthorizationService, AuthzDecision, Claims, OperationClaim } from "@clrinf/core";
+import { AuthorizationError, MultiTenantCedarAuthorizer } from "@clrinf/core";
+
+/**
+ * Standard policy-based authorization service.
+ */
+export class PolicyAuthorizationService implements AuthorizationService {
+  constructor(private readonly superAdminRole: string = "SuperAdmin") {}
+
+  async authorize(claims: Claims, required: OperationClaim[]): Promise<AuthzDecision> {
+    // SuperAdmin bypasses checks
+    if (claims.roles.includes(this.superAdminRole) || claims.roles.includes("PlatformAdmin")) {
+      return { allowed: true };
+    }
+
+    for (const op of required) {
+      const expectedPermission = `${op.resource}.${op.action}`;
+      const hasPermission =
+        claims.roles.includes(expectedPermission) ||
+        claims.roles.includes(op.resource) ||
+        claims.roles.includes("Admin");
+
+      if (!hasPermission) {
+        return {
+          allowed: false,
+          reason: `Missing required permission: ${expectedPermission}`,
+        };
+      }
+    }
+
+    return { allowed: true };
+  }
+}
+
+/**
+ * Helper factory to create default multi-tenant Cedar authorizer.
+ */
+export function createDefaultAuthorizer(): MultiTenantCedarAuthorizer {
+  return new MultiTenantCedarAuthorizer();
+}
+
+export interface RequestWithAuthorizedClaims {
+  claims?: Claims;
+}
+
+/**
+ * Middleware factory requiring specific operation claims.
+ * Strictly enforces multi-tenant isolation by default when using MultiTenantCedarAuthorizer.
+ */
+export function requirePermissions(
+  authzService: AuthorizationService,
+  required: OperationClaim[]
+) {
+  return async function authorizationMiddleware(
+    req: RequestWithAuthorizedClaims,
+    next: () => Promise<unknown>
+  ): Promise<unknown> {
+    if (!req.claims) {
+      throw new AuthorizationError("Unauthenticated request cannot be authorized");
+    }
+
+    const decision = await authzService.authorize(req.claims, required);
+    if (!decision.allowed) {
+      throw new AuthorizationError(decision.reason ?? "Access denied");
+    }
+
+    return next();
+  };
+}
+

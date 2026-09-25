@@ -1,0 +1,31 @@
+{# @clrinf:generated — TypeScript Logging Middleware Template #}
+// @clrinf:generated — Bu dosya clrinf-codegen tarafından üretilmiştir.
+// Modül: Logging | Provider: {{ provider | default(value="structured") }}
+
+import type { Logger } from "@clrinf/core";
+
+/**
+ * Logging middleware for request/response pipeline.
+ * Wraps handler execution with structured logging and timing metrics.
+ */
+export async function withLogging<T>(
+  logger: Logger,
+  requestType: string,
+  handler: () => Promise<T>,
+): Promise<T> {
+  logger.info(`⏳ Handling ${requestType}`);
+  const start = performance.now();
+
+  try {
+    const result = await handler();
+    const elapsed = (performance.now() - start).toFixed(2);
+    logger.info(`✅ Handled ${requestType} in ${elapsed}ms`);
+    return result;
+  } catch (error) {
+    const elapsed = (performance.now() - start).toFixed(2);
+    logger.error(`❌ Failed ${requestType} after ${elapsed}ms`, {
+      error: error instanceof Error ? error.message : String(error),
+    });
+    throw error;
+  }
+}

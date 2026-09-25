@@ -1,0 +1,30 @@
+using {{ project_namespace }}.Application.Common.Attributes;
+using {{ project_namespace }}.Application.Common.Pipeline;
+using {{ project_namespace }}.Application.Services.Repositories;
+using {{ project_namespace }}.Domain.Entities;
+
+namespace {{ project_namespace }}.Application.Modules.Users;
+
+[RequireAuthorization("Admin")]
+public record DeleteUserCommand(int Id) : ICommand<DeletedUserResponse>;
+
+public class DeleteUserCommandHandler : ICommandHandler<DeleteUserCommand, DeletedUserResponse>
+{
+    private readonly IUserRepository _userRepository;
+
+    public DeleteUserCommandHandler(IUserRepository userRepository)
+    {
+        _userRepository = userRepository;
+    }
+
+    public async ValueTask<DeletedUserResponse> HandleAsync(DeleteUserCommand request, CancellationToken cancellationToken)
+    {
+        User? user = await _userRepository.GetAsync(u => u.Id == request.Id, cancellationToken: cancellationToken);
+        if (user == null)
+            throw new Exception("Kullanıcı bulunamadı.");
+
+        await _userRepository.DeleteAsync(user);
+
+        return new DeletedUserResponse { Id = user.Id };
+    }
+}

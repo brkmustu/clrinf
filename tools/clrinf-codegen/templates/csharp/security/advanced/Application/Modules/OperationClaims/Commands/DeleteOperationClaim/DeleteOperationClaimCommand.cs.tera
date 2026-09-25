@@ -1,0 +1,29 @@
+using {{ project_namespace }}.Application.Common.Pipeline;
+using {{ project_namespace }}.Application.Modules.OperationClaims.Responses;
+using {{ project_namespace }}.Application.Services.Repositories;
+using {{ project_namespace }}.Domain.Entities;
+
+namespace {{ project_namespace }}.Application.Modules.OperationClaims.Commands.DeleteOperationClaim;
+
+public record DeleteOperationClaimCommand(int Id) : ICommand<DeletedOperationClaimResponse>;
+
+public class DeleteOperationClaimCommandHandler : ICommandHandler<DeleteOperationClaimCommand, DeletedOperationClaimResponse>
+{
+    private readonly IOperationClaimRepository _operationClaimRepository;
+
+    public DeleteOperationClaimCommandHandler(IOperationClaimRepository operationClaimRepository)
+    {
+        _operationClaimRepository = operationClaimRepository;
+    }
+
+    public async ValueTask<DeletedOperationClaimResponse> HandleAsync(DeleteOperationClaimCommand request, CancellationToken cancellationToken)
+    {
+        OperationClaim? claim = await _operationClaimRepository.GetAsync(c => c.Id == request.Id, cancellationToken: cancellationToken);
+        if (claim == null)
+            throw new Exception("Rol yetkisi bulunamadı.");
+
+        await _operationClaimRepository.DeleteAsync(claim);
+
+        return new DeletedOperationClaimResponse { Id = claim.Id };
+    }
+}

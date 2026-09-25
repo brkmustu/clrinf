@@ -1,0 +1,7 @@
+namespace {{ project_namespace }}.Application.Modules.OperationClaims.Responses;
+
+public class GetOperationClaimResponse
+{
+    public int Id { get; set; }
+    public string Name { get; set; } = string.Empty;
+}

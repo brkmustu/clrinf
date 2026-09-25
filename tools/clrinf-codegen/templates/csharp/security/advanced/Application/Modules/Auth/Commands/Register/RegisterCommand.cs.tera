@@ -1,0 +1,81 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
+using Microsoft.EntityFrameworkCore;
+using {{ project_namespace }}.Application.Common.Pipeline;
+using {{ project_namespace }}.Application.Modules.Auth.DTOs;
+using {{ project_namespace }}.Application.Modules.Auth.Responses;
+using {{ project_namespace }}.Application.Services.Repositories;
+using {{ project_namespace }}.Application.Services.Security.Encryption;
+using {{ project_namespace }}.Application.Services.Security.JWT;
+using {{ project_namespace }}.Domain.Entities;
+
+namespace {{ project_namespace }}.Application.Modules.Auth.Commands.Register;
+
+public class RegisterCommand : ICommand<RegisteredResponse>
+{
+    public required UserForRegisterDto UserForRegisterDto { get; set; }
+    public string IpAddress { get; set; } = string.Empty;
+}
+
+internal sealed class RegisterCommandHandler : ICommandHandler<RegisterCommand, RegisteredResponse>
+{
+    private readonly IUserRepository _userRepository;
+    private readonly IUserOperationClaimRepository _userOperationClaimRepository;
+    private readonly IRefreshTokenRepository _refreshTokenRepository;
+    private readonly ITokenHelper _tokenHelper;
+
+    public RegisterCommandHandler(
+        IUserRepository userRepository,
+        IUserOperationClaimRepository userOperationClaimRepository,
+        IRefreshTokenRepository refreshTokenRepository,
+        ITokenHelper tokenHelper)
+    {
+        _userRepository = userRepository;
+        _userOperationClaimRepository = userOperationClaimRepository;
+        _refreshTokenRepository = refreshTokenRepository;
+        _tokenHelper = tokenHelper;
+    }
+
+    public async ValueTask<RegisteredResponse> HandleAsync(RegisterCommand request, CancellationToken cancellationToken)
+    {
+        User? existingUser = await _userRepository.GetAsync(u => u.Email == request.UserForRegisterDto.Email, cancellationToken: cancellationToken);
+        if (existingUser != null)
+            throw new Exception("Bu e-posta adresi zaten kayıtlı.");
+
+        HashingHelper.CreatePasswordHash(request.UserForRegisterDto.Password, out byte[] passwordHash, out byte[] passwordSalt);
+
+        var newUser = new User
+        {
+            Email = request.UserForRegisterDto.Email,
+            FirstName = request.UserForRegisterDto.FirstName,
+            LastName = request.UserForRegisterDto.LastName,
+            PasswordHash = passwordHash,
+            PasswordSalt = passwordSalt,
+            Status = true
+        };
+
+        User createdUser = await _userRepository.AddAsync(newUser);
+
+        var userOperationClaims = await _userOperationClaimRepository.GetListAsync(
+            u => u.UserId == createdUser.Id,
+            include: u => u.Include(x => x.OperationClaim),
+            cancellationToken: cancellationToken
+        );
+        IList<OperationClaim> operationClaims = userOperationClaims.Items.Select(u => u.OperationClaim).ToList();
+
+        AccessToken accessToken = _tokenHelper.CreateToken(createdUser, operationClaims);
+        {{ project_namespace }}.Domain.Entities.RefreshToken refreshToken = _tokenHelper.CreateRefreshToken(createdUser, request.IpAddress);
+
+        await _refreshTokenRepository.AddAsync(refreshToken);
+
+        return new RegisteredResponse
+        {
+            AccessToken = accessToken.Token,
+            Expiration = accessToken.Expiration,
+            RefreshToken = refreshToken.Token
+        };
+    }
+}

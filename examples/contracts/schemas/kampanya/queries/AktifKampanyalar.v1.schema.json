@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.clrinf.com/kampanya/queries/AktifKampanyalar.v1.schema.json",
+  "title": "AktifKampanyalarV1",
+  "description": "Müşterilere ve siparişe açık aktif kampanyaları listeleme sorgusu.",
+  "type": "object",
+  "x-query-type": "com.clrinf.kampanya.AktifKampanyalar.v1",
+  "x-domain": "kampanya",
+  "properties": {
+    "hedefKategori": {
+      "type": "string",
+      "description": "Kategoriye özel kampanyaları filtreleme (isteğe bağlı)"
+    }
+  }
+}

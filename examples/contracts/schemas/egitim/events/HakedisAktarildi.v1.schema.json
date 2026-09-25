@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "HakedisAktarildiV1",
+  "description": "Ders bitiminde emanet havuzundan eğitmene hakediş aktarıldığını bildiren olay.",
+  "type": "object",
+  "x-event-type": "com.clrinf.egitim.HakedisAktarildi.v1",
+  "x-domain": "egitim",
+  "properties": {
+    "lesson_id": { "type": "string", "description": "Ders kimliği" },
+    "teacher_id": { "type": "string", "description": "Eğitmen kimliği" },
+    "net_amount": { "type": "number", "minimum": 0, "description": "Aktarılan net hakediş (TL)" },
+    "platform_fee": { "type": "number", "minimum": 0, "description": "Platform kesintisi (TL)" }
+  },
+  "required": ["lesson_id", "teacher_id", "net_amount", "platform_fee"],
+  "additionalProperties": false
+}

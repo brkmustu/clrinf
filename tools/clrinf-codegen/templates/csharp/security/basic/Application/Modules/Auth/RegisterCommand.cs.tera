@@ -1,0 +1,64 @@
+using System;
+using System.Collections.Generic;
+using System.Threading;
+using System.Threading.Tasks;
+using {{ project_namespace }}.Application.Common.Pipeline;
+using {{ project_namespace }}.Application.Services.Repositories;
+using {{ project_namespace }}.Application.Services.Security.Encryption;
+using {{ project_namespace }}.Application.Services.Security.JWT;
+using {{ project_namespace }}.Domain.Entities;
+
+namespace {{ project_namespace }}.Application.Modules.Auth;
+
+public class RegisterCommand : ICommand<RegisteredResponse>
+{
+    public required UserForRegisterDto UserForRegisterDto { get; set; }
+    public string IpAddress { get; set; } = string.Empty;
+}
+
+internal sealed class RegisterCommandHandler : ICommandHandler<RegisterCommand, RegisteredResponse>
+{
+    private readonly IUserRepository _userRepository;
+    private readonly IRefreshTokenRepository _refreshTokenRepository;
+    private readonly ITokenHelper _tokenHelper;
+
+    public RegisterCommandHandler(
+        IUserRepository userRepository,
+        IRefreshTokenRepository refreshTokenRepository,
+        ITokenHelper tokenHelper)
+    {
+        _userRepository = userRepository;
+        _refreshTokenRepository = refreshTokenRepository;
+        _tokenHelper = tokenHelper;
+    }
+
+    public async ValueTask<RegisteredResponse> HandleAsync(RegisterCommand request, CancellationToken cancellationToken)
+    {
+        byte[] passwordHash, passwordSalt;
+        HashingHelper.CreatePasswordHash(request.UserForRegisterDto.Password, out passwordHash, out passwordSalt);
+
+        User user = new()
+        {
+            Email = request.UserForRegisterDto.Email,
+            FirstName = request.UserForRegisterDto.FirstName,
+            LastName = request.UserForRegisterDto.LastName,
+            PasswordHash = passwordHash,
+            PasswordSalt = passwordSalt,
+            Status = true
+        };
+
+        User createdUser = await _userRepository.AddAsync(user);
+
+        AccessToken accessToken = _tokenHelper.CreateToken(createdUser, new List<OperationClaim>());
+        RefreshToken refreshToken = _tokenHelper.CreateRefreshToken(createdUser, request.IpAddress);
+
+        await _refreshTokenRepository.AddAsync(refreshToken);
+
+        return new RegisteredResponse
+        {
+            AccessToken = accessToken.Token,
+            Expiration = accessToken.Expiration,
+            RefreshToken = refreshToken.Token
+        };
+    }
+}

@@ -1,0 +1,48 @@
+{# @clrinf:generated — Rust Multi-Tenant Authorization Middleware & Cedar Engine Template #}
+// @clrinf:generated — Bu dosya clrinf-codegen tarafından üretilmiştir.
+// Modül: Authorization | Provider: {{ provider | default(value="cedar") }}
+
+use clrinf_core::auth::Claims;
+use clrinf_core::authz::{
+    AuthorizationService, AuthzDecision, AuthzError, MultiTenantCedarAuthorizer, OperationClaim,
+};
+use std::sync::Arc;
+
+/// Multi-tenant authorization middleware that intercepts operations and validates claims
+/// using Cedar policy rules and default tenant isolation.
+pub struct AuthorizationMiddleware<A: AuthorizationService> {
+    authz_service: Arc<A>,
+}
+
+impl<A: AuthorizationService> AuthorizationMiddleware<A> {
+    pub fn new(authz_service: Arc<A>) -> Self {
+        Self { authz_service }
+    }
+
+    /// Check authorization for the given claims and operations.
+    /// Strictly enforces multi-tenant isolation by default.
+    pub async fn check(
+        &self,
+        claims: &Claims,
+        required: &[OperationClaim],
+    ) -> Result<(), AuthzError> {
+        match self.authz_service.authorize(claims, required).await? {
+            AuthzDecision::Allow { .. } => Ok(()),
+            AuthzDecision::Deny {
+                reason,
+                is_tenant_violation,
+            } => {
+                if is_tenant_violation {
+                    Err(AuthzError::TenantViolation(reason))
+                } else {
+                    Err(AuthzError::AccessDenied(reason))
+                }
+            }
+        }
+    }
+}
+
+/// Helper constructor to create default multi-tenant Cedar authorizer.
+pub fn create_default_authorizer() -> Arc<MultiTenantCedarAuthorizer> {
+    Arc::new(MultiTenantCedarAuthorizer::default())
+}

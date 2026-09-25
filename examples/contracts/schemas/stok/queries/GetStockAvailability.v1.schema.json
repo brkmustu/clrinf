@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.clrinf.com/stok/queries/GetStockAvailability.v1.schema.json",
+  "title": "GetStockAvailabilityQueryV1",
+  "description": "Query requesting current available stock quantity for a specific SKU.",
+  "type": "object",
+  "x-query-type": "com.clrinf.stok.GetStockAvailability.v1",
+  "x-domain": "stok",
+  "required": [
+    "sku"
+  ],
+  "properties": {
+    "sku": {
+      "type": "string",
+      "description": "Stock keeping unit code"
+    },
+    "warehouse": {
+      "type": "string",
+      "description": "Optional warehouse filter"
+    }
+  }
+}

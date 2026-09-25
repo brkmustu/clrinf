@@ -1,0 +1,19 @@
+# Event-Driven Cache Invalidation Rules: Ürün Kataloğu
+domain: katalog
+version: 1.0.0
+
+rules:
+  - event_type: "com.clrinf.katalog.FiyatGuncellendi.v1"
+    description: "Ürün birim fiyatı güncellendiğinde ürün detay ve fiyat önbelleğini geçersiz kıl"
+    invalidate:
+      - pattern: "katalog:product:{data.sku}"
+      - pattern: "katalog:price:{data.sku}"
+      - pattern: "katalog:items:summary"
+
+  - event_type: "com.clrinf.katalog.UrunYayinlandi.v1"
+    description: "Yeni bir ürün yayınlandığında katalog listeleri ve kategori önbelleğini geçersiz kıl"
+    invalidate:
+      - pattern: "katalog:product:{data.sku}"
+      - pattern: "katalog:category:{data.kategoriYolu}"
+      - pattern: "katalog:list"
+      - pattern: "katalog:items:summary"

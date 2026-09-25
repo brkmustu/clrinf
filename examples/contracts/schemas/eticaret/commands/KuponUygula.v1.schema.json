@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.clrinf.com/eticaret/commands/KuponUygula.v1.schema.json",
+  "title": "KuponUygulaV1",
+  "description": "Sepete promosyon veya indirim kuponu uygulama komutu.",
+  "type": "object",
+  "x-command-type": "com.clrinf.eticaret.KuponUygula.v1",
+  "x-domain": "eticaret",
+  "required": ["sepetId", "kuponKodu"],
+  "properties": {
+    "sepetId": {
+      "type": "string",
+      "description": "Sepet benzersiz kimliği"
+    },
+    "kuponKodu": {
+      "type": "string",
+      "description": "Uygulanacak indirim/kupon kodu (örn: YAZ2026, VIP50)"
+    }
+  }
+}

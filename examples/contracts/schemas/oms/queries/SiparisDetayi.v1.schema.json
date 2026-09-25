@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.clrinf.com/oms/queries/SiparisDetayi.v1.schema.json",
+  "title": "SiparisDetayiV1",
+  "description": "Sipariş kalemleri, kargo takibi ve durum geçmişi detay sorgusu.",
+  "type": "object",
+  "x-query-type": "com.clrinf.oms.SiparisDetayi.v1",
+  "x-domain": "oms",
+  "required": ["siparisId"],
+  "properties": {
+    "siparisId": { "type": "string" }
+  }
+}

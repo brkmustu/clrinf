@@ -1,0 +1,86 @@
+@authHost = http://localhost:8081
+@campaignHost = http://localhost:8082
+@apiHost = http://localhost:5000
+
+### 1. Rust Auth Service - Health Check
+GET {{authHost}}/health
+Accept: application/json
+
+### 2. Rust Campaign Engine - Health Check
+GET {{campaignHost}}/health
+Accept: application/json
+
+### 3. Rust Auth - User Login & Issue JWT Token
+# @name login
+POST {{authHost}}/auth/token
+Content-Type: application/json
+
+{
+  "username": "admin",
+  "tenant_id": "tenant-1"
+}
+
+### Capture JWT Token from Login response
+@authToken = {{login.response.body.access_token}}
+
+### 4. Rust Auth - Cedar ABAC Authorization Evaluation
+POST {{authHost}}/auth/authorize
+Content-Type: application/json
+
+{
+  "token": "{{authToken}}",
+  "action": "CreateUrunCommand",
+  "resource": "Urun"
+}
+
+### 5. .NET WebAPI - Get Categories
+GET {{apiHost}}/api/Kategori?PageIndex=0&PageSize=10
+Authorization: Bearer {{authToken}}
+Accept: application/json
+
+### 6. .NET WebAPI - Get Products List (Resource Server)
+GET {{apiHost}}/api/Urun?PageIndex=0&PageSize=10
+Authorization: Bearer {{authToken}}
+Accept: application/json
+
+### 7. .NET WebAPI - Get Cart / Sepet
+GET {{apiHost}}/api/Sepet?PageIndex=0&PageSize=10
+Authorization: Bearer {{authToken}}
+Accept: application/json
+
+### 8. .NET WebAPI - Get Orders / Siparis
+GET {{apiHost}}/api/Siparis?PageIndex=0&PageSize=10
+Authorization: Bearer {{authToken}}
+Accept: application/json
+
+### 9. .NET WebAPI - Get Payments / Odeme
+GET {{apiHost}}/api/Odeme?PageIndex=0&PageSize=10
+Authorization: Bearer {{authToken}}
+Accept: application/json
+
+### 10. .NET WebAPI - Get Shipments / Kargo
+GET {{apiHost}}/api/Kargo?PageIndex=0&PageSize=10
+Authorization: Bearer {{authToken}}
+Accept: application/json
+
+### 11. .NET WebAPI - Get Coupons / Kupon
+GET {{apiHost}}/api/Kupon?PageIndex=0&PageSize=10
+Authorization: Bearer {{authToken}}
+Accept: application/json
+
+### 12. .NET WebAPI - Get Reviews / Degerlendirme
+GET {{apiHost}}/api/Degerlendirme?PageIndex=0&PageSize=10
+Authorization: Bearer {{authToken}}
+Accept: application/json
+
+### 13. Rust Campaign Engine - Evaluate Discount & Rules
+POST {{campaignHost}}/calculate
+Content-Type: application/json
+
+{
+  "total_amount": 3450.00,
+  "currency": "USD",
+  "user_tier": "VIP",
+  "items_count": 1,
+  "coupon_code": "INDIRIM20"
+}

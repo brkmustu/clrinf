@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "clrinf": {
+      "command": "clrinf-codegen",
+      "args": ["mcp"],
+      "env": {
+        "RUST_LOG": "info"
+      }
+    }
+  }
+}

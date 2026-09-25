@@ -1,0 +1,7 @@
+namespace {{ project_namespace }}.Application.Modules.UserOperationClaims.DTOs;
+
+public class CreateUserOperationClaimDto
+{
+    public int UserId { get; set; }
+    public int OperationClaimId { get; set; }
+}

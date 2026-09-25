@@ -1,0 +1,22 @@
+# Event-Driven Cache Invalidation Rules: E-Ticaret & Sepet
+domain: eticaret
+version: 1.0.0
+
+rules:
+  - event_type: "com.clrinf.eticaret.SepetGuncellendi.v1"
+    description: "Sepet kalemleri veya toplamı güncellendiğinde sepet ve müşteri sepet özetini geçersiz kıl"
+    invalidate:
+      - pattern: "cart:{data.sepetId}"
+      - pattern: "cart:user:{data.kullaniciId}"
+      - pattern: "cart:user:{data.kullaniciId}:summary"
+
+  - event_type: "com.clrinf.eticaret.SiparisOlusturuldu.v1"
+    description: "Sipariş oluşturulduğunda kullanıcının aktif sepet önbelleğini temizle"
+    invalidate:
+      - pattern: "cart:{data.sepetId}"
+      - pattern: "cart:user:{data.kullaniciId}"
+
+  - event_type: "com.clrinf.eticaret.OdemeBasladi.v1"
+    description: "Ödeme oturumu başladığında geçici sepet kilidini ve oturum durumunu güncelle"
+    invalidate:
+      - pattern: "payment:session:{data.siparisId}"

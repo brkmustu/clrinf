@@ -1,0 +1,87 @@
+{# @clrinf:generated — C# Outbox Store Interface #}
+// @clrinf:generated — Bu dosya clrinf-codegen tarafından üretilmiştir.
+// Modül: Outbox | Provider: {{ provider | default(value="database") }}
+using System.Text.Json;
+
+namespace {{ namespace }}.Infrastructure.Outbox;
+
+/// <summary>
+/// Transactional Outbox Pattern sözleşmesi.
+/// Event'lerin veritabanı transaction'ı içinde güvenilir şekilde kaydedilip
+/// asenkron olarak yayınlanmasını garantiler.
+/// </summary>
+public interface IOutboxStore
+{
+    /// <summary>Outbox'a bir event ekler.</summary>
+    Task AppendAsync(JsonDocument eventPayload, CancellationToken cancellationToken = default);
+
+    /// <summary>Bekleyen event'leri teslim için alır (lease).</summary>
+    Task<IReadOnlyList<OutboxDelivery>> ClaimAsync(int limit = 10, TimeSpan? leaseTimeout = null, CancellationToken cancellationToken = default);
+
+    /// <summary>Başarılı teslimi onaylar.</summary>
+    Task AcknowledgeAsync(string tenantId, string eventId, string token, CancellationToken cancellationToken = default);
+
+    /// <summary>Başarısız teslimi yeniden kuyruğa alır.</summary>
+    Task RetryAsync(string tenantId, string eventId, string token, TimeSpan? delay = null, CancellationToken cancellationToken = default);
+}
+
+/// <summary>Outbox teslim birimi.</summary>
+public sealed record OutboxDelivery(JsonDocument Event, string Token);
+
+/// <summary>
+/// Outbox dispatcher: bekleyen event'leri alıp event bus'a yayınlar.
+/// </summary>
+public sealed class OutboxDispatcher
+{
+    private readonly IOutboxStore _store;
+    private readonly IEventPublisher _publisher;
+    private readonly Microsoft.Extensions.Logging.ILogger<OutboxDispatcher> _logger;
+
+    public OutboxDispatcher(IOutboxStore store, IEventPublisher publisher, Microsoft.Extensions.Logging.ILogger<OutboxDispatcher> logger)
+    {
+        _store = store;
+        _publisher = publisher;
+        _logger = logger;
+    }
+
+    /// <summary>Bekleyen event'leri yayınlar. Dönen değer başarıyla yayınlanan event sayısı.</summary>
+    public async Task<int> DispatchAsync(int batchSize = 10, CancellationToken cancellationToken = default)
+    {
+        var deliveries = await _store.ClaimAsync(batchSize, cancellationToken: cancellationToken);
+        int sent = 0;
+
+        foreach (var delivery in deliveries)
+        {
+            try
+            {
+                await _publisher.PublishAsync(delivery.Event, cancellationToken);
+                var root = delivery.Event.RootElement;
+                await _store.AcknowledgeAsync(
+                    root.GetProperty("tenantid").GetString()!,
+                    root.GetProperty("id").GetString()!,
+                    delivery.Token,
+                    cancellationToken);
+                sent++;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Outbox event yayınlama hatası");
+                var root = delivery.Event.RootElement;
+                await _store.RetryAsync(
+                    root.GetProperty("tenantid").GetString()!,
+                    root.GetProperty("id").GetString()!,
+                    delivery.Token,
+                    TimeSpan.FromSeconds(5),
+                    cancellationToken);
+            }
+        }
+
+        return sent;
+    }
+}
+
+/// <summary>Event yayınlama sözleşmesi (Outbox tarafından kullanılır).</summary>
+public interface IEventPublisher
+{
+    Task PublishAsync(JsonDocument eventPayload, CancellationToken cancellationToken = default);
+}

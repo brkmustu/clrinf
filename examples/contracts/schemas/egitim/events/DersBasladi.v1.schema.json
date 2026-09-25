@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "DersBasladiV1",
+  "description": "Canlı ders oturumunun başladığını bildiren olay.",
+  "type": "object",
+  "x-event-type": "com.clrinf.egitim.DersBasladi.v1",
+  "x-domain": "egitim",
+  "properties": {
+    "lesson_id": { "type": "string", "description": "Ders kimliği" },
+    "teacher_id": { "type": "string", "description": "Eğitmen kimliği" },
+    "student_id": { "type": "string", "description": "Öğrenci kimliği" },
+    "title": { "type": "string", "description": "Ders başlığı" },
+    "started_at": { "type": "string", "format": "date-time", "description": "Başlangıç zamanı" }
+  },
+  "required": ["lesson_id", "teacher_id", "student_id", "started_at"],
+  "additionalProperties": false
+}

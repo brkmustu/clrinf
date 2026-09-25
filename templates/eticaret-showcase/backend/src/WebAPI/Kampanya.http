@@ -1,0 +1,36 @@
+@WebAPI_HostAddress = http://localhost:5000
+
+### Get List Kampanyalar
+GET /api/Kampanyalar?PageIndex=0&PageSize=10
+Accept: application/json
+
+### Get Kampanya By Id
+GET /api/Kampanyalar/1
+Accept: application/json
+
+### Create Kampanya
+POST /api/Kampanyalar
+Content-Type: application/json
+
+{
+  "kod": "Sample Kod",
+  "baslik": "Sample Baslik",
+  "deger": "Sample Deger",
+  "aktif": "Sample Aktif"
+}
+
+### Update Kampanya
+PUT /api/Kampanyalar
+Content-Type: application/json
+
+{
+  "id": 1,
+  "kod": "Updated Kod",
+  "baslik": "Updated Baslik",
+  "deger": "Updated Deger",
+  "aktif": "Updated Aktif"
+}
+
+### Delete Kampanya
+DELETE /api/Kampanyalar/1
+Accept: application/json

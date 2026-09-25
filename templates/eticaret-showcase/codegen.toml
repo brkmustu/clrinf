@@ -1,0 +1,310 @@
+[project]
+name = "EticaretApp"
+version = "1.0.0"
+paradigm = "fp"
+architecture = "clean-cqrs"
+
+[backend]
+path = "./backend"
+namespace = "EticaretApp"
+db_context = "BaseDbContext"
+
+[backend.structure]
+folder_name = "Moduller"
+layout = "flat"
+
+# 1. Kategori (Category / Taxonomy)
+[[modules]]
+name = "Kategori"
+id_type = "int"
+layout = "flat"
+[[modules.properties]]
+name = "Ad"
+type = "string"
+required = true
+[[modules.properties]]
+name = "Slug"
+type = "string"
+required = true
+[[modules.properties]]
+name = "UstKategoriId"
+type = "int?"
+required = false
+[[modules.properties]]
+name = "Sira"
+type = "int"
+required = true
+[[modules.properties]]
+name = "Aktif"
+type = "bool"
+required = true
+
+# 2. Urun (Product / Catalog)
+[[modules]]
+name = "Urun"
+id_type = "int"
+layout = "flat"
+[[modules.properties]]
+name = "Sku"
+type = "string"
+required = true
+[[modules.properties]]
+name = "Baslik"
+type = "string"
+required = true
+[[modules.properties]]
+name = "Aciklama"
+type = "string"
+required = false
+[[modules.properties]]
+name = "BirimFiyat"
+type = "decimal"
+required = true
+[[modules.properties]]
+name = "ParaBirimi"
+type = "string"
+required = true
+[[modules.properties]]
+name = "KategoriId"
+type = "int"
+required = true
+[[modules.properties]]
+name = "KategoriYolu"
+type = "string"
+required = false
+[[modules.properties]]
+name = "MusaitStok"
+type = "int"
+required = true
+[[modules.properties]]
+name = "Yayinda"
+type = "bool"
+required = true
+
+# 3. Sepet (Shopping Cart)
+[[modules]]
+name = "Sepet"
+id_type = "int"
+layout = "flat"
+[[modules.properties]]
+name = "KullaniciId"
+type = "string"
+required = true
+[[modules.properties]]
+name = "UrunId"
+type = "int"
+required = true
+[[modules.properties]]
+name = "Adet"
+type = "int"
+required = true
+[[modules.properties]]
+name = "BirimFiyat"
+type = "decimal"
+required = true
+[[modules.properties]]
+name = "Secili"
+type = "bool"
+required = true
+
+# 4. Siparis (Order)
+[[modules]]
+name = "Siparis"
+id_type = "int"
+layout = "flat"
+[[modules.properties]]
+name = "SiparisNumarasi"
+type = "string"
+required = true
+[[modules.properties]]
+name = "KullaniciId"
+type = "string"
+required = true
+[[modules.properties]]
+name = "ToplamTutar"
+type = "decimal"
+required = true
+[[modules.properties]]
+name = "ParaBirimi"
+type = "string"
+required = true
+[[modules.properties]]
+name = "Durum"
+type = "string"
+required = true
+[[modules.properties]]
+name = "TeslimatAdresi"
+type = "string"
+required = true
+
+# 5. Odeme (Payment & Transactions)
+[[modules]]
+name = "Odeme"
+id_type = "int"
+layout = "flat"
+[[modules.properties]]
+name = "SiparisId"
+type = "int"
+required = true
+[[modules.properties]]
+name = "OdemeNumarasi"
+type = "string"
+required = true
+[[modules.properties]]
+name = "Tutar"
+type = "decimal"
+required = true
+[[modules.properties]]
+name = "ParaBirimi"
+type = "string"
+required = true
+[[modules.properties]]
+name = "OdemeYontemi"
+type = "string"
+required = true
+[[modules.properties]]
+name = "Durum"
+type = "string"
+required = true
+[[modules.properties]]
+name = "IslemKodu"
+type = "string"
+required = false
+
+# 6. Kargo (Shipping & Fulfillment)
+[[modules]]
+name = "Kargo"
+id_type = "int"
+layout = "flat"
+[[modules.properties]]
+name = "SiparisId"
+type = "int"
+required = true
+[[modules.properties]]
+name = "TakipNumarasi"
+type = "string"
+required = true
+[[modules.properties]]
+name = "KargoFirmasi"
+type = "string"
+required = true
+[[modules.properties]]
+name = "Durum"
+type = "string"
+required = true
+[[modules.properties]]
+name = "TahminiTeslimTarihi"
+type = "DateTime?"
+required = false
+
+# 7. Stok (Inventory)
+[[modules]]
+name = "Stok"
+id_type = "int"
+layout = "flat"
+[[modules.properties]]
+name = "UrunId"
+type = "int"
+required = true
+[[modules.properties]]
+name = "Miktar"
+type = "int"
+required = true
+[[modules.properties]]
+name = "RezerveMiktar"
+type = "int"
+required = true
+[[modules.properties]]
+name = "DepoKodu"
+type = "string"
+required = true
+
+# 8. Kampanya (Promotion Engine)
+[[modules]]
+name = "Kampanya"
+id_type = "int"
+layout = "flat"
+[[modules.properties]]
+name = "Baslik"
+type = "string"
+required = true
+[[modules.properties]]
+name = "Aciklama"
+type = "string"
+required = false
+[[modules.properties]]
+name = "IndirimOrani"
+type = "decimal"
+required = true
+[[modules.properties]]
+name = "BaslangicTarihi"
+type = "DateTime"
+required = true
+[[modules.properties]]
+name = "BitisTarihi"
+type = "DateTime"
+required = true
+[[modules.properties]]
+name = "Aktif"
+type = "bool"
+required = true
+
+# 9. Kupon (Coupons & Vouchers)
+[[modules]]
+name = "Kupon"
+id_type = "int"
+layout = "flat"
+[[modules.properties]]
+name = "Kod"
+type = "string"
+required = true
+[[modules.properties]]
+name = "IndirimTutari"
+type = "decimal"
+required = true
+[[modules.properties]]
+name = "MinimumSepetTutari"
+type = "decimal"
+required = true
+[[modules.properties]]
+name = "KullanimLimiti"
+type = "int"
+required = true
+[[modules.properties]]
+name = "KullanilanAdet"
+type = "int"
+required = true
+[[modules.properties]]
+name = "SonKullanmaTarihi"
+type = "DateTime"
+required = true
+[[modules.properties]]
+name = "Aktif"
+type = "bool"
+required = true
+
+# 10. Degerlendirme (Product Reviews & Ratings)
+[[modules]]
+name = "Degerlendirme"
+id_type = "int"
+layout = "flat"
+[[modules.properties]]
+name = "UrunId"
+type = "int"
+required = true
+[[modules.properties]]
+name = "KullaniciId"
+type = "string"
+required = true
+[[modules.properties]]
+name = "Puan"
+type = "int"
+required = true
+[[modules.properties]]
+name = "Yorum"
+type = "string"
+required = false
+[[modules.properties]]
+name = "Onaylandi"
+type = "bool"
+required = true

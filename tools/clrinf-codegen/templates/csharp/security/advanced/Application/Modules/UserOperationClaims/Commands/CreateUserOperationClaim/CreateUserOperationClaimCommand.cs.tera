@@ -1,0 +1,37 @@
+using {{ project_namespace }}.Application.Common.Pipeline;
+using {{ project_namespace }}.Application.Modules.UserOperationClaims.DTOs;
+using {{ project_namespace }}.Application.Modules.UserOperationClaims.Responses;
+using {{ project_namespace }}.Application.Services.Repositories;
+using {{ project_namespace }}.Domain.Entities;
+
+namespace {{ project_namespace }}.Application.Modules.UserOperationClaims.Commands.CreateUserOperationClaim;
+
+public record CreateUserOperationClaimCommand(CreateUserOperationClaimDto Dto) : ICommand<CreatedUserOperationClaimResponse>;
+
+public class CreateUserOperationClaimCommandHandler : ICommandHandler<CreateUserOperationClaimCommand, CreatedUserOperationClaimResponse>
+{
+    private readonly IUserOperationClaimRepository _userOperationClaimRepository;
+
+    public CreateUserOperationClaimCommandHandler(IUserOperationClaimRepository userOperationClaimRepository)
+    {
+        _userOperationClaimRepository = userOperationClaimRepository;
+    }
+
+    public async ValueTask<CreatedUserOperationClaimResponse> HandleAsync(CreateUserOperationClaimCommand request, CancellationToken cancellationToken)
+    {
+        UserOperationClaim uoc = new()
+        {
+            UserId = request.Dto.UserId,
+            OperationClaimId = request.Dto.OperationClaimId
+        };
+
+        UserOperationClaim created = await _userOperationClaimRepository.AddAsync(uoc);
+
+        return new CreatedUserOperationClaimResponse
+        {
+            Id = created.Id,
+            UserId = created.UserId,
+            OperationClaimId = created.OperationClaimId
+        };
+    }
+}

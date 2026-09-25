@@ -1,0 +1,60 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.clrinf.com/kampanya/commands/KampanyaOlustur.v2.schema.json",
+  "title": "KampanyaOlusturV2",
+  "description": "Birleştirilebilir (Stackable) ve Münhasır (Exclusive) kuralları içeren yeni kampanya oluşturma komutu.",
+  "type": "object",
+  "x-command-type": "com.clrinf.kampanya.KampanyaOlustur.v2",
+  "x-domain": "kampanya",
+  "required": ["kod", "baslik", "tur", "deger", "birlestirilebilir", "baslangicTarihi"],
+  "properties": {
+    "kod": { "type": "string", "description": "Kampanya benzersiz kodu" },
+    "baslik": { "type": "string" },
+    "aciklama": { "type": "string" },
+    "tur": {
+      "type": "string",
+      "enum": ["YUZDESEL", "SABIT_TUTAR", "KATEGORI_INDIRIMI"]
+    },
+    "deger": { "type": "number", "minimum": 0 },
+    "hedefKategori": { "type": "string" },
+    "minimumSepetTutari": { "type": "number", "minimum": 0, "default": 0 },
+    "maksimumKullanimSayisi": { "type": "integer", "minimum": 1 },
+    "birlestirilebilir": {
+      "type": "boolean",
+      "description": "true: Diğer izinli kampanyalarla birleşebilir; false: Münhasırdır (Exclusive), sepette tek başına uygulanır"
+    },
+    "birlestirmeTuru": {
+      "type": "string",
+      "enum": ["SERBEST", "TUR_KISITLI", "OZEL_LISTE"],
+      "default": "SERBEST",
+      "description": "Birleştirme kapsamı"
+    },
+    "izinliKampanyaKodlari": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Yalnızca bu kodlara sahip kampanyalarla birleşebilir"
+    },
+    "izinliEtiketler": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Birleşebileceği etiketler (örn: ['SADAKAT', 'SEZON'])"
+    },
+    "yasakliEtiketler": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Birlikte uygulanamayacak etiketler (örn: ['FLAS_INDIRIM'])"
+    },
+    "uygulamaSirasi": {
+      "type": "integer",
+      "default": 1,
+      "description": "Çoklu indirim uygulama önceliği (1: Önce ürün indirimi, 2: Kalan tutar üzerinden sepet indirimi)"
+    },
+    "etiketler": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Bu kampanyanın etiketleri"
+    },
+    "baslangicTarihi": { "type": "string", "format": "date-time" },
+    "bitisTarihi": { "type": "string", "format": "date-time" }
+  }
+}

@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.clrinf.com/stok/commands/ReserveStock.v1.schema.json",
+  "title": "ReserveStockCommandV1",
+  "description": "Command instructing the inventory service to reserve stock for an order.",
+  "type": "object",
+  "x-command-type": "com.clrinf.stok.ReserveStock.v1",
+  "x-domain": "stok",
+  "required": [
+    "order_id",
+    "sku",
+    "quantity"
+  ],
+  "properties": {
+    "order_id": {
+      "type": "string",
+      "description": "Identifier of the order"
+    },
+    "sku": {
+      "type": "string",
+      "description": "Stock keeping unit code"
+    },
+    "quantity": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Quantity to reserve"
+    },
+    "preferred_warehouse": {
+      "type": "string",
+      "description": "Optional preferred warehouse code"
+    }
+  }
+}

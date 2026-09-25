@@ -1,0 +1,38 @@
+@WebAPI_HostAddress = http://localhost:5000
+
+### Get List Siparisler
+GET /api/Siparisler?PageIndex=0&PageSize=10
+Accept: application/json
+
+### Get Siparis By Id
+GET /api/Siparisler/1
+Accept: application/json
+
+### Create Siparis
+POST /api/Siparisler
+Content-Type: application/json
+
+{
+  "siparisNo": "Sample SiparisNo",
+  "kullaniciId": "Sample KullaniciId",
+  "toplamTutar": "Sample ToplamTutar",
+  "durum": "Sample Durum",
+  "kargoTakipNo": "Sample KargoTakipNo"
+}
+
+### Update Siparis
+PUT /api/Siparisler
+Content-Type: application/json
+
+{
+  "id": 1,
+  "siparisNo": "Updated SiparisNo",
+  "kullaniciId": "Updated KullaniciId",
+  "toplamTutar": "Updated ToplamTutar",
+  "durum": "Updated Durum",
+  "kargoTakipNo": "Updated KargoTakipNo"
+}
+
+### Delete Siparis
+DELETE /api/Siparisler/1
+Accept: application/json

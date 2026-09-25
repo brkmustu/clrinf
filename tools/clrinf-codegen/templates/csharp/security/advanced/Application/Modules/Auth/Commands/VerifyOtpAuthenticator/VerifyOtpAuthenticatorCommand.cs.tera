@@ -1,0 +1,50 @@
+using System;
+using System.Threading;
+using System.Threading.Tasks;
+using {{ project_namespace }}.Application.Common.Pipeline;
+using {{ project_namespace }}.Application.Services.Repositories;
+using {{ project_namespace }}.Domain.Entities;
+using {{ project_namespace }}.Domain.Enums;
+using {{ project_namespace }}.Application.Services.Security.Otp;
+
+namespace {{ project_namespace }}.Application.Modules.Auth.Commands.VerifyOtpAuthenticator;
+
+public class VerifyOtpAuthenticatorCommand : ICommand<Unit>
+{
+    public int UserId { get; set; }
+    public string Code { get; set; } = string.Empty;
+}
+
+internal sealed class VerifyOtpAuthenticatorCommandHandler : ICommandHandler<VerifyOtpAuthenticatorCommand, Unit>
+{
+    private readonly IUserRepository _userRepository;
+    private readonly IOtpAuthenticatorRepository _otpAuthenticatorRepository;
+
+    public VerifyOtpAuthenticatorCommandHandler(IUserRepository userRepository, IOtpAuthenticatorRepository otpAuthenticatorRepository)
+    {
+        _userRepository = userRepository;
+        _otpAuthenticatorRepository = otpAuthenticatorRepository;
+    }
+
+    public async ValueTask<Unit> HandleAsync(VerifyOtpAuthenticatorCommand request, CancellationToken cancellationToken)
+    {
+        OtpAuthenticator? otpAuthenticator = await _otpAuthenticatorRepository.GetAsync(o => o.UserId == request.UserId, cancellationToken: cancellationToken);
+        if (otpAuthenticator == null)
+            throw new Exception("OTP doğrulaması bulunamadı.");
+
+        if (!OtpHelper.VerifyTotpCode(otpAuthenticator.SecretKey, request.Code))
+            throw new Exception("OTP kodu doğrulanamadı.");
+
+        otpAuthenticator.IsVerified = true;
+        await _otpAuthenticatorRepository.UpdateAsync(otpAuthenticator);
+
+        User? user = await _userRepository.GetAsync(u => u.Id == request.UserId, cancellationToken: cancellationToken);
+        if (user != null)
+        {
+            user.AuthenticatorType = AuthenticatorType.Otp;
+            await _userRepository.UpdateAsync(user);
+        }
+
+        return Unit.Value;
+    }
+}

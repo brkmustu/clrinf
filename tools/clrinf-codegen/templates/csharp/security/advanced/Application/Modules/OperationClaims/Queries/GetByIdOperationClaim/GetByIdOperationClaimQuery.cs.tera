@@ -1,0 +1,31 @@
+using {{ project_namespace }}.Application.Common.Pipeline;
+using {{ project_namespace }}.Application.Modules.OperationClaims.Responses;
+using {{ project_namespace }}.Application.Services.Repositories;
+using {{ project_namespace }}.Domain.Entities;
+
+namespace {{ project_namespace }}.Application.Modules.OperationClaims.Queries.GetByIdOperationClaim;
+
+public record GetByIdOperationClaimQuery(int Id) : IQuery<GetOperationClaimResponse>;
+
+public class GetByIdOperationClaimQueryHandler : IQueryHandler<GetByIdOperationClaimQuery, GetOperationClaimResponse>
+{
+    private readonly IOperationClaimRepository _operationClaimRepository;
+
+    public GetByIdOperationClaimQueryHandler(IOperationClaimRepository operationClaimRepository)
+    {
+        _operationClaimRepository = operationClaimRepository;
+    }
+
+    public async ValueTask<GetOperationClaimResponse> HandleAsync(GetByIdOperationClaimQuery request, CancellationToken cancellationToken)
+    {
+        OperationClaim? claim = await _operationClaimRepository.GetAsync(c => c.Id == request.Id, cancellationToken: cancellationToken);
+        if (claim == null)
+            throw new Exception("Rol yetkisi bulunamadı.");
+
+        return new GetOperationClaimResponse
+        {
+            Id = claim.Id,
+            Name = claim.Name
+        };
+    }
+}

@@ -1,0 +1,53 @@
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
+using {{ project_namespace }}.Application.Modules.Auth;
+
+namespace {{ project_namespace }}.Api.Controllers;
+
+[Route("api/[controller]")]
+[ApiController]
+public class AuthController : BaseController
+{
+    [HttpPost("Register")]
+    public async Task<IActionResult> Register([FromBody] UserForRegisterDto userForRegisterDto)
+    {
+        var command = new RegisterCommand
+        {
+            UserForRegisterDto = userForRegisterDto,
+            IpAddress = getIpAddress()
+        };
+        var result = await Dispatcher.SendAsync(command);
+        setRefreshTokenToCookie(result.RefreshToken);
+        return Ok(result);
+    }
+
+    [HttpPost("Login")]
+    public async Task<IActionResult> Login([FromBody] UserForLoginDto userForLoginDto)
+    {
+        var command = new LoginCommand
+        {
+            UserForLoginDto = userForLoginDto,
+            IpAddress = getIpAddress()
+        };
+        var result = await Dispatcher.SendAsync(command);
+        setRefreshTokenToCookie(result.RefreshToken);
+        return Ok(result);
+    }
+
+    private string getIpAddress()
+    {
+        if (Request.Headers.ContainsKey("X-Forwarded-For"))
+            return Request.Headers["X-Forwarded-For"]!;
+        return HttpContext.Connection.RemoteIpAddress?.MapToIPv4().ToString() ?? "127.0.0.1";
+    }
+
+    private void setRefreshTokenToCookie(string refreshToken)
+    {
+        var cookieOptions = new CookieOptions
+        {
+            HttpOnly = true,
+            Expires = DateTime.UtcNow.AddDays(7)
+        };
+        Response.Cookies.Append("refreshToken", refreshToken, cookieOptions);
+    }
+}

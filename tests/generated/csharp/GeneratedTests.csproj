@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <OutputType>Library</OutputType>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="../core/csharp/*.cs" Exclude="../core/csharp/ICloudEvent.cs" />
+    <Compile Include="../../../tools/clrinf-codegen/tests/golden/csharp/*.cs" Exclude="../../../tools/clrinf-codegen/tests/golden/csharp/ICloudEvent.cs" />
+    <Compile Include="../upcasters/*.cs" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,10 @@
+namespace EticaretApp.Infrastructure.Security.JWT;
+
+public class TokenOptions
+{
+    public string Audience { get; set; } = "EticaretAppUsers";
+    public string Issuer { get; set; } = "EticaretApp";
+    public int AccessTokenExpiration { get; set; } = 60;
+    public string SecurityKey { get; set; } = "clrinfcs_default_jwt_super_secret_security_key_2026_must_be_at_least_512_bits_long!";
+    public int RefreshTokenTTL { get; set; } = 7;
+}

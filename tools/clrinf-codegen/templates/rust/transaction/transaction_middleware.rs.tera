@@ -1,0 +1,40 @@
+{# @clrinf:generated — Rust Transaction Middleware Template #}
+// @clrinf:generated — Bu dosya clrinf-codegen tarafından üretilmiştir.
+// Modül: Transaction | Provider: {{ provider | default(value="native") }}
+
+use tracing::{debug, error};
+
+/// Transaction middleware for command handlers.
+/// Wraps handler execution in a begin/commit/rollback lifecycle.
+pub async fn with_transaction<F, T, E, U>(
+    uow: &U,
+    handler: F,
+) -> Result<T, E>
+where
+    F: std::future::Future<Output = Result<T, E>>,
+    E: std::fmt::Display + From<String>,
+    U: clrinf_core::transaction::UnitOfWork,
+{
+    debug!("⏳ Transaction başlatılıyor");
+
+    if let Err(e) = uow.begin().await {
+        return Err(E::from(format!("Transaction begin failed: {}", e)));
+    }
+
+    match handler.await {
+        Ok(result) => {
+            if let Err(e) = uow.commit().await {
+                error!("❌ Transaction commit failed: {}", e);
+                let _ = uow.rollback().await;
+                return Err(E::from(format!("Transaction commit failed: {}", e)));
+            }
+            debug!("✅ Transaction commit edildi");
+            Ok(result)
+        }
+        Err(e) => {
+            error!("❌ Transaction rollback: {}", e);
+            let _ = uow.rollback().await;
+            Err(e)
+        }
+    }
+}

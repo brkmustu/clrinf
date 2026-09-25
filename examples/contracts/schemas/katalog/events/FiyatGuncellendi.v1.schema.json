@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.clrinf.com/katalog/events/FiyatGuncellendi.v1.schema.json",
+  "title": "FiyatGuncellendiV1",
+  "description": "Bir ürünün birim fiyatı güncellendiğinde yayımlanan olay.",
+  "type": "object",
+  "x-event-type": "com.clrinf.katalog.FiyatGuncellendi.v1",
+  "x-domain": "katalog",
+  "required": ["sku", "eskiFiyat", "yeniFiyat", "paraBirimi", "degistirenKullanici"],
+  "properties": {
+    "sku": { "type": "string", "description": "Stok tutma birimi kodu" },
+    "eskiFiyat": { "type": "number", "description": "Önceki birim fiyatı" },
+    "yeniFiyat": { "type": "number", "description": "Güncel birim fiyatı" },
+    "paraBirimi": { "type": "string", "description": "Para birimi kodu (ISO 4217)" },
+    "degistirenKullanici": { "type": "string", "description": "Fiyatı güncelleyen kullanıcı ID" },
+    "gerekce": { "type": "string", "description": "Değişiklik gerekçesi" },
+    "gecerlilikBaslangic": { "type": "string", "format": "date-time" },
+    "gecerlilikBitis": { "type": "string", "format": "date-time" }
+  }
+}

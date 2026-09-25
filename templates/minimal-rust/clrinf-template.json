@@ -1,0 +1,8 @@
+{
+  "name": "minimal-rust",
+  "description": "Standard-library-only Rust application service with an in-process module boundary.",
+  "language": "rust",
+  "kind": "minimal",
+  "capabilities": ["in-process-dispatch", "request-result-context", "input-validation", "no-runtime-dependencies"],
+  "quickstart": ["cargo run --offline", "cargo test --offline"]
+}

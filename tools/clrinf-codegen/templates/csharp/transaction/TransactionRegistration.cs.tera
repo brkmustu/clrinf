@@ -1,0 +1,31 @@
+{# @clrinf:generated — C# Transaction Pipeline Registration #}
+// @clrinf:generated — Bu dosya clrinf-codegen tarafından üretilmiştir.
+// Modül: Transaction | Provider: {{ provider | default(value="native") }} | Dispatcher: {{ dispatcher | default(value="native") }}
+using Microsoft.Extensions.DependencyInjection;
+{% if dispatcher == "mediatr" %}
+using MediatR;
+using {{ namespace }}.Application.Common.Behaviors;
+
+namespace {{ namespace }}.Infrastructure.Transaction;
+
+public static class TransactionRegistration
+{
+    public static IServiceCollection AddTransactionServices(this IServiceCollection services)
+    {
+        services.AddTransient(typeof(IPipelineBehavior<,>), typeof(TransactionBehavior<,>));
+        return services;
+    }
+}
+{% else %}
+using {{ namespace }}.Common.Transaction;
+
+namespace {{ namespace }}.Common.Transaction;
+
+public static class TransactionRegistration
+{
+    public static IServiceCollection AddTransactionServices(this IServiceCollection services)
+    {
+        return services;
+    }
+}
+{% endif %}

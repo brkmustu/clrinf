@@ -1,0 +1,16 @@
+{# @clrinf:generated — C# Cache Dependency Injection Registration #}
+// @clrinf:generated — Bu dosya clrinf-codegen tarafından üretilmiştir.
+// Modül: Caching | Provider: {{ provider | default(value="memory") }}
+using Microsoft.Extensions.DependencyInjection;
+
+namespace {{ namespace }}.Infrastructure.Caching;
+
+public static class CacheRegistration
+{
+    public static IServiceCollection AddCachingServices(this IServiceCollection services)
+    {
+        services.AddMemoryCache();
+        services.AddSingleton<ICacheService, MemoryCacheService>();
+        return services;
+    }
+}

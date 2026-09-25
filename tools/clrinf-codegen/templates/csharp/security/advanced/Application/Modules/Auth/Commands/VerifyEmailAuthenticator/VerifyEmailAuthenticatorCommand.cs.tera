@@ -1,0 +1,50 @@
+using System;
+using System.Threading;
+using System.Threading.Tasks;
+using {{ project_namespace }}.Application.Common.Pipeline;
+using {{ project_namespace }}.Application.Services.Repositories;
+using {{ project_namespace }}.Domain.Entities;
+using {{ project_namespace }}.Domain.Enums;
+
+namespace {{ project_namespace }}.Application.Modules.Auth.Commands.VerifyEmailAuthenticator;
+
+public class VerifyEmailAuthenticatorCommand : ICommand<Unit>
+{
+    public int UserId { get; set; }
+    public string ActivationKey { get; set; } = string.Empty;
+}
+
+internal sealed class VerifyEmailAuthenticatorCommandHandler : ICommandHandler<VerifyEmailAuthenticatorCommand, Unit>
+{
+    private readonly IUserRepository _userRepository;
+    private readonly IEmailAuthenticatorRepository _emailAuthenticatorRepository;
+
+    public VerifyEmailAuthenticatorCommandHandler(IUserRepository userRepository, IEmailAuthenticatorRepository emailAuthenticatorRepository)
+    {
+        _userRepository = userRepository;
+        _emailAuthenticatorRepository = emailAuthenticatorRepository;
+    }
+
+    public async ValueTask<Unit> HandleAsync(VerifyEmailAuthenticatorCommand request, CancellationToken cancellationToken)
+    {
+        EmailAuthenticator? emailAuthenticator = await _emailAuthenticatorRepository.GetAsync(e => e.UserId == request.UserId, cancellationToken: cancellationToken);
+        if (emailAuthenticator == null)
+            throw new Exception("Email doğrulaması bulunamadı.");
+
+        if (emailAuthenticator.ActivationKey != request.ActivationKey)
+            throw new Exception("Aktivasyon kodu hatalı.");
+
+        emailAuthenticator.IsVerified = true;
+        emailAuthenticator.ActivationKey = null;
+        await _emailAuthenticatorRepository.UpdateAsync(emailAuthenticator);
+
+        User? user = await _userRepository.GetAsync(u => u.Id == request.UserId, cancellationToken: cancellationToken);
+        if (user != null)
+        {
+            user.AuthenticatorType = AuthenticatorType.Email;
+            await _userRepository.UpdateAsync(user);
+        }
+
+        return Unit.Value;
+    }
+}

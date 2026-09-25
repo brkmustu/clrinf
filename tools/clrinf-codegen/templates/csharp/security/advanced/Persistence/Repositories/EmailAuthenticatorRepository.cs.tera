@@ -1,0 +1,13 @@
+using {{ project_namespace }}.Application.Services.Repositories;
+using {{ project_namespace }}.Domain.Entities;
+using {{ project_namespace }}.Persistence.Common;
+using {{ project_namespace }}.Persistence.Contexts;
+
+namespace {{ project_namespace }}.Persistence.Repositories;
+
+public class EmailAuthenticatorRepository : EfRepositoryBase<EmailAuthenticator, int, BaseDbContext>, IEmailAuthenticatorRepository
+{
+    public EmailAuthenticatorRepository(BaseDbContext context) : base(context)
+    {
+    }
+}

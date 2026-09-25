@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.clrinf.com/kampanya/events/KampanyaUygulandi.v1.schema.json",
+  "title": "KampanyaUygulandiV1",
+  "description": "Bir sepet veya siparişe kampanya indirimi başarıyla uygulandığında yayımlanan CloudEvent.",
+  "type": "object",
+  "x-event-type": "com.clrinf.kampanya.KampanyaUygulandi.v1",
+  "x-domain": "kampanya",
+  "required": ["kod", "sepetId", "indirimTutari", "kalanKullanimKotasi", "uygulanmaZamani"],
+  "properties": {
+    "kod": { "type": "string" },
+    "sepetId": { "type": "string" },
+    "kullaniciId": { "type": "string" },
+    "indirimTutari": { "type": "number", "minimum": 0 },
+    "kalanKullanimKotasi": { "type": "integer" },
+    "uygulanmaZamani": { "type": "string", "format": "date-time" }
+  }
+}

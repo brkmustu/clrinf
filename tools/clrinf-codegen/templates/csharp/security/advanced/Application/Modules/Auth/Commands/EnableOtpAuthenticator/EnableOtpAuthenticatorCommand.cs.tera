@@ -1,0 +1,61 @@
+using System;
+using System.Threading;
+using System.Threading.Tasks;
+using {{ project_namespace }}.Application.Common.Pipeline;
+using {{ project_namespace }}.Application.Modules.Auth.Responses;
+using {{ project_namespace }}.Application.Services.Repositories;
+using {{ project_namespace }}.Domain.Entities;
+using {{ project_namespace }}.Application.Services.Security.Otp;
+
+namespace {{ project_namespace }}.Application.Modules.Auth.Commands.EnableOtpAuthenticator;
+
+public class EnableOtpAuthenticatorCommand : ICommand<EnabledOtpAuthenticatorResponse>
+{
+    public int UserId { get; set; }
+}
+
+internal sealed class EnableOtpAuthenticatorCommandHandler : ICommandHandler<EnableOtpAuthenticatorCommand, EnabledOtpAuthenticatorResponse>
+{
+    private readonly IUserRepository _userRepository;
+    private readonly IOtpAuthenticatorRepository _otpAuthenticatorRepository;
+
+    public EnableOtpAuthenticatorCommandHandler(IUserRepository userRepository, IOtpAuthenticatorRepository otpAuthenticatorRepository)
+    {
+        _userRepository = userRepository;
+        _otpAuthenticatorRepository = otpAuthenticatorRepository;
+    }
+
+    public async ValueTask<EnabledOtpAuthenticatorResponse> HandleAsync(EnableOtpAuthenticatorCommand request, CancellationToken cancellationToken)
+    {
+        User? user = await _userRepository.GetAsync(u => u.Id == request.UserId, cancellationToken: cancellationToken);
+        if (user == null)
+            throw new Exception("Kullanıcı bulunamadı.");
+
+        OtpAuthenticator? existingAuthenticator = await _otpAuthenticatorRepository.GetAsync(o => o.UserId == user.Id, cancellationToken: cancellationToken);
+        if (existingAuthenticator != null && existingAuthenticator.IsVerified)
+            throw new Exception("OTP 2FA zaten aktif.");
+
+        byte[] secretKey = OtpHelper.GenerateSecretKey();
+
+        if (existingAuthenticator != null)
+        {
+            existingAuthenticator.SecretKey = secretKey;
+            existingAuthenticator.IsVerified = false;
+            await _otpAuthenticatorRepository.UpdateAsync(existingAuthenticator);
+        }
+        else
+        {
+            var newOtpAuthenticator = new OtpAuthenticator(user.Id, secretKey, false);
+            await _otpAuthenticatorRepository.AddAsync(newOtpAuthenticator);
+        }
+
+        string base32Key = OtpHelper.ConvertSecretKeyToBase32(secretKey);
+        string qrCodeUri = OtpHelper.FormatOtpQrCodeUri("{{ project_namespace }}", user.Email, secretKey);
+
+        return new EnabledOtpAuthenticatorResponse
+        {
+            SecretKeyBase32 = base32Key,
+            QrCodeUri = qrCodeUri
+        };
+    }
+}

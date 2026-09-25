@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "DersTamamlandiV1",
+  "description": "Canlı dersin başarıyla bittiğini bildiren olay.",
+  "type": "object",
+  "x-event-type": "com.clrinf.egitim.DersTamamlandi.v1",
+  "x-domain": "egitim",
+  "properties": {
+    "lesson_id": { "type": "string", "description": "Ders kimliği" },
+    "teacher_id": { "type": "string", "description": "Eğitmen kimliği" },
+    "student_id": { "type": "string", "description": "Öğrenci kimliği" },
+    "actual_duration_minutes": { "type": "integer", "minimum": 0, "description": "Gerçekleşen süre" },
+    "settlement_amount": { "type": "number", "minimum": 0, "description": "Eğitmene aktarılan tutar (TL)" },
+    "completed_at": { "type": "string", "format": "date-time", "description": "Bitiş zamanı" }
+  },
+  "required": ["lesson_id", "teacher_id", "student_id", "actual_duration_minutes", "settlement_amount", "completed_at"],
+  "additionalProperties": false
+}

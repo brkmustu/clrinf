@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.clrinf.com/eticaret/events/OdemeBasladi.v1.schema.json",
+  "title": "OdemeBasladiV1",
+  "description": "Checkout iş akışı başlatıldığında ve sepet kilitlendiğinde yayımlanan olay.",
+  "type": "object",
+  "x-event-type": "com.clrinf.eticaret.OdemeBasladi.v1",
+  "x-domain": "eticaret",
+  "required": ["siparisId", "sepetId", "tahsilEdilecekTutar", "paraBirimi", "baslangicZamani"],
+  "properties": {
+    "siparisId": { "type": "string", "description": "Oluşturulacak sipariş ID" },
+    "sepetId": { "type": "string", "description": "Kilitlenen sepet ID" },
+    "tahsilEdilecekTutar": { "type": "number", "minimum": 0 },
+    "paraBirimi": { "type": "string" },
+    "baslangicZamani": { "type": "string", "format": "date-time" }
+  }
+}

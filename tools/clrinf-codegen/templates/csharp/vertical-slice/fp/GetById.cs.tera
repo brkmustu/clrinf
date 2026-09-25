@@ -1,0 +1,38 @@
+namespace {{ project_namespace }}.Modules.{{ module_name }};
+
+using {{ project_namespace }}.Common.Pipeline;
+using {{ project_namespace }}.Common.Functional;
+using {{ project_namespace }}.Domain.Common.Exceptions;
+using {{ project_namespace }}.Data;
+using Microsoft.EntityFrameworkCore;
+
+public static class GetById
+{
+    public sealed record Query({{ entity.id_type }} Id) : IQuery<Result<Response, DomainError>>;
+
+    public sealed record Response(
+        {{ entity.id_type }} Id{% for prop in entity.properties %},
+        {{ prop.type }} {{ prop.name }}{% endfor %}
+    );
+
+    internal sealed class Handler({{ db_context_name }} db) :
+        IQueryHandler<Query, Result<Response, DomainError>>
+    {
+        public async ValueTask<Result<Response, DomainError>> HandleAsync(Query request, CancellationToken ct)
+        {
+            var entity = await db.{{ entity.name_plural }}
+                .AsNoTracking()
+                .FirstOrDefaultAsync(x => x.Id.Equals(request.Id), ct);
+
+            if (entity is null)
+                return Result<Response, DomainError>.Failure(new DomainError("{{ entity.name }}.NotFound", $"{{ entity.name }} with Id '{request.Id}' was not found."));
+
+            var response = new Response(
+                entity.Id{% for prop in entity.properties %},
+                entity.{{ prop.name }}{% endfor %}
+            );
+
+            return Result<Response, DomainError>.Success(response);
+        }
+    }
+}

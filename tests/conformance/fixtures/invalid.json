@@ -1,0 +1,40 @@
+{
+  "context": [
+    {
+      "name": "missing tenant",
+      "value": {"correlation_id": "workflow-example", "causation_id": "request-example"}
+    },
+    {
+      "name": "non-string causation",
+      "value": {"tenant_id": "tenant-example", "correlation_id": "workflow-example", "causation_id": 17}
+    }
+  ],
+  "error": [
+    {
+      "name": "missing error code",
+      "value": {"message": "Not found", "correlation_id": "workflow-example", "tenant_id": "tenant-example", "retryable": false}
+    },
+    {
+      "name": "non-boolean retryable",
+      "value": {"error_code": "NOT_FOUND", "message": "Not found", "correlation_id": "workflow-example", "tenant_id": "tenant-example", "retryable": "false"}
+    }
+  ],
+  "event": [
+    {
+      "name": "incorrect specversion",
+      "value": {"specversion": "2.0", "id": "event-example", "source": "clrinf/documents", "type": "com.clrinf.documents.Changed.v1", "time": "2026-09-09T03:00:00Z", "datacontenttype": "application/json", "tenantid": "tenant-example", "correlationid": "workflow-example", "causationid": "request-example", "data": {}}
+    },
+    {
+      "name": "missing tenant",
+      "value": {"specversion": "1.0", "id": "event-example", "source": "clrinf/documents", "type": "com.clrinf.documents.Changed.v1", "time": "2026-09-09T03:00:00Z", "datacontenttype": "application/json", "correlationid": "workflow-example", "causationid": "request-example", "data": {}}
+    },
+    {
+      "name": "non-object data",
+      "value": {"specversion": "1.0", "id": "event-example", "source": "clrinf/documents", "type": "com.clrinf.documents.Changed.v1", "time": "2026-09-09T03:00:00Z", "datacontenttype": "application/json", "tenantid": "tenant-example", "correlationid": "workflow-example", "causationid": "request-example", "data": []}
+    },
+    {
+      "name": "non-boolean error flag",
+      "value": {"specversion": "1.0", "id": "event-example", "source": "clrinf/documents", "type": "com.clrinf.documents.Changed.v1", "time": "2026-09-09T03:00:00Z", "datacontenttype": "application/json", "tenantid": "tenant-example", "correlationid": "workflow-example", "causationid": "request-example", "data": {}, "is_error": "false"}
+    }
+  ]
+}

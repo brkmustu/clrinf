@@ -1,0 +1,35 @@
+{# @clrinf:generated — C# Cedar Authorization DI Registration #}
+// @clrinf:generated — Bu dosya clrinf-codegen tarafından üretilmiştir.
+// Modül: Authorization | Provider: Cedar | Dispatcher: {{ dispatcher | default(value="native") }}
+using Microsoft.Extensions.DependencyInjection;
+{% if dispatcher == "mediatr" %}
+using MediatR;
+using {{ namespace }}.Application.Common.Behaviors;
+
+namespace {{ namespace }}.Infrastructure.Security.Authorization;
+
+public static class CedarRegistration
+{
+    public static IServiceCollection AddCedarAuthorization(this IServiceCollection services)
+    {
+        services.AddHttpContextAccessor();
+        services.AddSingleton<ICedarPolicyEngine, CedarPolicyEngine>();
+        services.AddTransient(typeof(IPipelineBehavior<,>), typeof(AuthorizationBehavior<,>));
+        return services;
+    }
+}
+{% else %}
+using ClrinfCS.Core;
+using {{ namespace }}.Common.Authz;
+
+namespace {{ namespace }}.Common.Authz;
+
+public static class CedarRegistration
+{
+    public static IServiceCollection AddCedarAuthorization(this IServiceCollection services)
+    {
+        services.AddSingleton<MultiTenantCedarAuthorizer>();
+        return services;
+    }
+}
+{% endif %}

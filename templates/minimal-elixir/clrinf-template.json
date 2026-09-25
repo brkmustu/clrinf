@@ -1,0 +1,8 @@
+{
+  "name": "minimal-elixir",
+  "description": "Standard-library-only Elixir application service with an in-process module boundary.",
+  "language": "elixir",
+  "kind": "minimal",
+  "capabilities": ["in-process-dispatch", "request-result-context", "input-validation", "no-runtime-dependencies"],
+  "quickstart": ["mix run -e 'MinimalService.Demo.run()'", "mix test"]
+}

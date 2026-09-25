@@ -1,0 +1,8 @@
+using {{ project_namespace }}.Application.Common.Repositories;
+using {{ project_namespace }}.Domain.Entities;
+
+namespace {{ project_namespace }}.Application.Services.Repositories;
+
+public interface IOtpAuthenticatorRepository : IAsyncRepository<OtpAuthenticator, int>, IRepository<OtpAuthenticator, int>
+{
+}

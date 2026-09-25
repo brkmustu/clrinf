@@ -1,0 +1,63 @@
+using System;
+using System.Collections.Generic;
+using System.Threading;
+using System.Threading.Tasks;
+using {{ project_namespace }}.Application.Common.Pipeline;
+using {{ project_namespace }}.Application.Modules.Auth.Responses;
+using {{ project_namespace }}.Application.Services.Repositories;
+using {{ project_namespace }}.Application.Services.Security.JWT;
+using {{ project_namespace }}.Domain.Entities;
+
+namespace {{ project_namespace }}.Application.Modules.Auth.Commands.RefreshToken;
+
+public class RefreshTokenCommand : ICommand<LoggedResponse>
+{
+    public string RefreshToken { get; set; } = string.Empty;
+    public string IpAddress { get; set; } = string.Empty;
+}
+
+internal sealed class RefreshTokenCommandHandler : ICommandHandler<RefreshTokenCommand, LoggedResponse>
+{
+    private readonly IRefreshTokenRepository _refreshTokenRepository;
+    private readonly IUserRepository _userRepository;
+    private readonly ITokenHelper _tokenHelper;
+
+    public RefreshTokenCommandHandler(
+        IRefreshTokenRepository refreshTokenRepository,
+        IUserRepository userRepository,
+        ITokenHelper tokenHelper)
+    {
+        _refreshTokenRepository = refreshTokenRepository;
+        _userRepository = userRepository;
+        _tokenHelper = tokenHelper;
+    }
+
+    public async ValueTask<LoggedResponse> HandleAsync(RefreshTokenCommand request, CancellationToken cancellationToken)
+    {
+        Domain.Entities.RefreshToken? refreshToken = await _refreshTokenRepository.GetAsync(r => r.Token == request.RefreshToken, cancellationToken: cancellationToken);
+        if (refreshToken == null || refreshToken.Revoked != null || refreshToken.Expires <= DateTime.UtcNow)
+            throw new Exception("Geçersiz veya süresi dolmuş refresh token.");
+
+        User? user = await _userRepository.GetAsync(u => u.Id == refreshToken.UserId, cancellationToken: cancellationToken);
+        if (user == null)
+            throw new Exception("Kullanıcı bulunamadı.");
+
+        var claims = new List<OperationClaim>();
+        AccessToken newAccessToken = _tokenHelper.CreateToken(user, claims);
+        Domain.Entities.RefreshToken newRefreshToken = _tokenHelper.CreateRefreshToken(user, request.IpAddress);
+
+        refreshToken.Revoked = DateTime.UtcNow;
+        refreshToken.RevokedByIp = request.IpAddress;
+        refreshToken.ReplacedByToken = newRefreshToken.Token;
+
+        await _refreshTokenRepository.UpdateAsync(refreshToken);
+        await _refreshTokenRepository.AddAsync(newRefreshToken);
+
+        return new LoggedResponse
+        {
+            AccessToken = newAccessToken.Token,
+            Expiration = newAccessToken.Expiration,
+            RefreshToken = newRefreshToken.Token
+        };
+    }
+}

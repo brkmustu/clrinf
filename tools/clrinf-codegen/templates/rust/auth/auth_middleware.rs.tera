@@ -1,0 +1,27 @@
+{# @clrinf:generated — Rust Authentication Middleware Template #}
+// @clrinf:generated — Bu dosya clrinf-codegen tarafından üretilmiştir.
+// Modül: Authentication | Provider: {{ provider | default(value="jwt") }}
+
+use clrinf_core::auth::{AuthError, AuthResult, Claims, TokenService};
+use std::sync::Arc;
+
+/// Authentication middleware for extracting and validating bearer tokens.
+pub struct AuthMiddleware<T: TokenService> {
+    token_service: Arc<T>,
+}
+
+impl<T: TokenService> AuthMiddleware<T> {
+    pub fn new(token_service: Arc<T>) -> Self {
+        Self { token_service }
+    }
+
+    /// Extract bearer token from an authorization header string and verify.
+    pub async fn authenticate(&self, auth_header: Option<&str>) -> AuthResult<Claims> {
+        let header = auth_header.ok_or(AuthError::MissingCredentials)?;
+        let token = header
+            .strip_prefix("Bearer ")
+            .ok_or_else(|| AuthError::InvalidToken("Expected Bearer token".into()))?;
+
+        self.token_service.verify_token(token).await
+    }
+}

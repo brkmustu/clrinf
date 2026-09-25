@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.clrinf.com/oms/queries/SiparisListesiSorgula.v1.schema.json",
+  "title": "SiparisListesiSorgulaV1",
+  "description": "Durum, müşteri veya tarih aralığına göre sipariş listeleme sorgusu.",
+  "type": "object",
+  "x-query-type": "com.clrinf.oms.SiparisListesiSorgula.v1",
+  "x-domain": "oms",
+  "properties": {
+    "durum": { "type": "string" },
+    "kullaniciId": { "type": "string" },
+    "sayfa": { "type": "integer", "default": 1 },
+    "sayfaBoyutu": { "type": "integer", "default": 20 }
+  }
+}

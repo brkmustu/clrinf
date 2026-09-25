@@ -1,0 +1,90 @@
+using System;
+using System.Security.Cryptography;
+using System.Text;
+
+namespace {{ project_namespace }}.Application.Services.Security.Otp;
+
+public static class OtpHelper
+{
+    public static byte[] GenerateSecretKey()
+    {
+        byte[] key = new byte[20];
+        using var rng = RandomNumberGenerator.Create();
+        rng.GetBytes(key);
+        return key;
+    }
+
+    public static string ConvertSecretKeyToBase32(byte[] secretKey)
+    {
+        const string alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
+        if (secretKey == null || secretKey.Length == 0)
+            return string.Empty;
+
+        StringBuilder result = new((secretKey.Length * 8 + 4) / 5);
+        int buffer = secretKey[0];
+        int next = 1;
+        int bitsLeft = 8;
+        while (bitsLeft > 0 || next < secretKey.Length)
+        {
+            if (bitsLeft < 5)
+            {
+                if (next < secretKey.Length)
+                {
+                    buffer = (buffer << 8) | (secretKey[next++] & 0xff);
+                    bitsLeft += 8;
+                }
+                else
+                {
+                    int pad = 5 - bitsLeft;
+                    buffer <<= pad;
+                    bitsLeft += pad;
+                }
+            }
+            int index = 0x1f & (buffer >> (bitsLeft - 5));
+            bitsLeft -= 5;
+            result.Append(alphabet[index]);
+        }
+        return result.ToString();
+    }
+
+    public static bool VerifyTotpCode(byte[] secretKey, string code)
+    {
+        if (secretKey == null || string.IsNullOrWhiteSpace(code) || code.Length != 6 || !long.TryParse(code, out _))
+            return false;
+
+        long currentTimeStep = DateTimeOffset.UtcNow.ToUnixTimeSeconds() / 30;
+
+        for (int i = -1; i <= 1; i++)
+        {
+            string computedCode = generateTotpForTimeStep(secretKey, currentTimeStep + i);
+            if (computedCode == code)
+                return true;
+        }
+        return false;
+    }
+
+    private static string generateTotpForTimeStep(byte[] secretKey, long timeStep)
+    {
+        byte[] timeStepBytes = BitConverter.GetBytes(timeStep);
+        if (BitConverter.IsLittleEndian)
+            Array.Reverse(timeStepBytes);
+
+        using var hmac = new HMACSHA1(secretKey);
+        byte[] hash = hmac.ComputeHash(timeStepBytes);
+
+        int offset = hash[hash.Length - 1] & 0x0F;
+        int binaryCode = ((hash[offset] & 0x7F) << 24)
+                       | ((hash[offset + 1] & 0xFF) << 16)
+                       | ((hash[offset + 2] & 0xFF) << 8)
+                       | (hash[offset + 3] & 0xFF);
+
+        int otp = binaryCode % 1000000;
+        return otp.ToString("D6");
+    }
+
+    public static string FormatOtpQrCodeUri(string issuer, string userEmail, byte[] secretKey)
+    {
+        string base32Key = ConvertSecretKeyToBase32(secretKey);
+        return $"otpauth://totp/{Uri.EscapeDataString(issuer)}:{Uri.EscapeDataString(userEmail)}?secret={base32Key}&issuer={Uri.EscapeDataString(issuer)}";
+    }
+}

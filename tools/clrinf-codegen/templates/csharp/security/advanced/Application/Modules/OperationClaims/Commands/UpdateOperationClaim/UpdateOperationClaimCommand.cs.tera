@@ -1,0 +1,36 @@
+using {{ project_namespace }}.Application.Common.Pipeline;
+using {{ project_namespace }}.Application.Modules.OperationClaims.DTOs;
+using {{ project_namespace }}.Application.Modules.OperationClaims.Responses;
+using {{ project_namespace }}.Application.Services.Repositories;
+using {{ project_namespace }}.Domain.Entities;
+
+namespace {{ project_namespace }}.Application.Modules.OperationClaims.Commands.UpdateOperationClaim;
+
+public record UpdateOperationClaimCommand(UpdateOperationClaimDto Dto) : ICommand<UpdatedOperationClaimResponse>;
+
+public class UpdateOperationClaimCommandHandler : ICommandHandler<UpdateOperationClaimCommand, UpdatedOperationClaimResponse>
+{
+    private readonly IOperationClaimRepository _operationClaimRepository;
+
+    public UpdateOperationClaimCommandHandler(IOperationClaimRepository operationClaimRepository)
+    {
+        _operationClaimRepository = operationClaimRepository;
+    }
+
+    public async ValueTask<UpdatedOperationClaimResponse> HandleAsync(UpdateOperationClaimCommand request, CancellationToken cancellationToken)
+    {
+        OperationClaim? claim = await _operationClaimRepository.GetAsync(c => c.Id == request.Dto.Id, cancellationToken: cancellationToken);
+        if (claim == null)
+            throw new Exception("Rol yetkisi bulunamadı.");
+
+        claim.Name = request.Dto.Name;
+
+        OperationClaim updated = await _operationClaimRepository.UpdateAsync(claim);
+
+        return new UpdatedOperationClaimResponse
+        {
+            Id = updated.Id,
+            Name = updated.Name
+        };
+    }
+}

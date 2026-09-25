@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.clrinf.com/oms/events/SiparisDurumuDegisti.v1.schema.json",
+  "title": "SiparisDurumuDegistiV1",
+  "description": "Sipariş durumu değiştiğinde yayımlanan CloudEvent.",
+  "type": "object",
+  "x-event-type": "com.clrinf.oms.SiparisDurumuDegisti.v1",
+  "x-domain": "oms",
+  "required": ["siparisId", "eskiDurum", "yeniDurum", "degisimZamani"],
+  "properties": {
+    "siparisId": { "type": "string" },
+    "eskiDurum": { "type": "string" },
+    "yeniDurum": { "type": "string" },
+    "degistirenKullanici": { "type": "string" },
+    "degisimZamani": { "type": "string", "format": "date-time" }
+  }
+}

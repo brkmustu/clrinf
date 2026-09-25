@@ -1,0 +1,8 @@
+{
+  "name": "eticaret-showcase",
+  "description": "E-commerce reference showcase application.",
+  "language": "polyglot",
+  "kind": "showcase",
+  "capabilities": ["domain-example", "reference-design"],
+  "quickstart": ["Read README.md for the optional showcase deployment and its limitations."]
+}

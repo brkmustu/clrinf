@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "QuizGonderildiV1",
+  "description": "Öğrenciye canlı quiz fırlatıldığını bildiren olay.",
+  "type": "object",
+  "x-event-type": "com.clrinf.egitim.QuizGonderildi.v1",
+  "x-domain": "egitim",
+  "properties": {
+    "quiz_id": { "type": "string", "description": "Soru kimliği" },
+    "lesson_id": { "type": "string", "description": "Ders kimliği" },
+    "question": { "type": "string", "description": "Soru metni" },
+    "points": { "type": "integer", "description": "Puan" }
+  },
+  "required": ["quiz_id", "lesson_id", "question", "points"],
+  "additionalProperties": false
+}

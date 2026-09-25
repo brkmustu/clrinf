@@ -1,0 +1,49 @@
+{# @clrinf:generated — TypeScript Cache Module Template #}
+// @clrinf:generated — Bu dosya clrinf-codegen tarafından üretilmiştir.
+// Modül: Caching | Provider: {{ provider | default(value="memory") }}
+
+import type { CacheService } from "@clrinf/core";
+
+/**
+ * In-memory cache implementation using Map.
+ * Default TTL: {{ default_ttl_seconds | default(value=300) }} seconds.
+ */
+export class MemoryCacheService implements CacheService {
+  private readonly entries = new Map<string, { value: unknown; expiresAt: number }>();
+  private readonly defaultTtlMs = {{ default_ttl_seconds | default(value=300) }} * 1000;
+
+  async set<T>(key: string, value: T, ttlMs?: number): Promise<void> {
+    this.evict();
+    this.entries.set(key, {
+      value,
+      expiresAt: Date.now() + (ttlMs ?? this.defaultTtlMs),
+    });
+  }
+
+  async get<T>(key: string): Promise<T | undefined> {
+    const entry = this.entries.get(key);
+    if (!entry) return undefined;
+    if (entry.expiresAt <= Date.now()) {
+      this.entries.delete(key);
+      return undefined;
+    }
+    return entry.value as T;
+  }
+
+  async remove(key: string): Promise<void> {
+    this.entries.delete(key);
+  }
+
+  async removeByPrefix(prefix: string): Promise<void> {
+    for (const key of this.entries.keys()) {
+      if (key.startsWith(prefix)) this.entries.delete(key);
+    }
+  }
+
+  private evict(): void {
+    const now = Date.now();
+    for (const [key, entry] of this.entries) {
+      if (entry.expiresAt <= now) this.entries.delete(key);
+    }
+  }
+}

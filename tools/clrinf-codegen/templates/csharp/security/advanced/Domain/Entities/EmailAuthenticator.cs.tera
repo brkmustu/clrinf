@@ -1,0 +1,31 @@
+using {{ project_namespace }}.Domain.Common.Entities;
+
+namespace {{ project_namespace }}.Domain.Entities;
+
+public class EmailAuthenticator : Entity<int>
+{
+    public int UserId { get; set; }
+    public string? ActivationKey { get; set; }
+    public bool IsVerified { get; set; }
+
+    public virtual User User { get; set; } = default!;
+
+    public EmailAuthenticator()
+    {
+    }
+
+    public EmailAuthenticator(int userId, string? activationKey, bool isVerified)
+    {
+        UserId = userId;
+        ActivationKey = activationKey;
+        IsVerified = isVerified;
+    }
+
+    public EmailAuthenticator(int id, int userId, string? activationKey, bool isVerified)
+        : base(id)
+    {
+        UserId = userId;
+        ActivationKey = activationKey;
+        IsVerified = isVerified;
+    }
+}

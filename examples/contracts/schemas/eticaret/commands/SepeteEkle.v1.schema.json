@@ -1,0 +1,34 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.clrinf.com/eticaret/commands/SepeteEkle.v1.schema.json",
+  "title": "SepeteEkleV1",
+  "description": "Kullanıcının sepetine ürün kalemi ekleme veya miktar artırma komutu.",
+  "type": "object",
+  "x-command-type": "com.clrinf.eticaret.SepeteEkle.v1",
+  "x-domain": "eticaret",
+  "required": ["sepetId", "sku", "miktar", "birimFiyat"],
+  "properties": {
+    "sepetId": {
+      "type": "string",
+      "description": "Sepet benzersiz kimliği"
+    },
+    "kullaniciId": {
+      "type": "string",
+      "description": "Müşteri veya misafir oturum kimliği"
+    },
+    "sku": {
+      "type": "string",
+      "description": "Eklenecek ürün stok tutma birimi"
+    },
+    "miktar": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Eklenecek adet"
+    },
+    "birimFiyat": {
+      "type": "number",
+      "minimum": 0,
+      "description": "Ekleme anındaki birim satış fiyatı"
+    }
+  }
+}

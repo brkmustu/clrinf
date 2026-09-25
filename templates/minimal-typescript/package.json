@@ -1,0 +1,11 @@
+{
+  "name": "minimal-typescript",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/src/main.js",
+    "test": "tsc -p tsconfig.json && node dist/tests/greeting.test.js"
+  }
+}

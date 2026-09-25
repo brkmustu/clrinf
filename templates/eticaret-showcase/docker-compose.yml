@@ -1,0 +1,72 @@
+# Standalone historical application recipe; not merged into the generic root stack.
+# See README.md for the legacy authentication compatibility limitation.
+services:
+  postgres:
+    image: postgres:16.4-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${SHOWCASE_DB_PASSWORD:-local-showcase-only}
+    volumes:
+      - ./01-init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 3s
+      timeout: 3s
+      retries: 15
+
+  redis:
+    image: redis:7.4.0-alpine
+
+  nats:
+    image: nats:2.10.29-alpine
+
+  campaign-engine:
+    build:
+      context: ../../clrinfrs
+      dockerfile: examples/clrinf-kampanya/Dockerfile
+    environment:
+      PORT: "8082"
+
+  eticaret-migrator:
+    build:
+      context: ../..
+      dockerfile: templates/eticaret-showcase/backend/Dockerfile.migrator
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__DefaultConnection: Host=postgres;Port=5432;Database=clrinf_eticaret;Username=postgres;Password=${SHOWCASE_DB_PASSWORD:-local-showcase-only}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+  eticaret-api:
+    build:
+      context: ../..
+      dockerfile: templates/eticaret-showcase/backend/Dockerfile
+    ports:
+      - "127.0.0.1:5000:5000"
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://+:5000
+      AUTH_SERVICE_URL: ${SHOWCASE_AUTH_URL:-http://host.docker.internal:8081}
+      CAMPAIGN_ENGINE_URL: http://campaign-engine:8082
+      ConnectionStrings__DefaultConnection: Host=postgres;Port=5432;Database=clrinf_eticaret;Username=postgres;Password=${SHOWCASE_DB_PASSWORD:-local-showcase-only}
+      Redis__ConnectionString: redis:6379
+      Nats__Url: nats://nats:4222
+    depends_on:
+      eticaret-migrator:
+        condition: service_completed_successfully
+      redis:
+        condition: service_started
+      nats:
+        condition: service_started
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  eticaret-ui:
+    build:
+      context: ./frontend
+    ports:
+      - "127.0.0.1:3001:80"
+    depends_on:
+      - eticaret-api

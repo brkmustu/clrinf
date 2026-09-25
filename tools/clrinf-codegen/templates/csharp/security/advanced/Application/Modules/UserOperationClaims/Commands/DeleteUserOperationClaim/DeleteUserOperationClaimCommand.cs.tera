@@ -1,0 +1,29 @@
+using {{ project_namespace }}.Application.Common.Pipeline;
+using {{ project_namespace }}.Application.Modules.UserOperationClaims.Responses;
+using {{ project_namespace }}.Application.Services.Repositories;
+using {{ project_namespace }}.Domain.Entities;
+
+namespace {{ project_namespace }}.Application.Modules.UserOperationClaims.Commands.DeleteUserOperationClaim;
+
+public record DeleteUserOperationClaimCommand(int Id) : ICommand<DeletedUserOperationClaimResponse>;
+
+public class DeleteUserOperationClaimCommandHandler : ICommandHandler<DeleteUserOperationClaimCommand, DeletedUserOperationClaimResponse>
+{
+    private readonly IUserOperationClaimRepository _userOperationClaimRepository;
+
+    public DeleteUserOperationClaimCommandHandler(IUserOperationClaimRepository userOperationClaimRepository)
+    {
+        _userOperationClaimRepository = userOperationClaimRepository;
+    }
+
+    public async ValueTask<DeletedUserOperationClaimResponse> HandleAsync(DeleteUserOperationClaimCommand request, CancellationToken cancellationToken)
+    {
+        UserOperationClaim? uoc = await _userOperationClaimRepository.GetAsync(c => c.Id == request.Id, cancellationToken: cancellationToken);
+        if (uoc == null)
+            throw new Exception("Kullanıcı yetki ilişkisi bulunamadı.");
+
+        await _userOperationClaimRepository.DeleteAsync(uoc);
+
+        return new DeletedUserOperationClaimResponse { Id = uoc.Id };
+    }
+}

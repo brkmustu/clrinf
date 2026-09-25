@@ -1,0 +1,6 @@
+namespace {{ project_namespace }}.Application.Modules.OperationClaims.Responses;
+
+public class DeletedOperationClaimResponse
+{
+    public int Id { get; set; }
+}

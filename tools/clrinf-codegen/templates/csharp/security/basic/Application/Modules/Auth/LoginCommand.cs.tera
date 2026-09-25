@@ -1,0 +1,68 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
+using Microsoft.EntityFrameworkCore;
+using {{ project_namespace }}.Application.Common.Pipeline;
+using {{ project_namespace }}.Application.Services.Repositories;
+using {{ project_namespace }}.Application.Services.Security.Encryption;
+using {{ project_namespace }}.Application.Services.Security.JWT;
+using {{ project_namespace }}.Domain.Entities;
+
+namespace {{ project_namespace }}.Application.Modules.Auth;
+
+public class LoginCommand : ICommand<LoggedResponse>
+{
+    public required UserForLoginDto UserForLoginDto { get; set; }
+    public string IpAddress { get; set; } = string.Empty;
+}
+
+internal sealed class LoginCommandHandler : ICommandHandler<LoginCommand, LoggedResponse>
+{
+    private readonly IUserRepository _userRepository;
+    private readonly IUserOperationClaimRepository _userOperationClaimRepository;
+    private readonly IRefreshTokenRepository _refreshTokenRepository;
+    private readonly ITokenHelper _tokenHelper;
+
+    public LoginCommandHandler(
+        IUserRepository userRepository,
+        IUserOperationClaimRepository userOperationClaimRepository,
+        IRefreshTokenRepository refreshTokenRepository,
+        ITokenHelper tokenHelper)
+    {
+        _userRepository = userRepository;
+        _userOperationClaimRepository = userOperationClaimRepository;
+        _refreshTokenRepository = refreshTokenRepository;
+        _tokenHelper = tokenHelper;
+    }
+
+    public async ValueTask<LoggedResponse> HandleAsync(LoginCommand request, CancellationToken cancellationToken)
+    {
+        User? user = await _userRepository.GetAsync(u => u.Email == request.UserForLoginDto.Email, cancellationToken: cancellationToken);
+        if (user == null)
+            throw new Exception("Kullanıcı bulunamadı.");
+
+        if (!HashingHelper.VerifyPasswordHash(request.UserForLoginDto.Password, user.PasswordHash, user.PasswordSalt))
+            throw new Exception("Parola hatalı.");
+
+        var userOperationClaims = await _userOperationClaimRepository.GetListAsync(
+            u => u.UserId == user.Id,
+            include: u => u.Include(x => x.OperationClaim),
+            cancellationToken: cancellationToken
+        );
+        IList<OperationClaim> operationClaims = userOperationClaims.Items.Select(u => u.OperationClaim).ToList();
+
+        AccessToken accessToken = _tokenHelper.CreateToken(user, operationClaims);
+        RefreshToken refreshToken = _tokenHelper.CreateRefreshToken(user, request.IpAddress);
+
+        await _refreshTokenRepository.AddAsync(refreshToken);
+
+        return new LoggedResponse
+        {
+            AccessToken = accessToken.Token,
+            Expiration = accessToken.Expiration,
+            RefreshToken = refreshToken.Token
+        };
+    }
+}

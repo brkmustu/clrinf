@@ -1,0 +1,8 @@
+{
+  "name": "minimal-csharp",
+  "description": "Standard-library-only .NET 10 application service with an in-process module boundary.",
+  "language": "csharp",
+  "kind": "minimal",
+  "capabilities": ["in-process-dispatch", "request-result-context", "input-validation", "no-runtime-dependencies"],
+  "quickstart": ["dotnet run", "dotnet run -- --self-test"]
+}

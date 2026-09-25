@@ -1,0 +1,29 @@
+{# @clrinf:generated — C# Logging Pipeline Registration #}
+// @clrinf:generated — Bu dosya clrinf-codegen tarafından üretilmiştir.
+// Modül: Logging | Provider: {{ provider | default(value="structured") }} | Dispatcher: {{ dispatcher | default(value="native") }}
+using Microsoft.Extensions.DependencyInjection;
+{% if dispatcher == "mediatr" %}
+using MediatR;
+using {{ namespace }}.Application.Common.Behaviors;
+
+namespace {{ namespace }}.Infrastructure.Logging;
+
+public static class LogRegistration
+{
+    public static IServiceCollection AddLoggingServices(this IServiceCollection services)
+    {
+        services.AddTransient(typeof(IPipelineBehavior<,>), typeof(LoggingBehavior<,>));
+        return services;
+    }
+}
+{% else %}
+namespace {{ namespace }}.Common.Logging;
+
+public static class LogRegistration
+{
+    public static IServiceCollection AddLoggingServices(this IServiceCollection services)
+    {
+        return services;
+    }
+}
+{% endif %}

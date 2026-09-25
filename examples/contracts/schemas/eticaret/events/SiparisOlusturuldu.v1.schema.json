@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.clrinf.com/eticaret/events/SiparisOlusturuldu.v1.schema.json",
+  "title": "SiparisOlusturulduV1",
+  "description": "5 adımlı OdemeSaga başarıyla sonuçlandığında ve sipariş onaylandığında yayımlanan olay.",
+  "type": "object",
+  "x-event-type": "com.clrinf.eticaret.SiparisOlusturuldu.v1",
+  "x-domain": "eticaret",
+  "required": ["siparisId", "sepetId", "toplamTutar", "paraBirimi", "onayZamani"],
+  "properties": {
+    "siparisId": { "type": "string" },
+    "sepetId": { "type": "string" },
+    "toplamTutar": { "type": "number" },
+    "paraBirimi": { "type": "string" },
+    "odemeReferansi": { "type": "string" },
+    "onayZamani": { "type": "string", "format": "date-time" }
+  }
+}

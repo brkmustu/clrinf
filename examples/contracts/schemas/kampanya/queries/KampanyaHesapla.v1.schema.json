@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.clrinf.com/kampanya/queries/KampanyaHesapla.v1.schema.json",
+  "title": "KampanyaHesaplaV1",
+  "description": "Rust Kural Motoruna çoklu sepet kalemleri ve talep edilen kampanyaları göndererek optimum indirim çözümleme sözleşmesi.",
+  "type": "object",
+  "x-query-type": "com.clrinf.kampanya.KampanyaHesapla.v1",
+  "x-domain": "kampanya",
+  "required": ["sepetId", "sepetTutari", "kalemler", "talepEdilenKampanyalar"],
+  "properties": {
+    "sepetId": { "type": "string" },
+    "kullaniciId": { "type": "string" },
+    "sepetTutari": { "type": "number", "minimum": 0 },
+    "kalemler": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["sku", "miktar", "birimFiyat", "kategoriYolu"],
+        "properties": {
+          "sku": { "type": "string" },
+          "miktar": { "type": "integer" },
+          "birimFiyat": { "type": "number" },
+          "kategoriYolu": { "type": "string" }
+        }
+      }
+    },
+    "talepEdilenKampanyalar": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Uygulanmak istenen kampanya kodları listesi"
+    }
+  }
+}

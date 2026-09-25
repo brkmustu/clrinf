@@ -1,0 +1,36 @@
+@WebAPI_HostAddress = http://localhost:5000
+
+### Get List Sepetler
+GET /api/Sepetler?PageIndex=0&PageSize=10
+Accept: application/json
+
+### Get Sepet By Id
+GET /api/Sepetler/1
+Accept: application/json
+
+### Create Sepet
+POST /api/Sepetler
+Content-Type: application/json
+
+{
+  "kullaniciId": "Sample KullaniciId",
+  "toplamTutar": "Sample ToplamTutar",
+  "indirimTutari": "Sample IndirimTutari",
+  "kilitli": "Sample Kilitli"
+}
+
+### Update Sepet
+PUT /api/Sepetler
+Content-Type: application/json
+
+{
+  "id": 1,
+  "kullaniciId": "Updated KullaniciId",
+  "toplamTutar": "Updated ToplamTutar",
+  "indirimTutari": "Updated IndirimTutari",
+  "kilitli": "Updated Kilitli"
+}
+
+### Delete Sepet
+DELETE /api/Sepetler/1
+Accept: application/json

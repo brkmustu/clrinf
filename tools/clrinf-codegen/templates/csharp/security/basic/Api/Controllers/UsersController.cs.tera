@@ -1,0 +1,47 @@
+using Microsoft.AspNetCore.Authorization;
+using {{ project_namespace }}.Application.Common.Paging;
+using {{ project_namespace }}.Application.Modules.Users;
+using Microsoft.AspNetCore.Mvc;
+
+namespace {{ project_namespace }}.Api.Controllers;
+
+[Route("api/[controller]")]
+[ApiController]
+[Authorize(Roles = "Admin")]
+public class UsersController : BaseController
+{
+    [HttpGet("{id}")]
+    public async Task<IActionResult> GetById([FromRoute] int id)
+    {
+        GetUserResponse result = await Dispatcher.QueryAsync(new GetByIdUserQuery(id));
+        return Ok(result);
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> GetList([FromQuery] int pageIndex = 0, [FromQuery] int pageSize = 10)
+    {
+        IPaginate<UserListItemDto> result = await Dispatcher.QueryAsync(new GetListUserQuery(pageIndex, pageSize));
+        return Ok(result);
+    }
+
+    [HttpPost]
+    public async Task<IActionResult> Add([FromBody] CreateUserDto userDto)
+    {
+        CreatedUserResponse result = await Dispatcher.SendAsync(new CreateUserCommand(userDto));
+        return Created(uri: "", result);
+    }
+
+    [HttpPut]
+    public async Task<IActionResult> Update([FromBody] UpdateUserDto userDto)
+    {
+        UpdatedUserResponse result = await Dispatcher.SendAsync(new UpdateUserCommand(userDto));
+        return Ok(result);
+    }
+
+    [HttpDelete("{id}")]
+    public async Task<IActionResult> Delete([FromRoute] int id)
+    {
+        DeletedUserResponse result = await Dispatcher.SendAsync(new DeleteUserCommand(id));
+        return Ok(result);
+    }
+}

@@ -1,0 +1,141 @@
+# Local development only. Core libraries and generated models need none of these services.
+#
+# clrinf port scheme (5170x — avoids all common dev ports):
+#   51700  NATS broker (host)         NATS_PORT
+#   51701  clrinfrs generic HTTP      PORT
+#   51702  clrinfcs .NET HTTP         PORT
+#   51703  clrinfjs Event Inspector   INSPECTOR_PORT
+#   51704  clrinfex Streaming/Presence STREAMING_PORT
+#   51705  clrinf-auth IAM/JWKS       PORT
+#   51706  clrinf-kampanya (example)  PORT
+#   51780  PostgreSQL adapter         POSTGRES_PORT
+#   51781  Redis adapter              REDIS_PORT
+#   51782  NATS monitor               NATS_MONITOR_PORT
+#   51783  OTel gRPC                  —
+#   51784  OTel HTTP                  —
+#
+# All host bindings are 127.0.0.1-only. Override any port via the env variable shown above.
+# Internal container ports (e.g. NATS 4222) are unchanged within the Docker network.
+services:
+  nats:
+    image: nats:2.10.29-alpine
+    ports:
+      - "127.0.0.1:${NATS_PORT:-51700}:4222"
+      - "127.0.0.1:${NATS_MONITOR_PORT:-51782}:8222"
+    command: ["--jetstream", "--store_dir=/data", "-m", "8222"]
+    volumes:
+      - nats_data:/data
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "-", "http://127.0.0.1:8222/healthz"]
+      interval: 3s
+      timeout: 2s
+      retries: 20
+
+  postgres:
+    image: postgres:16.4-alpine
+    profiles: ["storage"]
+    environment:
+      POSTGRES_USER: clrinf
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-local-development-only}
+      POSTGRES_DB: clrinf
+    ports:
+      - "127.0.0.1:${POSTGRES_PORT:-51780}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U clrinf"]
+      interval: 3s
+      timeout: 3s
+      retries: 10
+
+  redis:
+    image: redis:7.4.0-alpine
+    profiles: ["storage"]
+    ports:
+      - "127.0.0.1:${REDIS_PORT:-51781}:6379"
+    volumes:
+      - redis_data:/data
+
+  event-inspector:
+    profiles: ["tools"]
+    build:
+      context: ./clrinfjs
+    ports:
+      - "127.0.0.1:${INSPECTOR_PORT:-51703}:4200"
+    environment:
+      PORT: "4200"
+      HOST: "0.0.0.0"
+      INSPECTOR_ALLOW_UNAUTHENTICATED: "true"
+      NATS_URL: nats://nats:4222
+    depends_on:
+      nats:
+        condition: service_healthy
+
+  streaming-service:
+    profiles: ["tools"]
+    build:
+      context: ./clrinfex
+    ports:
+      - "127.0.0.1:${STREAMING_PORT:-51704}:4000"
+    environment:
+      PORT: "4000"
+      NATS_URL: nats://nats:4222
+    depends_on:
+      nats:
+        condition: service_healthy
+
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.123.0
+    profiles: ["observability"]
+    command: ["--config=/etc/otel-collector-config.yaml"]
+    volumes:
+      - ./tools/docker/observability/otel-collector-config.yaml:/etc/otel-collector-config.yaml:ro
+    ports:
+      - "127.0.0.1:${OTEL_GRPC_PORT:-51783}:4317"
+      - "127.0.0.1:${OTEL_HTTP_PORT:-51784}:4318"
+      - "127.0.0.1:8889:8889"
+    depends_on:
+      - tempo
+      - loki
+
+  tempo:
+    image: grafana/tempo:2.7.2
+    profiles: ["observability"]
+    command: ["-config.file=/etc/tempo.yaml"]
+    volumes:
+      - ./tools/docker/observability/tempo.yaml:/etc/tempo.yaml:ro
+    ports:
+      - "127.0.0.1:3200:3200"
+
+  loki:
+    image: grafana/loki:3.4.2
+    profiles: ["observability"]
+    command: ["-config.file=/etc/loki/local-config.yaml"]
+    volumes:
+      - ./tools/docker/observability/loki-config.yaml:/etc/loki/local-config.yaml:ro
+    ports:
+      - "127.0.0.1:3100:3100"
+
+  prometheus:
+    image: prom/prometheus:v3.2.1
+    profiles: ["observability"]
+    command: ["--config.file=/etc/prometheus/prometheus.yml"]
+    volumes:
+      - ./tools/docker/observability/prometheus.yaml:/etc/prometheus/prometheus.yml:ro
+    ports:
+      - "127.0.0.1:9090:9090"
+
+  grafana:
+    image: grafana/grafana:11.6.0
+    profiles: ["observability"]
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-local-development-only}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    ports:
+      - "127.0.0.1:3000:3000"
+
+volumes:
+  nats_data:
+  postgres_data:
+  redis_data:

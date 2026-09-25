@@ -1,0 +1,7 @@
+namespace {{ project_namespace }}.Application.Modules.Auth.Responses;
+
+public class EnabledOtpAuthenticatorResponse
+{
+    public string SecretKeyBase32 { get; set; } = string.Empty;
+    public string QrCodeUri { get; set; } = string.Empty;
+}

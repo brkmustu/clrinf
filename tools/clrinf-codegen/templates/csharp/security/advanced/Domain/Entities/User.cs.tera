@@ -1,0 +1,36 @@
+using {{ project_namespace }}.Domain.Common.Entities;
+using {{ project_namespace }}.Domain.Enums;
+
+namespace {{ project_namespace }}.Domain.Entities;
+
+public class User : Entity<int>
+{
+    public string FirstName { get; set; } = string.Empty;
+    public string LastName { get; set; } = string.Empty;
+    public string Email { get; set; } = string.Empty;
+    public byte[] PasswordSalt { get; set; } = Array.Empty<byte>();
+    public byte[] PasswordHash { get; set; } = Array.Empty<byte>();
+    public bool Status { get; set; } = true;
+    public AuthenticatorType AuthenticatorType { get; set; } = AuthenticatorType.None;
+
+    public virtual ICollection<UserOperationClaim> UserOperationClaims { get; set; } = new HashSet<UserOperationClaim>();
+    public virtual ICollection<RefreshToken> RefreshTokens { get; set; } = new HashSet<RefreshToken>();
+    public virtual ICollection<OtpAuthenticator> OtpAuthenticators { get; set; } = new HashSet<OtpAuthenticator>();
+    public virtual ICollection<EmailAuthenticator> EmailAuthenticators { get; set; } = new HashSet<EmailAuthenticator>();
+
+    public User()
+    {
+    }
+
+    public User(int id, string firstName, string lastName, string email, byte[] passwordSalt, byte[] passwordHash, bool status, AuthenticatorType authenticatorType)
+        : base(id)
+    {
+        FirstName = firstName;
+        LastName = lastName;
+        Email = email;
+        PasswordSalt = passwordSalt;
+        PasswordHash = passwordHash;
+        Status = status;
+        AuthenticatorType = authenticatorType;
+    }
+}

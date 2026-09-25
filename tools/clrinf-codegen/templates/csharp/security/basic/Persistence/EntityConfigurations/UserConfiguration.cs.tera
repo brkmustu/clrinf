@@ -1,0 +1,42 @@
+using System.Security.Cryptography;
+using System.Text;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata.Builders;
+using {{ project_namespace }}.Domain.Entities;
+
+namespace {{ project_namespace }}.Persistence.EntityConfigurations;
+
+public class UserConfiguration : IEntityTypeConfiguration<User>
+{
+    public void Configure(EntityTypeBuilder<User> builder)
+    {
+        builder.ToTable("Users").HasKey(u => u.Id);
+        builder.Property(u => u.Id).HasColumnName("Id").IsRequired();
+        builder.Property(u => u.FirstName).HasColumnName("FirstName").IsRequired();
+        builder.Property(u => u.LastName).HasColumnName("LastName").IsRequired();
+        builder.Property(u => u.Email).HasColumnName("Email").IsRequired();
+        builder.HasIndex(u => u.Email, "UK_Users_Email").IsUnique();
+        builder.Property(u => u.PasswordHash).HasColumnName("PasswordHash").IsRequired();
+        builder.Property(u => u.PasswordSalt).HasColumnName("PasswordSalt").IsRequired();
+        builder.Property(u => u.Status).HasColumnName("Status").HasDefaultValue(true).IsRequired();
+
+        builder.HasData(getSeedUser());
+    }
+
+    private User getSeedUser()
+    {
+        byte[] passwordSalt = Encoding.UTF8.GetBytes("{{ project_name }}_SECRET_ADMIN_SALT_KEY_2026!");
+        using var hmac = new HMACSHA512(passwordSalt);
+        byte[] passwordHash = hmac.ComputeHash(Encoding.UTF8.GetBytes("Admin123!"));
+
+        return new User(
+            id: 1,
+            firstName: "Admin",
+            lastName: "User",
+            email: "admin@admin.com",
+            passwordSalt: passwordSalt,
+            passwordHash: passwordHash,
+            status: true
+        );
+    }
+}

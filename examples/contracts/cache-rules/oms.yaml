@@ -1,0 +1,24 @@
+# Event-Driven Cache Invalidation Rules: Sipariş Yönetimi (OMS)
+domain: oms
+version: 1.0.0
+
+rules:
+  - event_type: "com.clrinf.oms.SiparisDurumuDegisti.v1"
+    description: "Sipariş durumu değiştiğinde sipariş detay ve aktif siparişler önbelleğini geçersiz kıl"
+    invalidate:
+      - pattern: "oms:order:{data.siparisId}"
+      - pattern: "oms:orders:active"
+      - pattern: "oms:orders:summary"
+
+  - event_type: "com.clrinf.oms.SiparisKargoyaVerildi.v1"
+    description: "Sipariş kargoya verildiğinde kargo takip ve sipariş durum önbelleğini geçersiz kıl"
+    invalidate:
+      - pattern: "oms:order:{data.siparisId}"
+      - pattern: "oms:shipments:pending"
+      - pattern: "oms:tracking:{data.siparisId}"
+
+  - event_type: "com.clrinf.oms.SiparisIadeEdildi.v1"
+    description: "Sipariş iade edildiğinde iade listesi ve sipariş detayını geçersiz kıl"
+    invalidate:
+      - pattern: "oms:order:{data.siparisId}"
+      - pattern: "oms:returns:summary"

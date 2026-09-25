@@ -1,0 +1,8 @@
+{
+  "name": "minimal-typescript",
+  "description": "Dependency-free TypeScript application service with an in-process module boundary.",
+  "language": "typescript",
+  "kind": "minimal",
+  "capabilities": ["in-process-dispatch", "request-result-context", "input-validation", "no-runtime-dependencies"],
+  "quickstart": ["bun run src/main.ts", "bun run tests/greeting.test.ts"]
+}

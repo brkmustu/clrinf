@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "DersBaslatCommandV1",
+  "description": "1-e-1 Canlı ders oturumunu başlatan ve emanet (escrow) blokajını tetikleyen komut.",
+  "type": "object",
+  "x-command-type": "com.clrinf.egitim.DersBaslat.v1",
+  "x-domain": "egitim",
+  "properties": {
+    "lesson_id": { "type": "string", "description": "Ders oturumu tekil kimliği (Örn: LSN-9042)" },
+    "teacher_id": { "type": "string", "description": "Eğitmen tekil kullanıcı kimliği" },
+    "student_id": { "type": "string", "description": "Öğrenci tekil kullanıcı kimliği" },
+    "price": { "type": "number", "minimum": 0, "description": "Ders saatlik hakediş ücreti (TL)" },
+    "duration_minutes": { "type": "integer", "minimum": 1, "description": "Planlanan ders süresi (dakika)" }
+  },
+  "required": ["lesson_id", "teacher_id", "student_id", "price", "duration_minutes"],
+  "additionalProperties": false
+}

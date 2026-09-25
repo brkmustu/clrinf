@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.test/contracts/Record.v1",
+  "title": "RecordV1",
+  "x-domain": "common",
+  "x-event-type": "test.Record.v1",
+  "type": "object",
+  "required": ["displayName", "enabled", "nested", "payload", "type"],
+  "properties": {
+    "displayName": { "type": "string" },
+    "enabled": { "type": "boolean" },
+    "nested": { "type": "array", "items": { "type": "array", "items": { "type": "integer", "format": "int64" } } },
+    "payload": { "type": "object", "properties": { "value": { "type": "string" } } },
+    "type": { "type": "string", "enum": ["first", "second"] },
+    "count": { "type": "integer", "format": "int32" },
+    "ratio": { "type": "number" },
+    "records": { "type": "array", "items": { "type": "object" } }
+  }
+}

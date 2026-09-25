@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.clrinf.com/eticaret/events/SiparisTelafiBekliyor.v1.schema.json",
+  "title": "SiparisTelafiBekliyorV1",
+  "description": "OdemeSaga hata ile karşılaştığında ve telafi edici işlemler çalıştırıldığında yayımlanan olay.",
+  "type": "object",
+  "x-event-type": "com.clrinf.eticaret.SiparisTelafiBekliyor.v1",
+  "x-domain": "eticaret",
+  "required": ["siparisId", "sepetId", "hataKodu", "hataMesaji", "telafiEdilenAdimlar"],
+  "properties": {
+    "siparisId": { "type": "string" },
+    "sepetId": { "type": "string" },
+    "hataKodu": { "type": "string" },
+    "hataMesaji": { "type": "string" },
+    "telafiEdilenAdimlar": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "zaman": { "type": "string", "format": "date-time" }
+  }
+}

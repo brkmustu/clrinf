@@ -1,0 +1,11 @@
+{
+  "name": "clrinf-e2e-tests",
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "test": "bun test transport.test.ts"
+  },
+  "devDependencies": {
+    "@types/bun": "latest"
+  }
+}

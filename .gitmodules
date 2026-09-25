@@ -1,0 +1,12 @@
+[submodule "clrinfrs"]
+	path = clrinfrs
+	url = https://github.com/brkmustu/clrinfrs.git
+[submodule "clrinfcs"]
+	path = clrinfcs
+	url = https://github.com/brkmustu/clrinfcs.git
+[submodule "clrinfjs"]
+	path = clrinfjs
+	url = https://github.com/brkmustu/clrinfjs.git
+[submodule "clrinfex"]
+	path = clrinfex
+	url = https://github.com/brkmustu/clrinfex.git

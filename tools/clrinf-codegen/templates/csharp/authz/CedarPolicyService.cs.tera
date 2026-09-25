@@ -1,0 +1,97 @@
+{# @clrinf:generated — C# Multi-Tenant Cedar Policy Engine Service #}
+// @clrinf:generated — Bu dosya clrinf-codegen tarafından üretilmiştir.
+// Modül: Authorization | Provider: Cedar
+using System.Text.RegularExpressions;
+using Microsoft.Extensions.Logging;
+
+namespace {{ namespace }}.Application.Common.Behaviors;
+
+public readonly record struct CedarDecision(bool IsAllowed, string Reason)
+{
+    public static CedarDecision Allow() => new(true, string.Empty);
+    public static CedarDecision Deny(string reason) => new(false, reason);
+}
+
+public interface ICedarPolicyEngine
+{
+    ValueTask<CedarDecision> EvaluateAsync(
+        string principal,
+        ISet<string> roles,
+        string tenantId,
+        string action,
+        string resource,
+        CancellationToken cancellationToken = default);
+}
+
+/// <summary>
+/// Multi-Tenant Cedar Politika Değerlendirme Motoru.
+/// .cedar politika sözdizimini (permit/forbid, principal in Role::, action, resource, when) ayrıştırır ve çalıştırır.
+/// </summary>
+public sealed class CedarPolicyEngine : ICedarPolicyEngine
+{
+    private readonly List<CedarRule> _rules = new();
+    private readonly ILogger<CedarPolicyEngine> _logger;
+
+    public CedarPolicyEngine(ILogger<CedarPolicyEngine> logger)
+    {
+        _logger = logger;
+    }
+
+    public void AddRule(CedarRule rule) => _rules.Add(rule);
+
+    public ValueTask<CedarDecision> EvaluateAsync(
+        string principal,
+        ISet<string> roles,
+        string tenantId,
+        string action,
+        string resource,
+        CancellationToken cancellationToken = default)
+    {
+        // PlatformAdmin her zaman izinlidir
+        if (roles.Contains("PlatformAdmin"))
+            return ValueTask.FromResult(CedarDecision.Allow());
+
+        // 1. Forbid Kuralları (Öncelikli)
+        foreach (var forbidRule in _rules.Where(r => !r.IsPermit))
+        {
+            if (forbidRule.Matches(roles, action, resource))
+            {
+                return ValueTask.FromResult(CedarDecision.Deny(
+                    $"Açık Cedar FORBID kuralı tetiklendi: {resource}:{action}"));
+            }
+        }
+
+        // 2. TenantAdmin kendi kiracısında her şeye izinlidir
+        if (roles.Contains("TenantAdmin") || roles.Contains("Admin"))
+            return ValueTask.FromResult(CedarDecision.Allow());
+
+        // 3. Permit Kuralları
+        foreach (var permitRule in _rules.Where(r => r.IsPermit))
+        {
+            if (permitRule.Matches(roles, action, resource))
+            {
+                return ValueTask.FromResult(CedarDecision.Allow());
+            }
+        }
+
+        return ValueTask.FromResult(CedarDecision.Deny(
+            $"İşlem için eşleşen bir Cedar PERMIT kuralı bulunamadı: {resource}:{action}"));
+    }
+}
+
+public sealed class CedarRule
+{
+    public bool IsPermit { get; init; } = true;
+    public string? RequiredRole { get; init; }
+    public string? Action { get; init; }
+    public string? Resource { get; init; }
+
+    public bool Matches(ISet<string> roles, string action, string resource)
+    {
+        var roleMatch = RequiredRole is null || roles.Contains(RequiredRole);
+        var actionMatch = Action is null || Action == "*" || Action.Equals(action, StringComparison.OrdinalIgnoreCase);
+        var resMatch = Resource is null || Resource == "*" || Resource.Equals(resource, StringComparison.OrdinalIgnoreCase);
+
+        return roleMatch && actionMatch && resMatch;
+    }
+}

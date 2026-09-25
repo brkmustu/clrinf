@@ -1,0 +1,63 @@
+@apiHost = http://localhost:5000
+@authHost = http://localhost:8081
+
+### 1. Login to get token
+# @name login
+POST {{authHost}}/auth/token
+Content-Type: application/json
+
+{
+  "username": "admin",
+  "tenant_id": "tenant-1"
+}
+
+### Capture JWT Token
+@token = {{login.response.body.access_token}}
+
+### 2. Get List Products
+GET {{apiHost}}/api/Urun?PageIndex=0&PageSize=10
+Authorization: Bearer {{token}}
+Accept: application/json
+
+### 3. Get Product By Id
+GET {{apiHost}}/api/Urun/1
+Authorization: Bearer {{token}}
+Accept: application/json
+
+### 4. Create Product
+POST {{apiHost}}/api/Urun
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "sku": "SKU-OPT-999",
+  "baslik": "Endüstriyel Optik Sensör X-999",
+  "aciklama": "Yüksek hassasiyetli lazer algılayıcı",
+  "birimFiyat": 1750.00,
+  "paraBirimi": "USD",
+  "kategoriYolu": "Sensör/Optik",
+  "musaitStok": 80,
+  "yayinda": true
+}
+
+### 5. Update Product
+PUT {{apiHost}}/api/Urun
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "id": 1,
+  "sku": "SKU-100-REV",
+  "baslik": "Optik Sensör Modülü X1 (Revizyon)",
+  "aciklama": "Güncellenmiş firmware ile endüstriyel sensör",
+  "birimFiyat": 1350.00,
+  "paraBirimi": "USD",
+  "kategoriYolu": "Sensör/Optik",
+  "musaitStok": 60,
+  "yayinda": true
+}
+
+### 6. Delete Product
+DELETE {{apiHost}}/api/Urun/1
+Authorization: Bearer {{token}}
+Accept: application/json

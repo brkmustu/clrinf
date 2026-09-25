@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.clrinf.com/eticaret/commands/SepettenCikar.v1.schema.json",
+  "title": "SepettenCikarV1",
+  "description": "Kullanıcının sepetinden ürün çıkarma veya miktar azaltma komutu.",
+  "type": "object",
+  "x-command-type": "com.clrinf.eticaret.SepettenCikar.v1",
+  "x-domain": "eticaret",
+  "required": ["sepetId", "sku"],
+  "properties": {
+    "sepetId": {
+      "type": "string",
+      "description": "Sepet benzersiz kimliği"
+    },
+    "sku": {
+      "type": "string",
+      "description": "Çıkarılacak ürün stok kodu"
+    },
+    "miktar": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Eğer belirtilmişse eksiltilecek adet, boşsa tamamen çıkarır"
+    }
+  }
+}

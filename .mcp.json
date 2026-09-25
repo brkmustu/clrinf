@@ -1,0 +1,19 @@
+{
+  "mcpServers": {
+    "graft": {
+      "command": "graft",
+      "args": [
+        "mcp"
+      ]
+    },
+    "clrinf": {
+      "command": "clrinf-codegen",
+      "args": [
+        "mcp"
+      ],
+      "env": {
+        "RUST_LOG": "info"
+      }
+    }
+  }
+}

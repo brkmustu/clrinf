@@ -1,0 +1,74 @@
+{# @clrinf:generated — C# JWT Token Service #}
+// @clrinf:generated — Bu dosya clrinf-codegen tarafından üretilmiştir.
+// Modül: Authentication | Provider: JWT
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
+using System.Text;
+using Microsoft.Extensions.Configuration;
+using Microsoft.IdentityModel.Tokens;
+
+namespace {{ namespace }}.Infrastructure.Security.JWT;
+
+public class TokenOptions
+{
+    public string Issuer { get; set; } = "{{ jwt_issuer | default(value="clrinf") }}";
+    public string Audience { get; set; } = "{{ jwt_audience | default(value="clrinf-api") }}";
+    public string SecurityKey { get; set; } = string.Empty;
+    public int AccessTokenExpiration { get; set; } = {{ jwt_expiration_minutes | default(value=60) }};
+}
+
+public interface ITokenService
+{
+    string CreateToken(ClaimsPrincipal principal);
+    ClaimsPrincipal? ValidateToken(string token);
+}
+
+public sealed class JwtTokenService : ITokenService
+{
+    private readonly TokenOptions _tokenOptions;
+
+    public JwtTokenService(IConfiguration configuration)
+    {
+        _tokenOptions = configuration.GetSection("TokenOptions").Get<TokenOptions>() ?? new();
+    }
+
+    public string CreateToken(ClaimsPrincipal principal)
+    {
+        var securityKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_tokenOptions.SecurityKey));
+        var credentials = new SigningCredentials(securityKey, SecurityAlgorithms.HmacSha512Signature);
+
+        var token = new JwtSecurityToken(
+            issuer: _tokenOptions.Issuer,
+            audience: _tokenOptions.Audience,
+            claims: principal.Claims,
+            notBefore: DateTime.UtcNow,
+            expires: DateTime.UtcNow.AddMinutes(_tokenOptions.AccessTokenExpiration),
+            signingCredentials: credentials
+        );
+
+        return new JwtSecurityTokenHandler().WriteToken(token);
+    }
+
+    public ClaimsPrincipal? ValidateToken(string token)
+    {
+        var handler = new JwtSecurityTokenHandler();
+        try
+        {
+            var principal = handler.ValidateToken(token, new TokenValidationParameters
+            {
+                ValidateIssuer = true,
+                ValidateAudience = true,
+                ValidateLifetime = true,
+                ValidIssuer = _tokenOptions.Issuer,
+                ValidAudience = _tokenOptions.Audience,
+                ValidateIssuerSigningKey = true,
+                IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_tokenOptions.SecurityKey))
+            }, out _);
+            return principal;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+}

@@ -1,0 +1,17 @@
+# Event-Driven Cache Invalidation Rules: Kimlik Doğrulama & Yetkilendirme (Auth)
+domain: auth
+version: 1.0.0
+
+rules:
+  - event_type: "com.clrinf.auth.UserCreated.v1"
+    description: "Yeni bir kullanıcı eklendiğinde kullanıcı listesi önbelleğini geçersiz kıl"
+    invalidate:
+      - pattern: "auth:users:list"
+      - pattern: "auth:users:tenant:{data.tenant_id}"
+
+  - event_type: "com.clrinf.auth.PolicyUpdated.v1"
+    description: "Yetkilendirme veya Cedar politikası değiştiğinde tenant ve rol izin önbelleklerini temizle"
+    invalidate:
+      - pattern: "auth:policies:{data.tenant_id}"
+      - pattern: "auth:permissions:{data.role}"
+      - pattern: "auth:user:{data.user_id}:permissions"

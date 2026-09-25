@@ -1,0 +1,34 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.clrinf.com/stok/events/StockReleased.v1.schema.json",
+  "title": "StockReleasedV1",
+  "description": "Compensating event emitted when a previously reserved stock allocation is released back to inventory.",
+  "type": "object",
+  "x-event-type": "com.clrinf.stok.StockReleased.v1",
+  "x-domain": "stok",
+  "required": [
+    "order_id",
+    "sku",
+    "quantity",
+    "reason"
+  ],
+  "properties": {
+    "order_id": {
+      "type": "string",
+      "description": "Identifier of the order whose reservation was released"
+    },
+    "sku": {
+      "type": "string",
+      "description": "Stock keeping unit code"
+    },
+    "quantity": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Released item count"
+    },
+    "reason": {
+      "type": "string",
+      "description": "Release reason (e.g. PAYMENT_FAILED, TIMEOUT, ORDER_CANCELLED)"
+    }
+  }
+}

@@ -1,0 +1,32 @@
+{# @clrinf:generated — Rust Logging Middleware Template #}
+// @clrinf:generated — Bu dosya clrinf-codegen tarafından üretilmiştir.
+// Modül: Logging | Provider: {{ provider | default(value="structured") }}
+
+use tracing::{info, error, Instrument};
+use std::time::Instant;
+
+/// Logging middleware for request/response pipeline.
+/// Wraps handler execution with structured tracing spans.
+pub async fn with_logging<F, T, E>(
+    request_type: &str,
+    handler: F,
+) -> Result<T, E>
+where
+    F: std::future::Future<Output = Result<T, E>>,
+    E: std::fmt::Display,
+{
+    let span = tracing::info_span!("handle", request_type = %request_type);
+    let start = Instant::now();
+
+    info!("⏳ Handling {}", request_type);
+
+    let result = handler.instrument(span).await;
+
+    let elapsed = start.elapsed();
+    match &result {
+        Ok(_) => info!("✅ Handled {} in {:?}", request_type, elapsed),
+        Err(e) => error!("❌ Failed {} after {:?}: {}", request_type, elapsed, e),
+    }
+
+    result
+}

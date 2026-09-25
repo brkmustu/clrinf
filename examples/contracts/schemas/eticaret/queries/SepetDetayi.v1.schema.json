@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.clrinf.com/eticaret/queries/SepetDetayi.v1.schema.json",
+  "title": "SepetDetayiV1",
+  "description": "Sepet içeriği ve anlık fiyatlandırma sorgusu.",
+  "type": "object",
+  "x-query-type": "com.clrinf.eticaret.SepetDetayi.v1",
+  "x-domain": "eticaret",
+  "required": ["sepetId"],
+  "properties": {
+    "sepetId": {
+      "type": "string",
+      "description": "Sorgulanacak sepet ID"
+    }
+  }
+}

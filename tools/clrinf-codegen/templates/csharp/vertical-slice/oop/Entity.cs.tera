@@ -1,0 +1,8 @@
+namespace {{ project_namespace }}.Modules.{{ module_name }};
+
+public class {{ entity.name }}
+{
+    public {{ entity.id_type }} Id { get; set; } = {{ entity.id_default }};
+    public string TenantId { get; set; } = "default";
+{% for prop in entity.properties %}    public {{ prop.type }} {{ prop.name }} { get; set; } = default!;
+{% endfor %}}

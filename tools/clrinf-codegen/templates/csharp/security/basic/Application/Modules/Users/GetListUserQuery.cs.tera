@@ -1,0 +1,42 @@
+using System.Collections.Generic;
+using System.Linq;
+using {{ project_namespace }}.Application.Common.Attributes;
+using {{ project_namespace }}.Application.Common.Paging;
+using {{ project_namespace }}.Application.Common.Pipeline;
+using {{ project_namespace }}.Application.Services.Repositories;
+using {{ project_namespace }}.Domain.Entities;
+
+namespace {{ project_namespace }}.Application.Modules.Users;
+
+[RequireAuthorization("Admin")]
+public record GetListUserQuery(int PageIndex = 0, int PageSize = 10) : IQuery<IPaginate<UserListItemDto>>;
+
+public class GetListUserQueryHandler : IQueryHandler<GetListUserQuery, IPaginate<UserListItemDto>>
+{
+    private readonly IUserRepository _userRepository;
+
+    public GetListUserQueryHandler(IUserRepository userRepository)
+    {
+        _userRepository = userRepository;
+    }
+
+    public async ValueTask<IPaginate<UserListItemDto>> HandleAsync(GetListUserQuery request, CancellationToken cancellationToken)
+    {
+        IPaginate<User> users = await _userRepository.GetListAsync(
+            index: request.PageIndex,
+            size: request.PageSize,
+            cancellationToken: cancellationToken
+        );
+
+        List<UserListItemDto> dtos = users.Items.Select(u => new UserListItemDto
+        {
+            Id = u.Id,
+            FirstName = u.FirstName,
+            LastName = u.LastName,
+            Email = u.Email,
+            Status = u.Status
+        }).ToList();
+
+        return new Paginate<UserListItemDto>(dtos, users.Index, users.Size, users.Count);
+    }
+}

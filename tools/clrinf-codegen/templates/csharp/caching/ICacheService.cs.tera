@@ -1,0 +1,23 @@
+{# @clrinf:generated — C# Cache Service Interface #}
+// @clrinf:generated — Bu dosya clrinf-codegen tarafından üretilmiştir.
+// Modül: Caching | Provider: {{ provider | default(value="memory") }}
+namespace {{ namespace }}.Infrastructure.Caching;
+
+/// <summary>
+/// Uygulama genelinde önbellekleme sözleşmesi.
+/// Sorgu sonuçları, domain objeleri veya hesaplama sonuçlarını önbelleğe alır.
+/// </summary>
+public interface ICacheService
+{
+    /// <summary>Önbelleğe bir değer ekler.</summary>
+    Task SetAsync<T>(string key, T value, TimeSpan? expiration = null, CancellationToken cancellationToken = default);
+
+    /// <summary>Önbellekten bir değer okur. Bulunamazsa default döner.</summary>
+    Task<T?> GetAsync<T>(string key, CancellationToken cancellationToken = default);
+
+    /// <summary>Önbellekten bir anahtarı siler.</summary>
+    Task RemoveAsync(string key, CancellationToken cancellationToken = default);
+
+    /// <summary>Belirtilen prefix ile başlayan tüm anahtarları siler.</summary>
+    Task RemoveByPrefixAsync(string prefix, CancellationToken cancellationToken = default);
+}

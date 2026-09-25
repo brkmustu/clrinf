@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "QuizCevaplaCommandV1",
+  "description": "Öğrencinin canlı derste kendisine yöneltilen soruya verdiği cevap komutu.",
+  "type": "object",
+  "x-command-type": "com.clrinf.egitim.QuizCevapla.v1",
+  "x-domain": "egitim",
+  "properties": {
+    "quiz_id": { "type": "string", "description": "Soru tekil kimliği" },
+    "lesson_id": { "type": "string", "description": "Ders oturum kimliği" },
+    "student_id": { "type": "string", "description": "Cevaplayan öğrenci kimliği" },
+    "selected_option_index": { "type": "integer", "minimum": 0, "description": "Öğrencinin seçtiği seçenek indeksi" }
+  },
+  "required": ["quiz_id", "lesson_id", "student_id", "selected_option_index"],
+  "additionalProperties": false
+}

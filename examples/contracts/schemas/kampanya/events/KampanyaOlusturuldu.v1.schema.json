@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.clrinf.com/kampanya/events/KampanyaOlusturuldu.v1.schema.json",
+  "title": "KampanyaOlusturulduV1",
+  "description": "Yeni bir kampanya tanımlandığında yayımlanan CloudEvent.",
+  "type": "object",
+  "x-event-type": "com.clrinf.kampanya.KampanyaOlusturuldu.v1",
+  "x-domain": "kampanya",
+  "required": ["kod", "baslik", "tur", "deger", "olusturanKullanici", "olusturulmaZamani"],
+  "properties": {
+    "kod": { "type": "string" },
+    "baslik": { "type": "string" },
+    "tur": { "type": "string" },
+    "deger": { "type": "number" },
+    "hedefKategori": { "type": "string" },
+    "minimumSepetTutari": { "type": "number" },
+    "maksimumKullanimSayisi": { "type": "integer" },
+    "olusturanKullanici": { "type": "string" },
+    "olusturulmaZamani": { "type": "string", "format": "date-time" }
+  }
+}

@@ -1,0 +1,37 @@
+using {{ project_namespace }}.Application.Common.Paging;
+using {{ project_namespace }}.Application.Common.Pipeline;
+using {{ project_namespace }}.Application.Modules.UserOperationClaims.DTOs;
+using {{ project_namespace }}.Application.Services.Repositories;
+using {{ project_namespace }}.Domain.Entities;
+
+namespace {{ project_namespace }}.Application.Modules.UserOperationClaims.Queries.GetListUserOperationClaim;
+
+public record GetListUserOperationClaimQuery(int PageIndex = 0, int PageSize = 10) : IQuery<IPaginate<UserOperationClaimListItemDto>>;
+
+public class GetListUserOperationClaimQueryHandler : IQueryHandler<GetListUserOperationClaimQuery, IPaginate<UserOperationClaimListItemDto>>
+{
+    private readonly IUserOperationClaimRepository _userOperationClaimRepository;
+
+    public GetListUserOperationClaimQueryHandler(IUserOperationClaimRepository userOperationClaimRepository)
+    {
+        _userOperationClaimRepository = userOperationClaimRepository;
+    }
+
+    public async ValueTask<IPaginate<UserOperationClaimListItemDto>> HandleAsync(GetListUserOperationClaimQuery request, CancellationToken cancellationToken)
+    {
+        IPaginate<UserOperationClaim> uocs = await _userOperationClaimRepository.GetListAsync(
+            index: request.PageIndex,
+            size: request.PageSize,
+            cancellationToken: cancellationToken
+        );
+
+        List<UserOperationClaimListItemDto> dtos = uocs.Items.Select(c => new UserOperationClaimListItemDto
+        {
+            Id = c.Id,
+            UserId = c.UserId,
+            OperationClaimId = c.OperationClaimId
+        }).ToList();
+
+        return new Paginate<UserOperationClaimListItemDto>(dtos, uocs.Index, uocs.Size, uocs.Count);
+    }
+}

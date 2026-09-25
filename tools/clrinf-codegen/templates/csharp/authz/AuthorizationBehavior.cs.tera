@@ -1,0 +1,151 @@
+{# @clrinf:generated — C# Multi-Tenant Cedar Authorization Pipeline Behavior #}
+// @clrinf:generated — Bu dosya clrinf-codegen tarafından üretilmiştir.
+// Modül: Authorization | Provider: {{ authz_provider | default(value="cedar") }} | Dispatcher: {{ dispatcher | default(value="native") }}
+using System;
+using System.Reflection;
+using System.Threading;
+using System.Threading.Tasks;
+{% if dispatcher == "mediatr" %}
+using System.Security.Claims;
+using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Logging;
+using MediatR;
+
+namespace {{ namespace }}.Application.Common.Behaviors;
+
+public sealed class AuthorizationBehavior<TRequest, TResponse> : IPipelineBehavior<TRequest, TResponse>
+    where TRequest : notnull
+{
+    private readonly IHttpContextAccessor _httpContextAccessor;
+    private readonly ICedarPolicyEngine _cedarEngine;
+    private readonly ILogger<AuthorizationBehavior<TRequest, TResponse>> _logger;
+
+    public AuthorizationBehavior(
+        IHttpContextAccessor httpContextAccessor,
+        ICedarPolicyEngine cedarEngine,
+        ILogger<AuthorizationBehavior<TRequest, TResponse>> logger)
+    {
+        _httpContextAccessor = httpContextAccessor;
+        _cedarEngine = cedarEngine;
+        _logger = logger;
+    }
+
+    public async ValueTask<TResponse> HandleAsync(
+        TRequest request,
+        CancellationToken cancellationToken,
+        RequestHandlerDelegate<TResponse> next)
+    {
+        var securedAttr = typeof(TRequest).GetCustomAttribute<SecuredOperationAttribute>();
+        var cedarAttr = typeof(TRequest).GetCustomAttribute<CedarAuthorizeAttribute>();
+
+        if (securedAttr is null && cedarAttr is null)
+            return await next();
+
+        var user = _httpContextAccessor.HttpContext?.User;
+        if (user?.Identity?.IsAuthenticated != true)
+            throw new UnauthorizedAccessException("Kimlik doğrulama gereklidir.");
+
+        var userTenantId = user.FindFirst("tenant_id")?.Value ?? string.Empty;
+        var userRoles = user.FindAll(ClaimTypes.Role).Select(c => c.Value).ToHashSet();
+        var isPlatformAdmin = userRoles.Contains("PlatformAdmin");
+
+        var targetTenantProp = typeof(TRequest).GetProperty("TenantId");
+        if (targetTenantProp is not null)
+        {
+            var targetTenantId = targetTenantProp.GetValue(request)?.ToString();
+            if (!string.IsNullOrEmpty(targetTenantId) && targetTenantId != userTenantId && !isPlatformAdmin)
+            {
+                _logger.LogWarning("Kiracı İzolasyon İhlali: Kullanıcı kiracısı '{UserTenant}', hedef kiracı '{TargetTenant}'",
+                    userTenantId, targetTenantId);
+                throw new UnauthorizedAccessException(
+                    $"Kiracı izolasyon ihlali: '{userTenantId}' kiracısı '{targetTenantId}' kiracısına ait kaynağa erişemez.");
+            }
+        }
+
+        if (isPlatformAdmin)
+            return await next();
+
+        if (cedarAttr is not null)
+        {
+            var decision = await _cedarEngine.EvaluateAsync(
+                principal: user.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "anonymous",
+                roles: userRoles,
+                tenantId: userTenantId,
+                action: cedarAttr.Action,
+                resource: cedarAttr.Resource,
+                cancellationToken: cancellationToken);
+
+            if (!decision.IsAllowed)
+            {
+                _logger.LogWarning("Cedar Yetki Reddi: {Reason}", decision.Reason);
+                throw new UnauthorizedAccessException($"Cedar yetki reddi: {decision.Reason}");
+            }
+        }
+
+        return await next();
+    }
+}
+{% else %}
+using ClrinfCS.Core;
+
+namespace {{ namespace }}.Common.Authz;
+
+/// <summary>
+/// Yerel Dispatcher uyumlu, çok kiracılı Cedar yetkilendirme pipeline davranışı.
+/// İstekte bulunan kaynağın kiracı izolasyonunu ve rol yetkilerini Amazon Cedar kurallarıyla denetler.
+/// </summary>
+public sealed class CedarAuthorizationPipelineBehavior<TRequest, TResponse> : IPipelineBehavior<TRequest, TResponse>
+    where TRequest : IRequest<TResponse>
+{
+    private readonly MultiTenantCedarAuthorizer _authorizer;
+    private readonly AuthzClaims _claims;
+
+    public CedarAuthorizationPipelineBehavior(MultiTenantCedarAuthorizer authorizer, AuthzClaims claims)
+    {
+        _authorizer = authorizer ?? throw new ArgumentNullException(nameof(authorizer));
+        _claims = claims ?? throw new ArgumentNullException(nameof(claims));
+    }
+
+    public ValueTask<TResponse> HandleAsync(
+        TRequest request,
+        RequestContext context,
+        CancellationToken cancellationToken,
+        RequestHandlerDelegate<TResponse> next)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        if (request is IRequireOperationClaim claimHolder)
+        {
+            var opClaim = claimHolder.GetRequiredClaim();
+            var authResult = _authorizer.Authorize(_claims, opClaim);
+            if (!authResult.IsAllowed)
+            {
+                throw new BusinessRuleViolationException(
+                    "AUTHZ_CEDAR_FORBIDDEN",
+                    $"Cedar yetkilendirme reddedildi: {authResult.Reason}");
+            }
+        }
+
+        return next();
+    }
+}
+{% endif %}
+
+[AttributeUsage(AttributeTargets.Class, AllowMultiple = false)]
+public sealed class CedarAuthorizeAttribute : Attribute
+{
+    public string Resource { get; }
+    public string Action { get; }
+
+    public CedarAuthorizeAttribute(string resource, string action)
+    {
+        Resource = resource;
+        Action = action;
+    }
+}
+
+[AttributeUsage(AttributeTargets.Class, AllowMultiple = false)]
+public sealed class SecuredOperationAttribute : Attribute
+{
+    public string[] Roles { get; init; } = Array.Empty<string>();
+}

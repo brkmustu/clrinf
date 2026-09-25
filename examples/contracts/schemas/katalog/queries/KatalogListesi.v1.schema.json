@@ -1,0 +1,37 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.clrinf.com/katalog/queries/KatalogListesi.v1.schema.json",
+  "title": "KatalogListesiV1",
+  "description": "Katalog ürün listesi sorgusu — kategori filtreleme ve sayfalama destekli.",
+  "type": "object",
+  "x-query-type": "com.clrinf.katalog.KatalogListesi.v1",
+  "x-domain": "katalog",
+  "properties": {
+    "kategoriYolu": {
+      "type": "string",
+      "description": "Filtrelenecek kategori yolu (isteğe bağlı)"
+    },
+    "aramaMetni": {
+      "type": "string",
+      "description": "Ürün adı veya SKU üzerinde metin arama (isteğe bağlı)"
+    },
+    "sayfa": {
+      "type": "integer",
+      "minimum": 1,
+      "default": 1,
+      "description": "Sayfa numarası"
+    },
+    "sayfaBoyutu": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 100,
+      "default": 20,
+      "description": "Sayfa başına sonuç sayısı"
+    },
+    "sadeceMüsaitUrunler": {
+      "type": "boolean",
+      "default": false,
+      "description": "Yalnızca stokta bulunan ürünler listelensin mi?"
+    }
+  }
+}

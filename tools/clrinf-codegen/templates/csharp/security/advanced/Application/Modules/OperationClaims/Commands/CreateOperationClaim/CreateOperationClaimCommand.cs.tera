@@ -1,0 +1,35 @@
+using {{ project_namespace }}.Application.Common.Pipeline;
+using {{ project_namespace }}.Application.Modules.OperationClaims.DTOs;
+using {{ project_namespace }}.Application.Modules.OperationClaims.Responses;
+using {{ project_namespace }}.Application.Services.Repositories;
+using {{ project_namespace }}.Domain.Entities;
+
+namespace {{ project_namespace }}.Application.Modules.OperationClaims.Commands.CreateOperationClaim;
+
+public record CreateOperationClaimCommand(CreateOperationClaimDto Dto) : ICommand<CreatedOperationClaimResponse>;
+
+public class CreateOperationClaimCommandHandler : ICommandHandler<CreateOperationClaimCommand, CreatedOperationClaimResponse>
+{
+    private readonly IOperationClaimRepository _operationClaimRepository;
+
+    public CreateOperationClaimCommandHandler(IOperationClaimRepository operationClaimRepository)
+    {
+        _operationClaimRepository = operationClaimRepository;
+    }
+
+    public async ValueTask<CreatedOperationClaimResponse> HandleAsync(CreateOperationClaimCommand request, CancellationToken cancellationToken)
+    {
+        OperationClaim claim = new()
+        {
+            Name = request.Dto.Name
+        };
+
+        OperationClaim created = await _operationClaimRepository.AddAsync(claim);
+
+        return new CreatedOperationClaimResponse
+        {
+            Id = created.Id,
+            Name = created.Name
+        };
+    }
+}

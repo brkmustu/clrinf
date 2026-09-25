@@ -1,0 +1,40 @@
+namespace {{ project_namespace }}.Modules.{{ module_name }};
+
+using {{ project_namespace }}.Common.Pipeline;
+using {{ project_namespace }}.Data;
+using Microsoft.EntityFrameworkCore;
+using System.Collections.Generic;
+
+public static class GetList
+{
+    public sealed record Query(int Page = 1, int PageSize = 20) : IQuery<Response>;
+
+    public sealed record ItemDto(
+        {{ entity.id_type }} Id{% for prop in entity.properties %},
+        {{ prop.type }} {{ prop.name }}{% endfor %}
+    );
+
+    public sealed record Response(IReadOnlyList<ItemDto> Items, int Page, int PageSize, int TotalCount);
+
+    internal sealed class Handler({{ db_context_name }} db) :
+        IQueryHandler<Query, Response>
+    {
+        public async ValueTask<Response> HandleAsync(Query request, CancellationToken ct)
+        {
+            var totalCount = await db.{{ entity.name_plural }}.CountAsync(ct);
+
+            var items = await db.{{ entity.name_plural }}
+                .AsNoTracking()
+                .OrderBy(x => x.Id)
+                .Skip((request.Page - 1) * request.PageSize)
+                .Take(request.PageSize)
+                .Select(x => new ItemDto(
+                    x.Id{% for prop in entity.properties %},
+                    x.{{ prop.name }}{% endfor %}
+                ))
+                .ToListAsync(ct);
+
+            return new Response(items, request.Page, request.PageSize, totalCount);
+        }
+    }
+}

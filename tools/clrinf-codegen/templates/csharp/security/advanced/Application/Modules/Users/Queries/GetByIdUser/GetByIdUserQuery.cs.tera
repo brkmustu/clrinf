@@ -1,0 +1,36 @@
+using {{ project_namespace }}.Application.Common.Attributes;
+using {{ project_namespace }}.Application.Common.Pipeline;
+using {{ project_namespace }}.Application.Modules.Users.Responses;
+using {{ project_namespace }}.Application.Services.Repositories;
+using {{ project_namespace }}.Domain.Entities;
+
+namespace {{ project_namespace }}.Application.Modules.Users.Queries.GetByIdUser;
+
+[RequireAuthorization("Admin")]
+public record GetByIdUserQuery(int Id) : IQuery<GetUserResponse>;
+
+public class GetByIdUserQueryHandler : IQueryHandler<GetByIdUserQuery, GetUserResponse>
+{
+    private readonly IUserRepository _userRepository;
+
+    public GetByIdUserQueryHandler(IUserRepository userRepository)
+    {
+        _userRepository = userRepository;
+    }
+
+    public async ValueTask<GetUserResponse> HandleAsync(GetByIdUserQuery request, CancellationToken cancellationToken)
+    {
+        User? user = await _userRepository.GetAsync(u => u.Id == request.Id, cancellationToken: cancellationToken);
+        if (user == null)
+            throw new Exception("Kullanıcı bulunamadı.");
+
+        return new GetUserResponse
+        {
+            Id = user.Id,
+            FirstName = user.FirstName,
+            LastName = user.LastName,
+            Email = user.Email,
+            Status = user.Status
+        };
+    }
+}

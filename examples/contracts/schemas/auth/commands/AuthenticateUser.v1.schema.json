@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.clrinf.com/auth/commands/AuthenticateUser.v1.schema.json",
+  "title": "AuthenticateUserCommandV1",
+  "description": "Command requesting identity authentication with credentials.",
+  "type": "object",
+  "x-command-type": "com.clrinf.auth.AuthenticateUser.v1",
+  "x-domain": "auth",
+  "required": [
+    "username",
+    "password"
+  ],
+  "properties": {
+    "username": {
+      "type": "string",
+      "description": "User username or email"
+    },
+    "password": {
+      "type": "string",
+      "format": "password",
+      "description": "Plain text password for verification"
+    },
+    "client_id": {
+      "type": "string",
+      "description": "Optional OAuth2 client ID"
+    }
+  }
+}

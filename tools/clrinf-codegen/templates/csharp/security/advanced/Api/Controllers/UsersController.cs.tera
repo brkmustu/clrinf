@@ -1,0 +1,70 @@
+using Microsoft.AspNetCore.Authorization;
+using {{ project_namespace }}.Application.Common.Paging;
+using {{ project_namespace }}.Application.Common.Pipeline;
+using {{ project_namespace }}.Application.Modules.Users.Commands.CreateUser;
+using {{ project_namespace }}.Application.Modules.Users.Commands.DeleteUser;
+using {{ project_namespace }}.Application.Modules.Users.Commands.UpdateUser;
+using {{ project_namespace }}.Application.Modules.Users.Commands.UpdateUserFromAuth;
+using {{ project_namespace }}.Application.Modules.Users.DTOs;
+using {{ project_namespace }}.Application.Modules.Users.Queries.GetByIdUser;
+using {{ project_namespace }}.Application.Modules.Users.Queries.GetListUser;
+using {{ project_namespace }}.Application.Modules.Users.Responses;
+using Microsoft.AspNetCore.Mvc;
+
+namespace {{ project_namespace }}.Api.Controllers;
+
+[Route("api/[controller]")]
+[ApiController]
+[Authorize(Roles = "Admin")]
+public class UsersController : ControllerBase
+{
+    private readonly IDispatcher _dispatcher;
+
+    public UsersController(IDispatcher dispatcher)
+    {
+        _dispatcher = dispatcher;
+    }
+
+    [HttpGet("{id}")]
+    public async ValueTask<IActionResult> GetById([FromRoute] int id)
+    {
+        GetUserResponse result = await _dispatcher.QueryAsync(new GetByIdUserQuery(id));
+        return Ok(result);
+    }
+
+    [HttpGet]
+    public async ValueTask<IActionResult> GetList([FromQuery] int pageIndex = 0, [FromQuery] int pageSize = 10)
+    {
+        IPaginate<UserListItemDto> result = await _dispatcher.QueryAsync(new GetListUserQuery(pageIndex, pageSize));
+        return Ok(result);
+    }
+
+    [HttpPost]
+    public async ValueTask<IActionResult> Add([FromBody] CreateUserDto userDto)
+    {
+        CreatedUserResponse result = await _dispatcher.SendAsync(new CreateUserCommand(userDto));
+        return Created(uri: "", result);
+    }
+
+    [HttpPut]
+    public async ValueTask<IActionResult> Update([FromBody] UpdateUserDto userDto)
+    {
+        UpdatedUserResponse result = await _dispatcher.SendAsync(new UpdateUserCommand(userDto));
+        return Ok(result);
+    }
+
+    [HttpPut("FromAuth")]
+    public async ValueTask<IActionResult> UpdateFromAuth([FromQuery] int userId, [FromBody] UpdateUserFromAuthDto dto)
+    {
+        UpdatedUserFromAuthResponse result = await _dispatcher.SendAsync(new UpdateUserFromAuthCommand(userId, dto));
+        return Ok(result);
+    }
+
+    [HttpDelete("{id}")]
+    public async ValueTask<IActionResult> Delete([FromRoute] int id)
+    {
+        DeletedUserResponse result = await _dispatcher.SendAsync(new DeleteUserCommand(id));
+        return Ok(result);
+    }
+}
+

@@ -1,0 +1,45 @@
+# clrinf Project Manifest
+# Bu dosya projenizin cross-cutting concern modüllerini yönetir.
+
+[project]
+name = "MinimalTypeScript"
+lang = "typescript"
+arch = "clean-cqrs"
+deployment = "monolith"
+host_type = "api"
+dispatcher = "native"
+
+[modules.caching]
+enabled = false
+provider = "memory"
+default_ttl_seconds = 300
+
+[modules.logging]
+enabled = true
+provider = "structured"
+
+[modules.transaction]
+enabled = true
+provider = "native"
+
+[modules.authentication]
+enabled = false
+provider = "jwt"
+
+[modules.authorization]
+enabled = false
+provider = "policy"
+
+[modules.error_handling]
+enabled = true
+
+[modules.validation]
+enabled = true
+
+[modules.idempotency]
+enabled = false
+provider = "memory"
+
+[modules.outbox]
+enabled = false
+provider = "database"

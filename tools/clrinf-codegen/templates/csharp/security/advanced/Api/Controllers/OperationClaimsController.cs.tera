@@ -1,0 +1,62 @@
+using Microsoft.AspNetCore.Authorization;
+using {{ project_namespace }}.Application.Common.Paging;
+using {{ project_namespace }}.Application.Common.Pipeline;
+using {{ project_namespace }}.Application.Modules.OperationClaims.Commands.CreateOperationClaim;
+using {{ project_namespace }}.Application.Modules.OperationClaims.Commands.DeleteOperationClaim;
+using {{ project_namespace }}.Application.Modules.OperationClaims.Commands.UpdateOperationClaim;
+using {{ project_namespace }}.Application.Modules.OperationClaims.DTOs;
+using {{ project_namespace }}.Application.Modules.OperationClaims.Queries.GetByIdOperationClaim;
+using {{ project_namespace }}.Application.Modules.OperationClaims.Queries.GetListOperationClaim;
+using {{ project_namespace }}.Application.Modules.OperationClaims.Responses;
+using Microsoft.AspNetCore.Mvc;
+
+namespace {{ project_namespace }}.Api.Controllers;
+
+[Route("api/[controller]")]
+[ApiController]
+[Authorize(Roles = "Admin")]
+public class OperationClaimsController : ControllerBase
+{
+    private readonly IDispatcher _dispatcher;
+
+    public OperationClaimsController(IDispatcher dispatcher)
+    {
+        _dispatcher = dispatcher;
+    }
+
+    [HttpGet("{id}")]
+    public async ValueTask<IActionResult> GetById([FromRoute] int id)
+    {
+        GetOperationClaimResponse result = await _dispatcher.QueryAsync(new GetByIdOperationClaimQuery(id));
+        return Ok(result);
+    }
+
+    [HttpGet]
+    public async ValueTask<IActionResult> GetList([FromQuery] int pageIndex = 0, [FromQuery] int pageSize = 10)
+    {
+        IPaginate<OperationClaimListItemDto> result = await _dispatcher.QueryAsync(new GetListOperationClaimQuery(pageIndex, pageSize));
+        return Ok(result);
+    }
+
+    [HttpPost]
+    public async ValueTask<IActionResult> Add([FromBody] CreateOperationClaimDto dto)
+    {
+        CreatedOperationClaimResponse result = await _dispatcher.SendAsync(new CreateOperationClaimCommand(dto));
+        return Created(uri: "", result);
+    }
+
+    [HttpPut]
+    public async ValueTask<IActionResult> Update([FromBody] UpdateOperationClaimDto dto)
+    {
+        UpdatedOperationClaimResponse result = await _dispatcher.SendAsync(new UpdateOperationClaimCommand(dto));
+        return Ok(result);
+    }
+
+    [HttpDelete("{id}")]
+    public async ValueTask<IActionResult> Delete([FromRoute] int id)
+    {
+        DeletedOperationClaimResponse result = await _dispatcher.SendAsync(new DeleteOperationClaimCommand(id));
+        return Ok(result);
+    }
+}
+

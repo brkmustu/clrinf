@@ -1,0 +1,6 @@
+namespace {{ project_namespace }}.Application.Modules.UserOperationClaims.Responses;
+
+public class DeletedUserOperationClaimResponse
+{
+    public int Id { get; set; }
+}

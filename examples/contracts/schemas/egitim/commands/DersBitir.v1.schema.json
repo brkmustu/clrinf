@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "DersBitirCommandV1",
+  "description": "1-e-1 Canlı ders oturumunu sonlandıran ve hakediş aktarımını tetikleyen komut.",
+  "type": "object",
+  "x-command-type": "com.clrinf.egitim.DersBitir.v1",
+  "x-domain": "egitim",
+  "properties": {
+    "lesson_id": { "type": "string", "description": "Ders oturumu tekil kimliği" },
+    "teacher_id": { "type": "string", "description": "Eğitmen tekil kimliği" },
+    "actual_duration_minutes": { "type": "integer", "minimum": 0, "description": "Gerçekleşen ders süresi (dakika)" },
+    "lesson_notes": { "type": "string", "description": "Eğitmenin ders sonu notları" }
+  },
+  "required": ["lesson_id", "teacher_id", "actual_duration_minutes"],
+  "additionalProperties": false
+}

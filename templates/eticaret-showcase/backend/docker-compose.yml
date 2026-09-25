@@ -1,0 +1,85 @@
+services:
+  postgres:
+    image: postgres:18.4-trixie
+    container_name: eticaretapp-postgres
+    environment:
+      POSTGRES_DB: EticaretApp_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql
+    restart: always
+
+  mongodb:
+    image: mongo:8.3.7
+    container_name: eticaretapp-mongodb
+    volumes:
+      - mongodb_data:/data/db
+    restart: always
+
+  opensearch:
+    image: opensearchproject/opensearch:3.7.0
+    container_name: eticaretapp-opensearch
+    environment:
+      - OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m
+      - bootstrap.memory_lock=true
+      - discovery.type=single-node
+      - action.auto_create_index=false
+      - plugins.security.disabled=true
+      - OPENSEARCH_INITIAL_ADMIN_PASSWORD=Tr0pic@lMoonlight92
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+      nofile:
+        soft: 65536
+        hard: 65536
+    volumes:
+      - opensearch_data:/usr/share/opensearch/data
+    restart: always
+
+  graylog:
+    image: graylog/graylog:7.1
+    container_name: eticaretapp-graylog
+    environment:
+      - GRAYLOG_NODE_ID_FILE=/usr/share/graylog/data/config/node-id
+      - GRAYLOG_PASSWORD_SECRET=clrinfcsSecretPassword123456789
+      - GRAYLOG_ROOT_PASSWORD_SHA2=8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918
+      - GRAYLOG_HTTP_EXTERNAL_URI=http://127.0.0.1:9000/
+      - GRAYLOG_ELASTICSEARCH_HOSTS=http://opensearch:9200
+      - GRAYLOG_MONGODB_URI=mongodb://mongodb:27017/graylog
+    ports:
+      - "9000:9000"
+      - "12201:12201/udp"
+      - "12201:12201/tcp"
+    depends_on:
+      - mongodb
+      - opensearch
+    volumes:
+      - graylog_data:/usr/share/graylog/data
+    restart: always
+
+  webapi:
+    build:
+      context: .
+      dockerfile: src/WebAPI/Dockerfile
+    container_name: eticaretapp-webapi
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=EticaretApp_db;Username=postgres;Password=postgres
+      - Graylog__Host=graylog
+      - Graylog__Port=12201
+    ports:
+      - "5055:8080"
+    depends_on:
+      - postgres
+      - graylog
+    restart: always
+
+volumes:
+  postgres_data:
+  mongodb_data:
+  opensearch_data:
+  graylog_data:
