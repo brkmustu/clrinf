@@ -569,6 +569,8 @@ fn main() -> Result<()> {
                 Some(ref cfg_path) => {
                     let p = if cfg_path.is_absolute() {
                         cfg_path.clone()
+                    } else if cfg_path.exists() {
+                        std::fs::canonicalize(cfg_path).unwrap_or_else(|_| cfg_path.clone())
                     } else {
                         abs_path.join(cfg_path)
                     };
