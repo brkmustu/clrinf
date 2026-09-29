@@ -15,10 +15,10 @@ clrinf port şeması — ortak geliştirme portlarıyla çakışmaz:
 | Port | Servis | Geçersiz kılma değişkeni |
 |---|---|---|
 | `51700` | NATS broker | `NATS_PORT` |
-| `51701` | clrinfrs generic HTTP (Rust) | `PORT` |
-| `51702` | clrinfcs .NET HTTP service | `PORT` |
-| `51703` | clrinfjs Event Inspector | `INSPECTOR_PORT` |
-| `51704` | clrinfex Streaming / Presence | `STREAMING_PORT` |
+| `51701` | core/rust generic HTTP (Rust) | `PORT` |
+| `51702` | core/csharp .NET HTTP service | `PORT` |
+| `51703` | core/typescript Event Inspector | `INSPECTOR_PORT` |
+| `51704` | core/elixir Streaming / Presence | `STREAMING_PORT` |
 | `51705` | clrinf-auth IAM / JWKS | `PORT` |
 | `51780` | PostgreSQL | `POSTGRES_PORT` |
 | `51781` | Redis | `REDIS_PORT` |
@@ -52,7 +52,7 @@ Saga doğrulaması olarak adlandırmaz.
 
 ## Kimlik ve örnek iş alanları
 
-Rust auth anahtar/config kurulumunu [Rust README](../../clrinfrs/README.md) açıklar.
+Rust auth anahtar/config kurulumunu [Rust README](../../core/rust/README.md) açıklar.
 Örnek uygulamalar [kendi dizinlerinde](../../templates/eticaret-showcase/README.md)
 yer alır; çalışan çekirdek akışın önkoşulu değildir.
 

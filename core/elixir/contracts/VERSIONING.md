@@ -1,4 +1,4 @@
-# clrinf-contracts — Versiyonlama ve Evrim Politikası
+# clrinf — Versiyonlama ve Evrim Politikası
 
 **Politika modeli:** SemVer + genişletme öncelikli şema evrimi.
 
@@ -34,8 +34,8 @@ Somut örnek:
 ## 3. Core / örnek ayrımı migrasyonu
 
 `auth`, `eticaret`, `kampanya`, `katalog`, `oms`, `stok`, `egitim` dizinleri
-`clrinf-contracts/schemas/` altından `examples/contracts/schemas/` altına
-taşınmıştır. İki EARS dosyası ve stok cache kuralı da taşınmıştır; tam eşleştirme
+`tools/clrinf-codegen/schemas/` ve monorepo sözleşme yapısına uygun olarak
+`examples/contracts/schemas/` altına toplanmıştır. İki EARS dosyası ve stok cache kuralı da taşınmıştır; tam eşleştirme
 [migration index](../examples/contracts/README.md#migration-index) içindedir.
 Örneklerin içeriği, `$id`, event kimlikleri ve göreli alt dizin yapıları değişmez.
 Dosya yolu tüketen script/config bağlantıları güncellenmelidir; bu bir wire
@@ -50,7 +50,7 @@ değiştirmek generated API'yi etkileyebilir; wire kimliğiyle karıştırılmam
 Umbrella kökünden ayrı üretim:
 
 ```sh
-clrinf-codegen generate --schema-dir clrinf-contracts/schemas --output tests/generated/core
+clrinf-codegen generate --schema-dir tools/clrinf-codegen/schemas --output tests/generated/core
 clrinf-codegen generate --schema-dir examples/contracts/schemas --output tests/generated/all
 ```
 

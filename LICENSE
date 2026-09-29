@@ -3,8 +3,8 @@ Business Source License 1.1
 Parameters
 
 Licensor:             Burak Mustu
-Licensed Work:        clrinf (including the clrinf-contracts, clrinfrs, clrinfcs,
-                      clrinfjs, clrinfex and clrinf-codegen components)
+Licensed Work:        clrinf (including core/rust, core/csharp, core/typescript,
+                      core/elixir and tools/clrinf-codegen components)
                       The Licensed Work is (c) 2026 Burak Mustu.
 Additional Use Grant: You may make use of the Licensed Work for any
                       non-production purpose, including development, testing,

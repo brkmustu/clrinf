@@ -13,7 +13,7 @@ services:
 
   event-inspector:
     build:
-      context: ./clrinfjs
+      context: ./core/typescript
     environment:
       PORT: "4200"
       HOST: "0.0.0.0"
@@ -25,7 +25,7 @@ services:
 
   streaming-service:
     build:
-      context: ./clrinfex
+      context: ./core/elixir
     environment:
       PORT: "4000"
       NATS_URL: nats://nats:4222

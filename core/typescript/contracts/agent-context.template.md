@@ -2,7 +2,7 @@
 
 ## 1. Constitution reference
 
-The design invariants in `clrinf-contracts/constitution.md` apply. Resolve this
+The design invariants in `docs/governance/constitution.md` apply. Resolve this
 repository-relative path from the umbrella root; adapt it when copying this
 template into another repository.
 
@@ -69,7 +69,7 @@ specific auth contracts. They are not core dependencies.
 Use the root canonical CLI from the umbrella repository root:
 
 ```sh
-clrinf-codegen generate --schema-dir clrinf-contracts/schemas --output tests/generated/core
+clrinf-codegen generate --schema-dir tools/clrinf-codegen/schemas --output tests/generated/core
 clrinf-codegen generate --schema-dir examples/contracts/schemas --output tests/generated/all
 ```
 

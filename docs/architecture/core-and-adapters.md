@@ -17,10 +17,10 @@ içermez. Sözleşme üreticisi iş alanını şemadan öğrenir. Örnek alanlar
 `examples/contracts/schemas` altında tutulur; dosya taşıma wire-format
 kimliklerini değiştirmez.
 
-Submodule'ler dağıtılabilir birimler olarak korunur. Bir submodule'ün .NET
-üreticisi veya Inspector gibi ek araçlar sunması, onun her API'sinin dört
-dilde birebir bulunduğu anlamına gelmez. [Yetenek matrisi](parity-matrix.md)
-kapsamı görünür yapar.
+Diller monorepo içinde `core/` altında bağımsız modüller olarak yer alır.
+Bir dil çekirdeğinin .NET üreticisi veya Inspector gibi ek araçlar sunması,
+onun her API'sinin dört dilde birebir bulunduğu anlamına gelmez.
+[Yetenek matrisi](parity-matrix.md) kapsamı görünür yapar.
 
 ## Kullanım seviyeleri
 
@@ -36,7 +36,7 @@ RLS bunun PostgreSQL'e özgü uygulama seçeneklerinden biridir.
 ## CLI sorumlulukları
 
 Root `clrinf-codegen` çok dilli sözleşme üretimi ve manifest tabanlı şablon
-kataloğudur. `clrinfcs` üreticisi .NET proje/özellik iskeletlerine odaklanır.
-`clrinfjs/cli` eski, uygulama dosyaları eksik bir snapshot'tır; çalışır CLI
-olarak sunulmaz ve bozuk bin kayıtları kaldırılır. Komutlar aynı ürün adı altında
-eşdeğer işlevler sunuyormuş gibi belgelenmez.
+kataloğudur. .NET çekirdeği (`core/csharp`) .NET proje/özellik iskeletlerine odaklanır.
+Geçmiş deneysel TypeScript CLI snapshot'tır; çalışır CLI olarak sunulmaz ve
+bozuk bin kayıtları kaldırılır. Komutlar aynı ürün adı altında eşdeğer işlevler
+sunuyormuş gibi belgelenmez.

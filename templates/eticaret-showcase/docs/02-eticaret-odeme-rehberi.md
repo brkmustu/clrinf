@@ -2,7 +2,7 @@
 
 > Bu belge, vitrin uygulamasının OdemeSaga akışını ve telafi mekanizmalarını açıklar.
 
-Bu belge, örnek uygulama için [`NO-DISTRIBUTED-TX`](../../../clrinf-contracts/constitution.md) ilkesi doğrultusunda tasarlanan **OdemeSaga** akışını ve telafi mekanizmalarını açıklar.
+Bu belge, örnek uygulama için [`NO-DISTRIBUTED-TX`](../../../docs/governance/constitution.md) ilkesi doğrultusunda tasarlanan **OdemeSaga** akışını ve telafi mekanizmalarını açıklar.
 
 ---
 

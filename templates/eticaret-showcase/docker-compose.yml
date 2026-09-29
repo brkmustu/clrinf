@@ -22,7 +22,7 @@ services:
 
   campaign-engine:
     build:
-      context: ../../clrinfrs
+      context: ../../core/rust
       dockerfile: examples/clrinf-kampanya/Dockerfile
     environment:
       PORT: "8082"

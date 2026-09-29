@@ -9,7 +9,7 @@ uçtan uca kullanımını örneklendirir.
 - `frontend/`: Svelte vitrin örneği.
 - `docs/`: İş alanı mimari ve tasarım notları.
 - İş alanı şemaları [examples/contracts](../../examples/contracts/README.md) altındadır.
-- Kampanya motoru [Rust örneklerinde](../../clrinfrs/examples/clrinf-kampanya/) yer alır.
+- Kampanya motoru [Rust örneklerinde](../../core/rust/examples/clrinf-kampanya/) yer alır.
 
 Root Compose, auth/campaign/checkout uygulamasını otomatik başlatmaz. Generic
 altyapı akışı için root README ve minimal dil örnekleri kullanılmalıdır.

@@ -97,9 +97,9 @@ impl WorkerManager {
         if let Ok(cwd) = std::env::current_dir() {
             let mut current = Some(cwd.as_path());
             while let Some(dir) = current {
-                if (dir.join("clrinfcs").is_dir()
-                    && dir.join("clrinfrs").is_dir()
-                    && dir.join("clrinfjs").is_dir())
+                if (dir.join("core/csharp").is_dir()
+                    && dir.join("core/rust").is_dir()
+                    && dir.join("core/typescript").is_dir())
                     || dir.join("tools/clrinf-codegen").is_dir()
                 {
                     return Some(dir.to_path_buf());
@@ -112,7 +112,7 @@ impl WorkerManager {
         if let Ok(exe) = std::env::current_exe() {
             let mut current = exe.parent();
             while let Some(dir) = current {
-                if (dir.join("clrinfcs").is_dir() && dir.join("clrinfrs").is_dir())
+                if (dir.join("core/csharp").is_dir() && dir.join("core/rust").is_dir())
                     || dir.join("tools/clrinf-codegen").is_dir()
                 {
                     return Some(dir.to_path_buf());
@@ -141,7 +141,7 @@ impl WorkerManager {
     }
 
     fn resolve_csharp_worker(&self) -> WorkerInfo {
-        let install_hint = "clrinfcs bulunamadı. Kurmak için: 'dotnet tool install -g clrinfcs' veya monorepo altındaki 'clrinfcs' projesini kullanın.".to_string();
+        let install_hint = "C# worker (.NET) bulunamadı. Kurmak için: 'dotnet tool install -g clrinfcs' veya monorepo altındaki 'core/csharp' projesini kullanın.".to_string();
 
         // 1. Check if 'clrinfcs' is on PATH
         if let Ok(output) = Command::new("clrinfcs").arg("--version").output() {
@@ -159,16 +159,16 @@ impl WorkerManager {
             }
         }
 
-        // 2. Monorepo fallback: dotnet run --project <root>/clrinfcs/src/ClrinfCS/ClrinfCS.csproj
+        // 2. Monorepo fallback: dotnet run --project <root>/core/csharp/src/ClrinfCS/ClrinfCS.csproj
         if let Some(ref root) = self.workspace_root {
-            let csproj = root.join("clrinfcs/src/ClrinfCS/ClrinfCS.csproj");
+            let csproj = root.join("core/csharp/src/ClrinfCS/ClrinfCS.csproj");
             if csproj.is_file() {
                 // Check if dotnet exists
                 if let Ok(output) = Command::new("dotnet").arg("--version").output() {
                     if output.status.success() {
                         return WorkerInfo {
                             kind: WorkerKind::CSharp,
-                            name: "clrinfcs (workspace fallback)".to_string(),
+                            name: "core/csharp (workspace fallback)".to_string(),
                             is_available: true,
                             executable: "dotnet".to_string(),
                             args_prefix: vec![
@@ -200,7 +200,7 @@ impl WorkerManager {
     }
 
     fn resolve_rust_worker(&self) -> WorkerInfo {
-        let install_hint = "clrinfrs bulunamadı. Kurmak için: 'cargo install --path clrinfrs/crates/clrinf-cli' veya monorepo altındaki 'clrinfrs' projesini kullanın.".to_string();
+        let install_hint = "Rust worker bulunamadı. Kurmak için: 'cargo install --path core/rust/crates/clrinf-cli' veya monorepo altındaki 'core/rust' projesini kullanın.".to_string();
 
         // 1. Check if 'clrinfrs' is on PATH
         if let Ok(output) = Command::new("clrinfrs").arg("--version").output() {
@@ -218,15 +218,15 @@ impl WorkerManager {
             }
         }
 
-        // 2. Monorepo fallback: cargo run --manifest-path <root>/clrinfrs/Cargo.toml -p clrinf-cli --
+        // 2. Monorepo fallback: cargo run --manifest-path <root>/core/rust/Cargo.toml -p clrinf-cli --
         if let Some(ref root) = self.workspace_root {
-            let cargo_toml = root.join("clrinfrs/Cargo.toml");
+            let cargo_toml = root.join("core/rust/Cargo.toml");
             if cargo_toml.is_file() {
                 if let Ok(output) = Command::new("cargo").arg("--version").output() {
                     if output.status.success() {
                         return WorkerInfo {
                             kind: WorkerKind::Rust,
-                            name: "clrinfrs (workspace fallback)".to_string(),
+                            name: "core/rust (workspace fallback)".to_string(),
                             is_available: true,
                             executable: "cargo".to_string(),
                             args_prefix: vec![
@@ -260,7 +260,7 @@ impl WorkerManager {
     }
 
     fn resolve_typescript_worker(&self) -> WorkerInfo {
-        let install_hint = "clrinfjs bulunamadı. Bun kurulu olmalı ('curl -fsSL https://bun.sh/install | bash') ve clrinfjs dizininde 'bun install' çalıştırılmalıdır.".to_string();
+        let install_hint = "TypeScript worker bulunamadı. Bun kurulu olmalı ('curl -fsSL https://bun.sh/install | bash') ve core/typescript dizininde 'bun install' çalıştırılmalıdır.".to_string();
 
         // 1. Check if Bun is available
         let bun_available = Command::new("bun")
@@ -277,11 +277,11 @@ impl WorkerManager {
                 .map(|o| format!("bun {}", String::from_utf8_lossy(&o.stdout).trim()));
 
             if let Some(ref root) = self.workspace_root {
-                let js_dir = root.join("clrinfjs");
+                let js_dir = root.join("core/typescript");
                 if js_dir.join("package.json").is_file() {
                     return WorkerInfo {
                         kind: WorkerKind::TypeScript,
-                        name: "clrinfjs (Bun)".to_string(),
+                        name: "core/typescript (Bun)".to_string(),
                         is_available: true,
                         executable: "bun".to_string(),
                         args_prefix: vec!["run".to_string(), "--cwd".to_string(), js_dir.display().to_string()],
@@ -337,11 +337,11 @@ impl WorkerManager {
                 });
 
             if let Some(ref root) = self.workspace_root {
-                let ex_dir = root.join("clrinfex");
+                let ex_dir = root.join("core/elixir");
                 if ex_dir.join("mix.exs").is_file() {
                     return WorkerInfo {
                         kind: WorkerKind::Elixir,
-                        name: "clrinfex (Mix)".to_string(),
+                        name: "core/elixir (Mix)".to_string(),
                         is_available: true,
                         executable: "mix".to_string(),
                         args_prefix: vec![],
@@ -442,9 +442,9 @@ impl WorkerManager {
                 self.execute_cmd(&worker, &args)
             }
             WorkerKind::TypeScript => {
-                // In clrinfjs: bun run lint:arch [path]
+                // In TypeScript: bun run lint:arch [path]
                 if let Some(ref root) = self.workspace_root {
-                    let linter_cli = root.join("clrinfjs/src/linter/cli.ts");
+                    let linter_cli = root.join("core/typescript/src/linter/cli.ts");
                     let mut args = vec![linter_cli.to_str().unwrap_or("src/linter/cli.ts")];
                     if let Some(ref p) = path_str {
                         args.push(p.as_str());
@@ -472,7 +472,7 @@ impl WorkerManager {
             WorkerKind::Elixir => {
                 let mut cmd = Command::new(&worker.executable);
                 if let Some(ref root) = self.workspace_root {
-                    let ex_dir = root.join("clrinfex");
+                    let ex_dir = root.join("core/elixir");
                     if ex_dir.join("mix.exs").is_file() {
                         cmd.current_dir(&ex_dir);
                     }
@@ -545,7 +545,7 @@ impl WorkerManager {
             }
             WorkerKind::TypeScript => {
                 if let Some(ref root) = self.workspace_root {
-                    let gen_cli = root.join("clrinfjs/src/generator/rule-generator.ts");
+                    let gen_cli = root.join("core/typescript/src/generator/rule-generator.ts");
                     let target_str = target_dir
                         .map(|p| p.display().to_string())
                         .unwrap_or_else(|| "src/rules".to_string());
@@ -632,7 +632,7 @@ impl WorkerManager {
             }
             WorkerKind::TypeScript => {
                 if let Some(ref root) = self.workspace_root {
-                    let cli_path = root.join("clrinfjs/src/generator/cli.ts");
+                    let cli_path = root.join("core/typescript/src/generator/cli.ts");
                     let mut cmd = Command::new("bun");
                     cmd.arg("run");
                     cmd.arg(cli_path.to_str().unwrap_or("src/generator/cli.ts"));
@@ -645,7 +645,7 @@ impl WorkerManager {
                     }
                     let output = cmd
                         .output()
-                        .with_context(|| "Failed to run bun clrinfjs generator")?;
+                        .with_context(|| "Failed to run bun generator")?;
                     Ok(WorkerExecutionResult {
                         worker: WorkerKind::TypeScript,
                         success: output.status.success(),
@@ -742,7 +742,7 @@ impl WorkerManager {
             }
             WorkerKind::TypeScript => {
                 if let Some(ref root) = self.workspace_root {
-                    let cli_path = root.join("clrinfjs/src/generator/cli.ts");
+                    let cli_path = root.join("core/typescript/src/generator/cli.ts");
                     let mut cmd = Command::new("bun");
                     cmd.arg("run");
                     cmd.arg(cli_path.to_str().unwrap_or("src/generator/cli.ts"));
@@ -761,7 +761,7 @@ impl WorkerManager {
                     }
                     let output = cmd
                         .output()
-                        .with_context(|| "Failed to run bun clrinfjs generator")?;
+                        .with_context(|| "Failed to run bun generator")?;
                     Ok(WorkerExecutionResult {
                         worker: WorkerKind::TypeScript,
                         success: output.status.success(),

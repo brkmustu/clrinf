@@ -73,10 +73,10 @@ clrinf lint --lang elixir
 
 Diğer dillerdeki (C#, Rust, TypeScript) CLI standartlarıyla tam uyumlu, Tera tabanlı üretim.
 
-### 1a. Yeni Tera Şablonları — `clrinf-contracts/templates/elixir/`
+### 1a. Yeni Tera Şablonları — `tools/clrinf-codegen/templates/elixir/`
 
 ```text
-clrinf-contracts/templates/elixir/
+tools/clrinf-codegen/templates/elixir/
   otp_worker.tera      # use GenServer; init/1, handle_call/3, handle_cast/2, handle_info/2
   otp_supervisor.tera  # use Supervisor; :one_for_one; OTP ağacına bağlar
   otp_handler.tera     # Pure fonksiyon API'si (with pipeline + {:ok,val} | {:error,err})
@@ -185,7 +185,7 @@ Elixir geliştiricisi makinesinde zaten Elixir/Mix bulundurur. Bu yüzden `mix` 
 2. `WorkerKind::all()` -> `[CSharp, Rust, TypeScript, Elixir]`.
 3. `resolve_elixir_worker`:
    - `mix --version` kontrol edilir.
-   - Proje kökünde veya `clrinfex` dizininde `mix` komutu çalıştırılır.
+   - Proje kökünde veya `core/elixir` dizininde `mix` komutu çalıştırılır.
    - `install_hint`: `"Elixir/Mix bulunamadı. Elixir'i kurmak için: https://elixir-lang.org/install.html"`.
 4. `lint()` metodu:
    - `mix clrinfex.lint <path> --format json` çalıştırılır.
@@ -235,10 +235,10 @@ Mevcut `clrinf mcp` sunucusuna eklenen / güncellenen araçlar:
 ## Proposed Changes (Dosya Düzeyi Özeti)
 
 ### Rust — `tools/clrinf-codegen/`
-- `[NEW]` `clrinf-contracts/templates/elixir/otp_worker.tera`
-- `[NEW]` `clrinf-contracts/templates/elixir/otp_supervisor.tera`
-- `[NEW]` `clrinf-contracts/templates/elixir/otp_handler.tera`
-- `[NEW]` `clrinf-contracts/templates/elixir/rule.tera`
+- `[NEW]` `tools/clrinf-codegen/templates/elixir/otp_worker.tera`
+- `[NEW]` `tools/clrinf-codegen/templates/elixir/otp_supervisor.tera`
+- `[NEW]` `tools/clrinf-codegen/templates/elixir/otp_handler.tera`
+- `[NEW]` `tools/clrinf-codegen/templates/elixir/rule.tera`
 - `[MODIFY]` `src/generator.rs`: `scaffold_otp` ve `scaffold_rule_elixir` fonksiyonları
 - `[MODIFY]` `src/main.rs`: `clrinf scaffold otp`, `clrinf rule new --lang elixir`, `clrinf docs --lang elixir`
 - `[MODIFY]` `src/worker.rs`: `WorkerKind::Elixir`, `resolve_elixir_worker`, `lint()` ve `scaffold_rule()` kolları
@@ -246,7 +246,7 @@ Mevcut `clrinf mcp` sunucusuna eklenen / güncellenen araçlar:
 - `[MODIFY]` `src/mcp.rs`: `clrinf_scaffold_otp` aracı, `clrinf_inspect_ecosystem` ve `all` listelerine Elixir eklenmesi
 - `[MODIFY]` `src/docs_provider.rs`: `ELIXIR_DOCS` mimari kılavuzu
 
-### Elixir — `clrinfex/`
+### Elixir — `core/elixir/`
 - `[NEW]` `lib/clrinfex/linter/arch_linter.ex` (AST tabanlı `ARCH_EX_001` - `ARCH_EX_004` motoru)
 - `[NEW]` `lib/mix/tasks/clrinfex.lint.ex` (`mix clrinfex.lint` task'ı, human ve JSON çıktı formatları)
 - `[NEW]` `test/clrinfex/linter/arch_linter_test.exs` (Linter birim testleri)
@@ -262,7 +262,7 @@ Mevcut `clrinf mcp` sunucusuna eklenen / güncellenen araçlar:
 cargo test -p clrinf-codegen
 
 # Elixir tarafı (linter ve task testleri)
-cd clrinfex && mix test test/clrinfex/linter/arch_linter_test.exs
+cd core/elixir && mix test test/clrinfex/linter/arch_linter_test.exs
 ```
 
 ### 2. Greenfield Testi (Sıfırdan Proje Doğrulaması)

@@ -69,10 +69,6 @@ impl ModuleManager {
                 if local_templates.is_dir() && local_templates.join("csharp").is_dir() {
                     return Ok(local_templates);
                 }
-                let candidate = dir.join("clrinf-contracts/templates");
-                if candidate.is_dir() {
-                    return Ok(candidate);
-                }
                 current = dir.parent();
             }
         }
@@ -87,10 +83,6 @@ impl ModuleManager {
                 let local_templates = dir.join("templates");
                 if local_templates.is_dir() && local_templates.join("csharp").is_dir() {
                     return Ok(local_templates);
-                }
-                let candidate = dir.join("clrinf-contracts/templates");
-                if candidate.is_dir() {
-                    return Ok(candidate);
                 }
                 current = dir.parent();
             }

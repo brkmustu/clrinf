@@ -289,7 +289,7 @@ impl McpServer {
                                 "type": "object",
                                 "properties": {
                                     "query": { "type": "string", "description": "Natural language query or identifier name (e.g. 'IBusinessRule', 'Cedar authorizer')" },
-                                    "in_scope": { "type": "string", "description": "Optional sub-project scope (e.g. 'clrinfcs', 'clrinfrs', 'clrinfjs')" }
+                                    "in_scope": { "type": "string", "description": "Optional sub-project scope (e.g. 'core/csharp', 'core/rust', 'core/typescript')" }
                                 },
                                 "required": ["query"]
                             }

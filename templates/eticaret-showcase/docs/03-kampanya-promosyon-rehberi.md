@@ -22,7 +22,7 @@ Bu belge, **clrinf** ekosisteminde çoklu promosyon birleştirme kuralları (Sta
 
 ---
 
-## 2. Ultra Yüksek Performanslı Rust Kural Motoru (`clrinfrs`)
+## 2. Ultra Yüksek Performanslı Rust Kural Motoru (`core/rust`)
 
 - **Çözümleme Algoritması:** Graf/Kısıt tabanlı (Constraint Solver) tek geçişli değerlendirme.
 - **Performans:** Sub-mikrosaniye (< 5 µs) hesaplama süresi ve sıfır GC tahsisi.
@@ -57,5 +57,5 @@ Bu belge, **clrinf** ekosisteminde çoklu promosyon birleştirme kuralları (Sta
 
 ## 3. Backend İzolasyonu (`templates/eticaret-showcase/backend/`)
 
-- `clrinfcs/NativeApp`: Saf benchmark harness'ı olarak izole edilmiştir.
+- `core/csharp/examples/NativeApp`: Saf benchmark harness'ı olarak izole edilmiştir.
 - `templates/eticaret-showcase/backend/EticaretApi.csproj`: Stok, Katalog, ETicaret ve Kampanya modüllerini barındıran bağımsız üretim referans API'sidir.

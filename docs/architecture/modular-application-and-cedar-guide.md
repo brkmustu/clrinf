@@ -172,9 +172,9 @@ forbid (
 
 ## 4. Dillerdeki Çalışma Zamanı Uygulaması
 
-### 4.1. Rust (`clrinfrs`)
+### 4.1. Rust (`core/rust`)
 
-- **Çekirdek**: `clrinfrs_core::authz::MultiTenantCedarAuthorizer`
+- **Çekirdek**: `clrinf_core::authz::MultiTenantCedarAuthorizer`
 - **Operasyon İddiası**:
   ```rust
   let claim = OperationClaim::with_tenant(
@@ -190,7 +190,7 @@ forbid (
   ```
 - **Modül Bağlama**: `src/lib.rs` veya `src/main.rs` içine `pub mod <module>;` satırı eklenir.
 
-### 4.2. TypeScript (`clrinfjs`)
+### 4.2. TypeScript (`core/typescript`)
 
 - **Çekirdek**: `MultiTenantCedarAuthorizer` (`src/core/authz.ts`)
 - **Operasyon İddiası**:
@@ -211,7 +211,7 @@ forbid (
   ```
 - **Modül Bağlama**: `src/index.ts` içine `export * as <module> from './<module>/index.js';` eklenir.
 
-### 4.3. C# (`clrinfcs`)
+### 4.3. C# (`core/csharp`)
 
 - **Çekirdek**: `CedarPolicyService`, `AuthorizationBehavior<TRequest, TResponse>`
 - **Modül Bağlama**: `ServiceRegistration.cs` içerisine `.AddSingleton<...>()` servis kayıtları enjekte edilir.

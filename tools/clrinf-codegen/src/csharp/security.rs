@@ -110,7 +110,7 @@ pub fn add_security(opts: &AddSecurityOptions) -> Result<AddSecurityResult> {
         }
 
         let rel_path = path.strip_prefix(&sec_dir)?;
-        let tpl_name = rel_path.to_str().unwrap();
+        let tpl_name = rel_path.to_str().unwrap().replace('\\', "/");
 
         // Strip .tera extension to get target relative C# file path
         let target_rel_file = rel_path.with_extension("");
@@ -130,7 +130,7 @@ pub fn add_security(opts: &AddSecurityOptions) -> Result<AddSecurityResult> {
             fs::create_dir_all(parent)?;
         }
 
-        let rendered = tera.render(tpl_name, &ctx)
+        let rendered = tera.render(&tpl_name, &ctx)
             .with_context(|| format!("Failed to render security template {}", tpl_name))?;
 
         fs::write(&target_dest_path, &rendered)

@@ -861,7 +861,7 @@ fn test_e2e_clrinf_generate_all_crm_monolith() {
     let tmp = tempdir().unwrap();
     let target_dir = tmp.path();
 
-    let codegen_toml_source = root_dir().join("clrinfcs/codegen.toml");
+    let codegen_toml_source = root_dir().join("core/csharp/codegen.toml");
     let templates_dir = root_dir().join("tools/clrinf-codegen/templates");
 
     // Pre-create the DbContext so DbSet injection can succeed

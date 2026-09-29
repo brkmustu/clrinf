@@ -76,6 +76,7 @@ BenchmarkDotNet.Artifacts/
 
 # AI & Agent Artifacts / Internal Context
 !.context/
+.context/sessions/
 .agents/
 .claude/
 .gemini/

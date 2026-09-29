@@ -15,9 +15,9 @@ yerel ACID işlem kullanılabilir. NATS veya ayrı auth sunucusu açmanız gerek
 5. Dışarıya olay çıkacaksa iş yazısı ile aynı transaction'da outbox kullanın;
    yalnızca bu sınırda bir mesajlaşma adaptörü ekleyin.
 
-Çalışan dil örnekleri için [Rust](../../clrinfrs/README.md),
-[C#](../../clrinfcs/README.md), [TypeScript](../../clrinfjs/README.md) ve
-[Elixir](../../clrinfex/README.md) depolarının örnek bölümlerine bakın.
+Çalışan dil örnekleri için [Rust](../../core/rust/README.md),
+[C#](../../core/csharp/README.md), [TypeScript](../../core/typescript/README.md) ve
+[Elixir](../../core/elixir/README.md) dizinlerinin örnek bölümlerine bakın.
 Bu örnekler dağıtık servis zorunluluğu olmadan çekirdeğin kullanılmasını gösterir.
 
 Servislere bölme sonraki bir karardır. Aynı sözleşmeleri korumak geçişi

@@ -43,9 +43,14 @@ fn files(dir: &Path) -> Vec<(PathBuf, Vec<u8>)> {
     for entry in walkdir::WalkDir::new(dir).sort_by_file_name() {
         let e = entry.unwrap();
         if e.file_type().is_file() {
+            let bytes = std::fs::read(e.path()).unwrap();
+            let normalized: Vec<u8> = bytes
+                .into_iter()
+                .filter(|&b| b != b'\r')
+                .collect();
             result.push((
                 e.path().strip_prefix(dir).unwrap().to_path_buf(),
-                std::fs::read(e.path()).unwrap(),
+                normalized,
             ));
         }
     }

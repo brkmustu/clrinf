@@ -6,7 +6,7 @@ fn fixture(name: &str) -> Value {
     let directory = std::env::var_os("CLRINF_CONFORMANCE_DIR")
         .map(PathBuf::from)
         .unwrap_or_else(|| {
-            PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../../tests/conformance/fixtures")
+            PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../../../tests/conformance/fixtures")
         });
     let path = directory.join(name);
     let bytes = std::fs::read(&path).unwrap_or_else(|error| {

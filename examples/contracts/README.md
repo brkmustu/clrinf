@@ -54,5 +54,5 @@ the generator does not delete unrelated existing files.
 
 `x-domain` selects a generated namespace; it is not a domain-specific framework
 dependency. Core metadata uses `common` (also the default when absent).
-See the [core contracts](../../clrinf-contracts/README.md) and
-[versioning policy](../../clrinf-contracts/VERSIONING.md) for wire stability.
+See the [core schemas](../../tools/clrinf-codegen/schemas) and
+[versioning policy](../../docs/governance/versioning.md) for wire stability.

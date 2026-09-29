@@ -5,8 +5,8 @@ modular-monolith applications in Rust, C#, TypeScript and Elixir.
 
 ## Ownership
 
-- Keep clrinfrs, clrinfcs, clrinfjs and clrinfex as independent submodule repos.
-- Core wire formats belong to each language repository under `<lang>/contracts/schemas` and `tools/clrinf-codegen/schemas`.
+- Core language implementations live in this monorepo under `core/rust`, `core/csharp`, `core/typescript`, and `core/elixir`.
+- Core wire formats belong to each language implementation under `core/<lang>/contracts/schemas` and `tools/clrinf-codegen/schemas`.
 - Domain schemas belong to examples/contracts; commerce design notes belong to
   templates/eticaret-showcase/docs.
 - Root CLI handles contract generation/catalog; C# retains specialized generation.
@@ -31,6 +31,6 @@ Root CI covers language suites, generated code, docs links and generic E2E.
 ## Working tree
 
 Do not commit, stage, push, change branches or discard work without user
-authorization. Submodule edits must be published in their repositories before
-updating and publishing umbrella gitlinks. Never report working-tree changes as
-a released cross-repository version.
+authorization. Run appropriate language test suites and schema validations
+before committing changes across `core/` and `tools/`. Never report working-tree
+changes as a released cross-repository version.

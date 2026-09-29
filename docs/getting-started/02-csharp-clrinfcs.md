@@ -1,17 +1,17 @@
 # C#
 
-`clrinfcs` hem .NET'e özgü üretim araçlarını hem de yeniden kullanılabilir
+`core/csharp` (`clrinfcs`) hem .NET'e özgü üretim araçlarını hem de yeniden kullanılabilir
 çekirdek/adaptörleri barındırır. Kendi projenizde çekirdek ve adaptörleri
 doğrudan bağımsız domain modellerinizle kullanabilirsiniz.
 
 ```bash
 export CLRINF_CONFORMANCE_DIR="$PWD/tests/conformance/fixtures"
-dotnet build clrinfcs/clrinf.slnx -c Release
-dotnet test clrinfcs/tests/ClrInfTests/ClrInfTests.csproj -c Release
+dotnet build core/csharp/clrinf.slnx -c Release
+dotnet test core/csharp/tests/ClrinfCS.Tests/ClrinfCS.Tests.csproj -c Release
 ```
 
 Core API'leri, dispatcher, SQLite adaptörü ve çalışan belge örnekleri
-[C# deposunda](../../clrinfcs/README.md) belgelenmiştir. Public error/context
+[C# çekirdeğinde](../../core/csharp/README.md) belgelenmiştir. Public error/context
 JSON biçimi CLR property adlarına değil ortak sözleşmeye uyar.
 
 SQLite referansını kullanırken iş verisi, inbox ve outbox aynı transaction'a

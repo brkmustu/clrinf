@@ -13,7 +13,7 @@
 </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\..\..\..\clrinfcs\src\clrinf.OpenApi\clrinf.OpenApi.csproj" />
+    <ProjectReference Include="..\..\..\..\..\core\csharp\src\ClrinfCS.OpenApi\ClrinfCS.OpenApi.csproj" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.0" />

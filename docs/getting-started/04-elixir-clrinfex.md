@@ -1,12 +1,12 @@
 # Elixir
 
-`clrinfex` çekirdeği tagged tuple sonuçları, context ve ortak wire-format
+`core/elixir` (`clrinfex`) çekirdeği tagged tuple sonuçları, context ve ortak wire-format
 zarflarını süreç içinde kullanabilir. Streaming/presence/NATS sunucusu ayrı
 çalışma modudur.
 
 ```bash
 export CLRINF_CONFORMANCE_DIR="$PWD/tests/conformance/fixtures"
-cd clrinfex
+cd core/elixir
 mix deps.get
 mix compile --warnings-as-errors
 mix test --no-start --warnings-as-errors
@@ -31,4 +31,4 @@ yerel mesajlar açık yerel API üzerinden geçer.
 
 Gerçek NATS testleri için `NATS_TEST_URL` ayarlayın. Bu adres verilmezse ilgili
 entegrasyon testleri açıkça dışlanır; geçiyormuş gibi raporlanmaz.
-API ve HTTP belge örneği [Elixir deposunda](../../clrinfex/README.md).
+API ve HTTP belge örneği [Elixir deposunda](../../core/elixir/README.md).

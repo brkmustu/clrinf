@@ -29,7 +29,7 @@ describe("public documentation", () => {
 
   test("core schema directory excludes example business domains", () => {
     for (const name of ["eticaret", "kampanya", "katalog", "oms", "stok", "egitim"]) {
-      expect(existsSync(join(root, "clrinf-contracts/schemas", name))).toBe(false);
+      expect(existsSync(join(root, "tools/clrinf-codegen/schemas", name))).toBe(false);
       expect(existsSync(join(root, "examples/contracts/schemas", name))).toBe(true);
     }
   });

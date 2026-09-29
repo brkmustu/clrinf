@@ -24,8 +24,8 @@ your own NuGet feed. No hosted service, broker or dependency injection container
 is required by the core.
 
 ```bash
-dotnet add YourApplication.csproj reference /path/to/clrinfcs/src/ClrinfCS.Core/ClrinfCS.Core.csproj
-dotnet add YourApplication.csproj reference /path/to/clrinfcs/src/ClrinfCS.Adapters.Sqlite/ClrinfCS.Adapters.Sqlite.csproj
+dotnet add YourApplication.csproj reference /path/to/core/csharp/src/ClrinfCS.Core/ClrinfCS.Core.csproj
+dotnet add YourApplication.csproj reference /path/to/core/csharp/src/ClrinfCS.Adapters.Sqlite/ClrinfCS.Adapters.Sqlite.csproj
 ```
 
 ### Contracts and dispatch
@@ -249,7 +249,7 @@ isolation, concurrent consumers/publishers and stale lease fencing.
 `clrinfcs`, .NET 10 (LTS) projeleri için statik kod analizi (Roslyn AST), mimari dönüştürme ve migrasyon yönetimi sağlayan uzmanlaşmış **Worker CLI** aracıdır.
 
 > [!NOTE]
-> Kod üretimi (`new`, `add entity`, `add module`, `generate-all`) ve şablon orkestrasyonu merkezi Rust aracı olan **[`clrinf-codegen`](../tools/clrinf-codegen)**'e taşınmıştır. `clrinfcs` aracı bu yapıda Roslyn AST tabanlı statik analiz ve dönüştürme worker'ı olarak çalışır.
+> Kod üretimi (`new`, `add entity`, `add module`, `generate-all`) ve şablon orkestrasyonu merkezi Rust aracı olan **[`clrinf-codegen`](../../tools/clrinf-codegen)**'e taşınmıştır. `clrinfcs` aracı bu yapıda Roslyn AST tabanlı statik analiz ve dönüştürme worker'ı olarak çalışır.
 
 ---
 

@@ -1,13 +1,14 @@
 import { expect, it } from "bun:test";
+import { fileURLToPath } from "node:url";
 
 it("fails explicitly when conformance fixtures are missing", async () => {
-  const process = Bun.spawn(["bun", "test", "tests/conformance.test.ts"], {
-    cwd: new URL("..", import.meta.url).pathname,
-    env: { ...Bun.env, CLRINF_CONFORMANCE_DIR: new URL("./missing-fixtures", import.meta.url).pathname },
+  const proc = Bun.spawn([process.execPath, "test", "tests/conformance.test.ts"], {
+    cwd: fileURLToPath(new URL("..", import.meta.url)),
+    env: { ...Bun.env, CLRINF_CONFORMANCE_DIR: fileURLToPath(new URL("./missing-fixtures", import.meta.url)) },
     stdout: "pipe", stderr: "pipe",
   });
-  expect(await process.exited).not.toBe(0);
-  expect(await new Response(process.stderr).text()).toContain("Required conformance fixture missing:");
+  expect(await proc.exited).not.toBe(0);
+  expect(await new Response(proc.stderr).text()).toContain("Required conformance fixture missing:");
 });
 
 it("does not retain legacy abandoned cli directory", async () => {

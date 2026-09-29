@@ -1,6 +1,6 @@
 # clrinf Constitution — Değişmez Mimari Kurallar
 
-**Versiyon:** 1.1.0
+**Versiyon:** 1.1.0  
 **Kapsam:** clrinf servisleri, kütüphaneleri, scaffold'ları ve AI ajanları için
 tasarım kurallarıdır; tüm adapter/runtime özelliklerinin uygulanmış olduğunu
 belgeleyen bir sertifika değildir.
@@ -48,7 +48,7 @@ belgeleyen bir sertifika değildir.
 - `x-domain` namespace metadata'sıdır, domain-specific framework bağımlılığı
   değildir. Eksik olduğunda codegen `common` kullanır.
 - Tenant/context/error alanları ve envelope'un mevcut required listesi korunur;
-  değişiklikler [VERSIONING.md](VERSIONING.md) politikasına tabidir.
+  değişiklikler [versioning.md](versioning.md) politikasına tabidir.
 
 ## 5. RULE OBSERVABLE-BY-DEFAULT
 

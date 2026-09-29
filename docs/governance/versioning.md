@@ -34,9 +34,8 @@ Somut örnek:
 ## 3. Core / örnek ayrımı migrasyonu
 
 `auth`, `eticaret`, `kampanya`, `katalog`, `oms`, `stok`, `egitim` dizinleri
-`tools/clrinf-codegen/schemas/` ve monorepo sözleşme yapısına uygun olarak
-`examples/contracts/schemas/` altına toplanmıştır. İki EARS dosyası ve stok cache kuralı da taşınmıştır; tam eşleştirme
-[migration index](../examples/contracts/README.md#migration-index) içindedir.
+`examples/contracts/schemas/` altındadır. İki EARS dosyası ve stok cache kuralı da taşınmıştır; tam eşleştirme
+[migration index](../../examples/contracts/README.md#migration-index) içindedir.
 Örneklerin içeriği, `$id`, event kimlikleri ve göreli alt dizin yapıları değişmez.
 Dosya yolu tüketen script/config bağlantıları güncellenmelidir; bu bir wire
 sürüm değişikliği değildir. Auth örneğinin credential/JWT/Cedar tercihleri core

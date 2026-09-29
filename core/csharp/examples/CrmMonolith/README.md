@@ -24,7 +24,7 @@ CrmMonolith/
 └── codegen.toml           # Kod üretim konfigürasyonu
 ```
 
-### Manifest Konfigürasyonu ([clrinf.toml](file:///home/burak/Projeler/clrinf/clrinfcs/examples/CrmMonolith/clrinf.toml))
+### Manifest Konfigürasyonu ([clrinf.toml](clrinf.toml))
 
 ```toml
 [project]

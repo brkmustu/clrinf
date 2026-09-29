@@ -87,7 +87,7 @@ clrinf-codegen module adopt deals \
 ## Federated Language Worker Model & Meta MCP
 
 `clrinf-codegen` acts as the **central orchestrator and Meta MCP Gateway** for the polyglot ecosystem:
-- **Explicit Prerequisites**: C# code generation/linting delegates to `clrinfcs` (via `dotnet`), Rust to `clrinfrs` (via `cargo`), and TypeScript to `clrinfjs` (via `bun`).
+- **Explicit Prerequisites**: C# code generation/linting delegates to C# (.NET in `core/csharp`), Rust to `clrinf-cli` (in `core/rust`), and TypeScript to Bun (in `core/typescript`).
 - **Worker Discovery**: Searches system `PATH` first, falling back to local workspace checkouts. Missing tools report clear, actionable installation instructions.
 - **Universal Meta MCP**: Exposes `clrinf_list_catalog`, `clrinf_adopt_module`, `clrinf_module_manage`, `clrinf_add_domain_module`, `clrinf_add_entity`, `clrinf_inspect_ecosystem`, `clrinf_lint_architecture`, `clrinf_scaffold_rule`, `clrinf_generate_contracts`, `clrinf_validate_schemas`, `clrinf_validate_topology`, `clrinf_generate_pubsub`, and `clrinf_new_project` via JSON-RPC 2.0 stdio for autonomous AI agents.
 - **Deterministic Schema Authority**: `validator.rs` remains the single canonical authority for JSON Schema validation before delegating to workers.

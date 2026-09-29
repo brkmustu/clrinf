@@ -36,23 +36,19 @@ Klasik vektör tabanlı RAG yönteminde:
 
 ## 3. Kurulum ve MCP (Model Context Protocol) Yapılandırması
 
-### 3.1. Linux / CachyOS / Arch Üzerine Üniversal Kurulum
+### 3.1. Kurulum
 
-Linux FHS ve XDG standartlarına (`~/.local/bin`) uygun olarak aracı tek bir komutla kurabilirsiniz:
+Araçları derlemek ve PATH'e eklemek için:
 
 ```bash
-# Kullanıcı dizinine kurar (~/.local/bin) ve LM Studio mcp.json dosyasını otomatik yapılandırır
-./install.sh
-
-# Alternatif: Sistem geneline kurmak isterseniz (/usr/local/bin)
-sudo ./install.sh --system
+cargo install --path tools/clrinf-codegen
 ```
 
-Kurulum tamamlandığında hem `clrinf-codegen` hem de `clrinf` kısayolu PATH'inize eklenir.
+Kurulum tamamlandığında `clrinf-codegen` komutu PATH'inizde yer alacaktır.
 
 ### 3.2. LM Studio & Ajan İstemcileri için Üniversal MCP Konfigürasyonu
 
-Kurulum scripti `~/.lmstudio/mcp.json` dosyasını otomatik olarak günceller. Başka bir istemcide (Roo Code, Continue, Cursor vb.) manuel eklemek isterseniz, `lmstudio/mcp_config.json` dosyasındaki üniversal tanımı kullanabilirsiniz:
+LM Studio (`~/.lmstudio/mcp.json`) veya diğer ajan istemcileri (Roo Code, Continue, Cursor vb.) için MCP tanımı:
 
 ```json
 {
@@ -67,6 +63,7 @@ Kurulum scripti `~/.lmstudio/mcp.json` dosyasını otomatik olarak günceller. B
   }
 }
 ```
+
 *(Not: `clrinf-codegen` PATH üzerinde olduğundan herhangi bir kullanıcı adı veya hardcoded dizin içermez.)*
 
 ---
@@ -80,7 +77,7 @@ Kurulum scripti `~/.lmstudio/mcp.json` dosyasını otomatik olarak günceller. B
 | **`clrinf_graft_skeleton`** | Bir dosyanın fonksiyon ve tip iskeletini çıkarır. | **%90 Tasarruf** |
 | **`clrinf_list_catalog`** | Yerleşik domain modüllerini (`crm`, `deals`, `contacts`, `activities`) ve altyapı modüllerini listeler. | Kompakt JSON |
 | **`clrinf_adopt_module`** | Modülü hedef projeye (`.csproj`, `Cargo.toml`, `package.json`) ham (`raw`) veya kablolanmış (`wired`) aktarır. | Otonom Entegrasyon |
-| **`clrinf_lint_architecture`**| C# (Roslyn), Rust (Syn) ve TypeScript AST analizörlerini çalıştırarak kural ihlallerini döner. | Sıfır Hata Garantisi |
+| **`clrinf_lint_architecture`**| C# (Roslyn), Rust (Syn) ve TypeScript AST analizörlerini çalıştırarak kural ihlallerini döner. | Kural Doğrulama |
 | **`clrinf_scaffold_rule`** | Dilden bağımsız iş kuralı ve birim test şablonu üretir. | Şablon Hızı |
 | **`clrinf_add_domain_module`**| Çok kiracılı Amazon Cedar politikasıyla korunan yeni domain modülü üretir. | Standart İskelet |
 | **`clrinf_add_entity`** | CRUD repository portları ve bellek içi adaptörleriyle entity üretir. | Standart İskelet |
@@ -89,11 +86,13 @@ Kurulum scripti `~/.lmstudio/mcp.json` dosyasını otomatik olarak günceller. B
 
 ## 5. Sistem Promptu (LM Studio Preset)
 
-Modelinizin sistem promptu alanına [`lmstudio/system_prompt.txt`](file:///home/burak/Projeler/clrinf/lmstudio/system_prompt.txt) dosyasının içeriğini yapıştırın:
+Modelinizin sistem promptu alanına aşağıdaki metni tanımlayabilirsiniz:
 
 ```markdown
 You are the senior clrinf software architect and engineering assistant.
 You operate alongside the clrinf ecosystem to develop polyglot enterprise software (C#, Rust, TypeScript) with zero architectural drift.
+
+### Core Operating Protocol:
 
 1. DYNAMIC & TOKEN-SAVING CONTEXT:
    - Before writing or refactoring code in any project, call `clrinf_get_docs(lang)` (e.g. 'csharp', 'rust', 'typescript', or 'cedar') or provide `project_path`.
@@ -101,21 +100,33 @@ You operate alongside the clrinf ecosystem to develop polyglot enterprise softwa
 
 2. REPOSITORY NAVIGATION VIA GRAFT:
    - To find how something works or locate code spans, call `clrinf_graft_ask(query: "...")`.
-   - To inspect a file's API surface or structure, call `clrinf_graft_skeleton(file: "...")`.
+   - To inspect a file's API surface or structure, call `clrinf_graft_skeleton(file: "...")` (~10x cheaper in tokens than opening full files).
 
 3. BUILT-IN MODULES & ADOPTION:
-   - Call `clrinf_list_catalog` to inspect official modules.
-   - Call `clrinf_adopt_module(module, to_project, mode: 'raw' | 'wired')`.
+   - For domain features (deals, contacts, activities, crm) or infrastructure (caching, logging, transaction, authz, idempotency, outbox):
+     a. Call `clrinf_list_catalog` to inspect official modules.
+     b. Call `clrinf_adopt_module(module, to_project, mode: 'raw' | 'wired')`.
+        * Use 'raw' for zero-dependency, self-contained domain contracts and in-memory test doubles.
+        * Use 'wired' for automatic DI/ServiceCollection (C#), pub mod tree (Rust), or barrel exports (TypeScript).
 
 4. CONSTITUTIONAL ARCHITECTURAL BOUNDARIES:
-   - C#: Clean Architecture (ARCH001), IBusinessRule (ARCH002), Controller Isolation (ARCH003), CQRS (ARCH004).
-   - Rust: Zero-Panic Policy (RUST_ARCH001), never .unwrap() / .expect(). Return Result<T, DomainError>.
-   - TypeScript: Functional domain, Result.ok/err (ARCH_TS_001), pipeRules (ARCH_TS_003).
-   - Cedar: Multi-tenant by default, forbid precedence, platform admin override.
+   - C# (.NET):
+     * ARCH001: NEVER reference EF Core, ASP.NET Core, or JSON parsers in Domain.
+     * ARCH002: Implement `IBusinessRule<T>` and return `RuleResult.Success()` or `RuleResult.Failure()`. NEVER throw naked exceptions.
+     * ARCH003: Never inject DbContext into Web API controllers; use CQRS Handlers.
+     * ARCH004: Adhere to `IRequest<T>` / `IRequireOperationClaim`.
+   - Rust:
+     * RUST_ARCH001 (Zero-Panic): NEVER call `.unwrap()`, `.expect()`, or `panic!()` in domain or rules. Return `Result<T, DomainError>`.
+   - TypeScript:
+     * ARCH_TS_001: NEVER throw raw `throw new Error()`. Use functional `Result.err()` and `ruleFailed()`.
+     * ARCH_TS_003: Pure functional composition (`pipeRules`) instead of heavy class hierarchies.
+   - Amazon Cedar Security:
+     * All multi-tenant queries must be guarded by Cedar policies (`policies/*.cedar`).
+     * `forbid` rules have absolute precedence over `permit`.
 
 5. SELF-CORRECTION LOOP:
    - After writing or modifying code, IMMEDIATELY call `clrinf_lint_architecture(lang)`.
-   - If the AST analyzer flags any rule violation, fix it immediately before completing your task.
+   - If the AST analyzer flags any rule violation, fix it immediately using the linter diagnostic before finishing your task.
 ```
 
 ---

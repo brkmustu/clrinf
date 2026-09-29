@@ -5,7 +5,7 @@ defmodule Clrinfex.ConformanceTest do
   defp fixture(name) do
     directory =
       System.get_env("CLRINF_CONFORMANCE_DIR") ||
-        Path.expand("../../tests/conformance/fixtures", __DIR__)
+        Path.expand("../../../tests/conformance/fixtures", __DIR__)
 
     directory |> Path.join(name <> ".json") |> File.read!() |> Jason.decode!()
   end

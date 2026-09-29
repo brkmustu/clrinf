@@ -1,8 +1,9 @@
 import { describe, expect, it } from "bun:test";
 import { resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { object, parseContext, parseError, parseEvent, ValidationError } from "../src/core";
 
-const directory = process.env.CLRINF_CONFORMANCE_DIR ?? new URL("../../tests/conformance/fixtures/", import.meta.url).pathname;
+const directory = process.env.CLRINF_CONFORMANCE_DIR ?? fileURLToPath(new URL("../../../tests/conformance/fixtures/", import.meta.url));
 async function fixture(name: string) {
   const path = resolve(directory, name);
   if (!await Bun.file(path).exists()) throw new Error(`Required conformance fixture missing: ${path}. Set CLRINF_CONFORMANCE_DIR to the shared fixtures directory.`);

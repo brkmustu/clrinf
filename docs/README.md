@@ -32,8 +32,8 @@ yetenekleri ve adaptör seçimlerini anlatır; hedef tasarım ile uygulanmış
 - [Ajan bağlamı](governance/agent-context-guide.md)
 - [EARS gereksinimleri](governance/ears-requirements-guide.md)
 - [Yeniden organizasyon durumu](governance/reorganization-status.md)
-- [Anayasa](../clrinf-contracts/constitution.md)
-- [Sürümleme](../clrinf-contracts/VERSIONING.md)
+- [Anayasa](governance/constitution.md)
+- [Sürümleme](governance/versioning.md)
 
 Örnek iş alanı tasarım notları [showcase altında](../templates/eticaret-showcase/docs/)
 yer alır.

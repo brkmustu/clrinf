@@ -12,7 +12,7 @@ genel görünmesi için değiştirmeyin; şema major değişimlerini ayrı yöne
 # Mevcut domain şemalarını kendi dizininizden üretin (veya cargo run --manifest-path ... ile)
 clrinf generate \
   --schema-dir ./my-contracts \
-  --templates-dir ./clrinf-contracts/templates \
+  --templates-dir ./tools/clrinf-codegen/templates \
   --output ./generated-contracts
 ```
 

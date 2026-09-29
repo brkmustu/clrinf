@@ -2,7 +2,7 @@
 
 Bu dizin, `clrinfjs` kütüphanesinin kanonik tel formatı (wire-format) JSON şemalarını ve mimari kurallarını içerir.
 
-Kod üretim şablonları (`.tera`) dil repolarında değil, merkezi kod üretim aracı olan [`tools/clrinf-codegen`](../../tools/clrinf-codegen) bünyesinde tutulmaktadır. TypeScript tarafında sözleşmeler doğrudan TypeScript tip güvenliğiyle yaşar.
+Kod üretim şablonları (`.tera`) dil repolarında değil, merkezi kod üretim aracı olan [`tools/clrinf-codegen`](../../../tools/clrinf-codegen) bünyesinde tutulmaktadır. TypeScript tarafında sözleşmeler doğrudan TypeScript tip güvenliğiyle yaşar.
 
 ---
 

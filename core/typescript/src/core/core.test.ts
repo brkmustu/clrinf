@@ -29,10 +29,10 @@ it("preserves JSON error details and extension flags", () => {
   expect(parsed.data).toEqual({ nested: { value: 1 } });
 });
 it("core and server imports do not start listeners or connect", async () => {
-  const process = Bun.spawn(["bun", "-e", "await import('@clrinf/core'); await import('@clrinf/core/core'); await import('@clrinf/core/adapters'); await import('@clrinf/core/inspector'); await import('./src/server.ts');"], {
-    cwd: new URL("../..", import.meta.url).pathname, env: { ...Bun.env, PORT: "invalid", NATS_URL: "nats://127.0.0.1:1" },
+  const proc = Bun.spawn([process.execPath, "-e", "await import('@clrinf/core'); await import('@clrinf/core/core'); await import('@clrinf/core/adapters'); await import('@clrinf/core/inspector'); await import('./src/server.ts');"], {
+    cwd: new URL("../..", import.meta.url).pathname.replace(/^\/([a-zA-Z]:)/, "$1"), env: { ...Bun.env, PORT: "invalid", NATS_URL: "nats://127.0.0.1:1" },
     stdout: "pipe", stderr: "pipe",
   });
-  expect(await process.exited).toBe(0);
-  expect(await new Response(process.stderr).text()).toBe("");
+  expect(await proc.exited).toBe(0);
+  expect(await new Response(proc.stderr).text()).toBe("");
 });

@@ -2,7 +2,7 @@
 
 Bu dizin, `clrinfrs` kütüphanesinin kanonik tel formatı (wire-format) JSON şemalarını ve mimari kurallarını içerir.
 
-Kod üretim şablonları (`.tera`) dil repolarında değil, merkezi kod üretim aracı olan [`tools/clrinf-codegen`](../../tools/clrinf-codegen) bünyesinde tutulmaktadır. Rust tarafında sözleşmeler doğrudan Rust tip güvenliğiyle yaşar.
+Kod üretim şablonları (`.tera`) dil repolarında değil, merkezi kod üretim aracı olan [`tools/clrinf-codegen`](../../../tools/clrinf-codegen) bünyesinde tutulmaktadır. Rust tarafında sözleşmeler doğrudan Rust tip güvenliğiyle yaşar.
 
 ---
 

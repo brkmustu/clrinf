@@ -1,4 +1,4 @@
-# clrinf-contracts/schemas/kampanya/upcasters/KampanyaOlustur.v1-to-v2.yaml
+# examples/contracts/schemas/kampanya/upcasters/KampanyaOlustur.v1-to-v2.yaml
 from: "com.clrinf.kampanya.KampanyaOlustur.v1"
 to: "com.clrinf.kampanya.KampanyaOlustur.v2"
 description: "v1 kampanya modellerini birleştirilebilir ve kural tabanlı v2 formatına yükselten upcaster."

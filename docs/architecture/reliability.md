@@ -19,7 +19,7 @@ bu beklenen bir **at-least-once** durumudur. Alıcı kendi inbox/işlem sınır�
 tekrarı önlemelidir. Dış ödeme/e-posta/HTTP etkisi yerel SQLite işleminin parçası
 değildir; sağlayıcının idempotency desteği veya uzlaştırma gerekir.
 
-clrinfcs içindeki SQLite adaptörü kalıcı yerel işlem referansıdır. Diğer dillerin
+`core/csharp` içindeki SQLite adaptörü kalıcı yerel işlem referansıdır. Diğer dillerin
 bellek adaptörleri aynı kalıcılık iddiasını taşımaz. Kullanıcı uygulaması başka
 veritabanı kullandığında yalnızca outbox'ı ayrı SQLite dosyasına yazmak atomiklik
 sağlamaz; iş verisiyle aynı transaction'ı paylaşan adaptör gerekir.

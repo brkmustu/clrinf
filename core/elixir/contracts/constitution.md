@@ -41,7 +41,7 @@ belgeleyen bir sertifika değildir.
 ## 4. RULE CONTRACT-FIRST
 
 - Implementasyondan önce wire sözleşmesi tanımlanır. Core sözleşmeleri
-  `clrinf-contracts/schemas`, uygulama örnekleri `examples/contracts/schemas`
+  `tools/clrinf-codegen/schemas`, uygulama örnekleri `examples/contracts/schemas`
   içindedir. Uygulamalar kendi sözleşmelerinin sahipliğini üstlenir.
 - Kod tipleri canonical CLI ile sözleşmeden üretilir; core ve örnek giriş/çıkış
   dizinleri ayrı tutulur. DTO üretimi runtime şema doğrulamasının yerine geçmez.

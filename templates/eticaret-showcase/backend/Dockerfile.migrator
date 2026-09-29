@@ -1,7 +1,7 @@
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
 
-COPY clrinfcs/ ./clrinfcs/
+COPY core/csharp/ ./core/csharp/
 COPY templates/eticaret-showcase/backend/ ./templates/eticaret-showcase/backend/
 
 WORKDIR /src/templates/eticaret-showcase/backend/src/MigratorApp

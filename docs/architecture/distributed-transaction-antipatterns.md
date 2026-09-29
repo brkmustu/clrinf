@@ -1,6 +1,6 @@
 # Yerel işlemler, dağıtık tutarlılık ve Saga
 
-clrinf'in [anayasası](../../clrinf-contracts/constitution.md) servisler arası
+clrinf'in [anayasası](../governance/constitution.md) servisler arası
 2PC/XA koordinasyonunu varsayılan çözüm olarak kullanmaz. Bu, monolith içinde
 tek veritabanıyla yerel ACID işlemi yapmayı yasaklamaz.
 

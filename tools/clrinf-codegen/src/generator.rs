@@ -26,7 +26,7 @@ pub fn ensure_safe_output(output: &Path) -> Result<()> {
 
 impl Generator {
     pub fn new(templates_dir: &Path) -> Result<Self> {
-        ensure!(templates_dir.is_dir(), "Code templates not found at {}. Pass --templates-dir /path/to/clrinf-contracts/templates; installed CLIs require explicit asset paths outside a checkout.", templates_dir.display());
+        ensure!(templates_dir.is_dir(), "Code templates not found at {}. Pass --templates-dir /path/to/tools/clrinf-codegen/templates; installed CLIs require explicit asset paths outside a checkout.", templates_dir.display());
         let template_pattern = format!("{}/**/*.tera", templates_dir.display());
         let tera = Tera::new(&template_pattern).with_context(|| {
             format!(
