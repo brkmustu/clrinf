@@ -1,0 +1,8 @@
+.git
+node_modules
+.env*
+cli
+tests
+examples
+conformance-source
+coverage

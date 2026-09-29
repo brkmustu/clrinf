@@ -1,0 +1,165 @@
+[project]
+name        = "CrmMonolith"
+description = "CRM Modular Monolith Reference Application"
+
+[backend]
+secured     = true
+arch_style  = "flat"
+paradigm    = "fp"
+dispatcher  = "native"
+api_style   = "minimal"
+path        = "./src"
+db_context  = "CrmDbContext"
+namespace   = "CrmMonolith"
+
+[backend.structure]
+mode        = "module"
+folder_name = "Modules"
+
+[ui]
+type       = "angular"
+path       = "./src/ui"
+base_url   = "http://localhost:5000"
+http_client = "fetch"
+
+[ui.structure]
+mode   = "direct"
+prefix = ""
+
+[ui.dirs]
+components = "components"
+services   = "services"
+store      = "store"
+models     = "models"
+pages      = "pages"
+
+[ui.state]
+strategy = "signals"
+
+[[modules]]
+name        = "Deal"
+id_type     = "string"
+generate_ui = true
+
+  [modules.backend]
+  caching     = true
+  logging     = true
+  transaction = true
+  secured     = true
+
+  [modules.ui]
+  list_page   = true
+  detail_page = true
+  form_page   = true
+
+  [[modules.properties]]
+  name     = "Title"
+  type     = "string"
+  required = true
+
+  [[modules.properties]]
+  name     = "TenantId"
+  type     = "string"
+  required = true
+
+  [[modules.properties]]
+  name     = "ContactId"
+  type     = "string"
+  required = true
+
+  [[modules.properties]]
+  name     = "Amount"
+  type     = "decimal"
+  required = true
+
+  [[modules.properties]]
+  name     = "Stage"
+  type     = "string"
+  required = true
+
+  [[modules.properties]]
+  name     = "Probability"
+  type     = "int"
+  required = true
+
+[[modules]]
+name        = "Contact"
+id_type     = "string"
+generate_ui = true
+
+  [modules.backend]
+  caching     = true
+  logging     = true
+  transaction = true
+  secured     = true
+
+  [[modules.properties]]
+  name     = "TenantId"
+  type     = "string"
+  required = true
+
+  [[modules.properties]]
+  name     = "FullName"
+  type     = "string"
+  required = true
+
+  [[modules.properties]]
+  name     = "Email"
+  type     = "string"
+  required = true
+
+  [[modules.properties]]
+  name     = "Phone"
+  type     = "string"
+  required = false
+
+  [[modules.properties]]
+  name     = "Company"
+  type     = "string"
+  required = false
+
+[[modules]]
+name        = "Activity"
+id_type     = "string"
+generate_ui = true
+
+  [modules.backend]
+  caching     = true
+  logging     = true
+  transaction = true
+  secured     = true
+
+  [[modules.properties]]
+  name     = "TenantId"
+  type     = "string"
+  required = true
+
+  [[modules.properties]]
+  name     = "Title"
+  type     = "string"
+  required = true
+
+  [[modules.properties]]
+  name     = "Type"
+  type     = "string"
+  required = true
+
+  [[modules.properties]]
+  name     = "DueDate"
+  type     = "DateTime"
+  required = true
+
+  [[modules.properties]]
+  name     = "Notes"
+  type     = "string"
+  required = false
+
+  [[modules.properties]]
+  name     = "DealId"
+  type     = "string"
+  required = false
+
+  [[modules.properties]]
+  name     = "ContactId"
+  type     = "string"
+  required = false

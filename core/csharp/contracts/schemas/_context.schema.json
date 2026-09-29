@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.clrinf.com/_context.schema.json",
+  "title": "RequestContext",
+  "x-domain": "common",
+  "description": "Transport-independent tenant and request lineage context.",
+  "type": "object",
+  "required": [
+    "tenant_id",
+    "correlation_id",
+    "causation_id"
+  ],
+  "properties": {
+    "tenant_id": {
+      "type": "string",
+      "description": "Tenant identifier for isolation"
+    },
+    "correlation_id": {
+      "type": "string",
+      "description": "Correlation identifier spanning the workflow, not a deduplication key"
+    },
+    "causation_id": {
+      "type": "string",
+      "description": "Identifier of the request or message that directly caused this operation"
+    }
+  }
+}

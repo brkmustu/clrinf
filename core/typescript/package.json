@@ -1,0 +1,27 @@
+{
+  "name": "@clrinf/core",
+  "version": "0.1.0",
+  "type": "module",
+  "exports": {
+    ".": "./src/core/index.ts",
+    "./core": "./src/core/index.ts",
+    "./adapters": "./src/adapters/index.ts",
+    "./inspector": "./src/inspector/index.ts",
+    "./linter": "./src/linter/index.ts",
+    "./generator": "./src/generator/index.ts"
+  },
+  "scripts": {
+    "dev": "bun --watch src/server.ts",
+    "start": "bun src/server.ts",
+    "test": "bun test",
+    "typecheck": "tsc --noEmit",
+    "lint:arch": "bun src/linter/cli.ts"
+  },
+  "dependencies": {
+    "nats": "^2.28.2"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "typescript": "^5.7.0"
+  }
+}

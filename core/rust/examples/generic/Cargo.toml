@@ -1,0 +1,15 @@
+[package]
+name = "clrinf-generic"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[dependencies]
+clrinf-core = { path = "../../crates/clrinf-core" }
+clrinf-adapters = { path = "../../crates/clrinf-adapters" }
+axum = "0.7"
+tokio = { version = "1.38", features = ["macros", "rt-multi-thread", "net"] }
+serde_json = "1.0"
+
+[dev-dependencies]
+tower = { version = "0.5", features = ["util"] }

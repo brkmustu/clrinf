@@ -1,0 +1,21 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/ClrinfCS/ClrinfCS.csproj" />
+    <Project Path="src/ClrinfCS.Core/ClrinfCS.Core.csproj" />
+    <Project Path="src/ClrinfCS.Adapters.Sqlite/ClrinfCS.Adapters.Sqlite.csproj" />
+    <Project Path="src/ClrinfCS.OpenApi/ClrinfCS.OpenApi.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/ClrinfCS.Tests/ClrinfCS.Tests.csproj" />
+  </Folder>
+  <Folder Name="/examples/">
+    <Project Path="examples/Documents/Documents.csproj" />
+    <Project Path="examples/ModularMonolith/ModularMonolith.csproj" />
+    <Project Path="examples/DistributedService/DistributedService.csproj" />
+    <Project Path="examples/NativeApp/NativeApp.csproj" />
+    <Project Path="examples/MediatRApp/MediatRApp.csproj" />
+    <Project Path="examples/PureNativeApp/PureNativeApp.csproj" />
+    <Project Path="examples/CrmMonolith/CrmMonolith.csproj" />
+    <Project Path="examples/EcommerceMonolith/EcommerceMonolith.csproj" />
+  </Folder>
+</Solution>

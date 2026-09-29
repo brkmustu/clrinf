@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>API Documentation</title>
+  <style>
+    :root { --bg:#0f172a; --panel:#1e293b; --text:#e2e8f0; --muted:#94a3b8; --border:#334155;
+            --get:#16a34a; --post:#2563eb; --put:#d97706; --patch:#7c3aed; --delete:#dc2626; }
+    * { box-sizing: border-box; }
+    body { margin:0; font-family: ui-sans-serif, system-ui, sans-serif; background:var(--bg); color:var(--text); }
+    header { padding:1.25rem 2rem; border-bottom:1px solid var(--border); display:flex; gap:1rem; align-items:baseline; flex-wrap:wrap; }
+    header h1 { margin:0; font-size:1.4rem; }
+    header .version { color:var(--muted); font-size:.9rem; }
+    header input { margin-left:auto; background:var(--panel); border:1px solid var(--border); color:var(--text);
+                   padding:.4rem .7rem; border-radius:6px; min-width:260px; }
+    main { padding:1.5rem 2rem; max-width:1100px; margin:0 auto; }
+    .desc { color:var(--muted); margin-bottom:1.5rem; }
+    .tag { margin-bottom:1.5rem; }
+    .tag h2 { font-size:1.05rem; color:var(--muted); text-transform:uppercase; letter-spacing:.05em; margin:0 0 .5rem; }
+    details { background:var(--panel); border:1px solid var(--border); border-radius:8px; margin-bottom:.5rem; }
+    summary { display:flex; align-items:center; gap:.75rem; padding:.6rem .9rem; cursor:pointer; list-style:none; }
+    summary::-webkit-details-marker { display:none; }
+    .method { font-weight:700; font-size:.75rem; padding:.2rem .5rem; border-radius:4px; color:#fff; min-width:60px; text-align:center; }
+    .method.get{background:var(--get)} .method.post{background:var(--post)} .method.put{background:var(--put)}
+    .method.patch{background:var(--patch)} .method.delete{background:var(--delete)} .method.other{background:#475569}
+    .path { font-family: ui-monospace, monospace; }
+    .summary { color:var(--muted); margin-left:auto; font-size:.85rem; }
+    .body { padding:.75rem .9rem 1rem; border-top:1px solid var(--border); font-size:.9rem; }
+    .body h4 { margin:.75rem 0 .35rem; font-size:.85rem; color:var(--muted); }
+    table { width:100%; border-collapse:collapse; }
+    td, th { text-align:left; padding:.3rem .5rem; border-bottom:1px solid var(--border); vertical-align:top; }
+    th { color:var(--muted); font-weight:600; }
+    pre { background:#020617; padding:.75rem; border-radius:6px; overflow:auto; margin:.25rem 0; font-size:.8rem; }
+    code { font-family: ui-monospace, monospace; }
+    .empty, .error { color:var(--muted); padding:2rem; text-align:center; }
+    .error { color:#fca5a5; }
+    .hidden { display:none; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1 id="title">API Documentation</h1>
+    <span class="version" id="version"></span>
+    <input id="filter" type="search" placeholder="Filter endpoints…" />
+  </header>
+  <main>
+    <p class="desc" id="description"></p>
+    <div id="content"><p class="empty">Loading specification…</p></div>
+  </main>
+  <script>
+    (function () {
+      var specUrl = new URLSearchParams(location.search).get('spec') || '/openapi/v1.json';
+      var content = document.getElementById('content');
+
+      function el(tag, attrs, children) {
+        var e = document.createElement(tag);
+        Object.keys(attrs || {}).forEach(function (k) {
+          if (k === 'text') e.textContent = attrs[k];
+          else if (k === 'class') e.className = attrs[k];
+          else e.setAttribute(k, attrs[k]);
+        });
+        (children || []).forEach(function (c) { if (c) e.appendChild(c); });
+        return e;
+      }
+
+      function resolveRef(spec, schema) {
+        if (schema && schema.$ref) {
+          var parts = schema.$ref.replace(/^#\//, '').split('/');
+          var node = spec;
+          for (var i = 0; i < parts.length && node; i++) node = node[parts[i]];
+          return node || schema;
+        }
+        return schema;
+      }
+
+      function schemaBlock(spec, schema) {
+        if (!schema) return null;
+        return el('pre', {}, [el('code', { text: JSON.stringify(resolveRef(spec, schema), null, 2) })]);
+      }
+
+      function paramsTable(params) {
+        if (!params || !params.length) return null;
+        var rows = params.map(function (p) {
+          return el('tr', {}, [
+            el('td', {}, [el('code', { text: p.name })]),
+            el('td', { text: p.in }),
+            el('td', { text: p.required ? 'yes' : 'no' }),
+            el('td', { text: (p.schema && (p.schema.type || p.schema.$ref)) || '' }),
+            el('td', { text: p.description || '' })
+          ]);
+        });
+        return el('table', {}, [
+          el('thead', {}, [el('tr', {}, ['Name', 'In', 'Required', 'Type', 'Description'].map(function (h) { return el('th', { text: h }); }))]),
+          el('tbody', {}, rows)
+        ]);
+      }
+
+      function operationDetails(spec, method, path, op) {
+        var body = el('div', { class: 'body' });
+        if (op.description) body.appendChild(el('p', { text: op.description }));
+        var params = paramsTable(op.parameters);
+        if (params) { body.appendChild(el('h4', { text: 'Parameters' })); body.appendChild(params); }
+        if (op.requestBody && op.requestBody.content) {
+          body.appendChild(el('h4', { text: 'Request body' }));
+          Object.keys(op.requestBody.content).forEach(function (ct) {
+            body.appendChild(el('div', { text: ct, class: 'summary' }));
+            body.appendChild(schemaBlock(spec, op.requestBody.content[ct].schema));
+          });
+        }
+        if (op.responses) {
+          body.appendChild(el('h4', { text: 'Responses' }));
+          Object.keys(op.responses).forEach(function (code) {
+            var r = op.responses[code];
+            body.appendChild(el('div', {}, [el('strong', { text: code + ' ' }), el('span', { text: r.description || '' })]));
+            if (r.content) Object.keys(r.content).forEach(function (ct) { body.appendChild(schemaBlock(spec, r.content[ct].schema)); });
+          });
+        }
+        var m = method.toLowerCase();
+        var cls = ['get', 'post', 'put', 'patch', 'delete'].indexOf(m) >= 0 ? m : 'other';
+        return el('details', { 'data-search': (method + ' ' + path + ' ' + (op.summary || '') + ' ' + (op.operationId || '')).toLowerCase() }, [
+          el('summary', {}, [
+            el('span', { class: 'method ' + cls, text: method.toUpperCase() }),
+            el('span', { class: 'path', text: path }),
+            el('span', { class: 'summary', text: op.summary || op.operationId || '' })
+          ]),
+          body
+        ]);
+      }
+
+      function render(spec) {
+        document.getElementById('title').textContent = (spec.info && spec.info.title) || 'API Documentation';
+        document.getElementById('version').textContent = (spec.info && spec.info.version) ? 'v' + spec.info.version : '';
+        document.getElementById('description').textContent = (spec.info && spec.info.description) || '';
+        document.title = document.getElementById('title').textContent;
+
+        var groups = {};
+        Object.keys(spec.paths || {}).sort().forEach(function (path) {
+          var item = spec.paths[path];
+          Object.keys(item).forEach(function (method) {
+            var op = item[method];
+            if (!op || typeof op !== 'object') return;
+            var tag = (op.tags && op.tags[0]) || 'default';
+            (groups[tag] = groups[tag] || []).push(operationDetails(spec, method, path, op));
+          });
+        });
+
+        content.innerHTML = '';
+        var tags = Object.keys(groups).sort();
+        if (!tags.length) { content.appendChild(el('p', { class: 'empty', text: 'No endpoints found.' })); return; }
+        tags.forEach(function (tag) {
+          content.appendChild(el('section', { class: 'tag' }, [el('h2', { text: tag })].concat(groups[tag])));
+        });
+      }
+
+      document.getElementById('filter').addEventListener('input', function (e) {
+        var q = e.target.value.trim().toLowerCase();
+        content.querySelectorAll('details').forEach(function (d) {
+          d.classList.toggle('hidden', q && d.getAttribute('data-search').indexOf(q) < 0);
+        });
+      });
+
+      fetch(specUrl, { headers: { Accept: 'application/json' } })
+        .then(function (r) { if (!r.ok) throw new Error(r.status + ' ' + r.statusText); return r.json(); })
+        .then(render)
+        .catch(function (err) {
+          content.innerHTML = '';
+          content.appendChild(el('p', { class: 'error', text: 'Failed to load ' + specUrl + ': ' + err.message }));
+        });
+    })();
+  </script>
+</body>
+</html>

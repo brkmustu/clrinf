@@ -1,0 +1,37 @@
+name: clrinfjs
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    services:
+      nats:
+        image: nats:2.10-alpine
+        ports:
+          - 4222:4222
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: brkmustu/clrinf
+          ref: master
+          path: conformance-source
+          sparse-checkout: tests/conformance/fixtures
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.14
+      - run: bun install --frozen-lockfile
+      - run: bun run typecheck
+      - run: bun test
+        env:
+          CLRINF_CONFORMANCE_DIR: ${{ github.workspace }}/conformance-source/tests/conformance/fixtures
+          CLRINF_NATS_TEST_URL: nats://127.0.0.1:4222

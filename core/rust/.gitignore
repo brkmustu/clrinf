@@ -1,0 +1,55 @@
+# ==========================================
+# clrinfrs (Rust / Cargo) .gitignore
+# ==========================================
+
+# Build output
+/target/
+target/
+**/*.rs.bk
+*.bk
+
+# Cargo profiling & cache
+*.profraw
+*.profdata
+
+# Environment & Secrets
+.env
+.env.local
+.env.*.local
+!.env.example
+!.env.template
+*.pem
+*.key
+
+# Logs & Temp
+logs/
+*.log
+*.tmp
+*.temp
+*~
+
+# IDE & Editor Configurations
+.vs/
+.idea/
+*.user
+*.suo
+*.code-workspace
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+
+# Operating System Files
+.DS_Store
+Thumbs.db
+Desktop.ini
+ehthumbs.db
+
+# AI & Agent Artifacts / Internal Context
+.context/
+.agents/
+.claude/
+.gemini/
+.opencode/
+AGENTS.md

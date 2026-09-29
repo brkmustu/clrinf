@@ -1,0 +1,10 @@
+target
+**/target
+.git
+.env
+**/.env
+**/*.pem
+**/*.key
+**/secrets
+**/.secrets
+**/.local

@@ -1,0 +1,77 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.clrinf.com/_envelope.schema.json",
+  "title": "CloudEventEnvelope",
+  "x-domain": "common",
+  "description": "CloudEvents 1.0 envelope with mandatory clrinf extension attributes.",
+  "type": "object",
+  "required": [
+    "specversion",
+    "id",
+    "source",
+    "type",
+    "time",
+    "datacontenttype",
+    "tenantid",
+    "correlationid",
+    "causationid",
+    "data"
+  ],
+  "properties": {
+    "specversion": {
+      "type": "string",
+      "const": "1.0",
+      "description": "CloudEvents version"
+    },
+    "id": {
+      "type": "string",
+      "description": "Unique event identifier (UUID)"
+    },
+    "source": {
+      "type": "string",
+      "description": "URI identifying the producer service (e.g. clrinf/stok-satinalma)"
+    },
+    "type": {
+      "type": "string",
+      "description": "Canonical event type (e.g. com.clrinf.stok.StockReserved.v1)"
+    },
+    "subject": {
+      "type": "string",
+      "description": "Subject of the event in the context of the event producer (e.g. order/ORD-12345)"
+    },
+    "time": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Timestamp when the event was generated (ISO 8601 UTC)"
+    },
+    "datacontenttype": {
+      "type": "string",
+      "const": "application/json",
+      "description": "Media type of the event data"
+    },
+    "tenantid": {
+      "type": "string",
+      "description": "Tenant identifier for multi-tenant isolation"
+    },
+    "correlationid": {
+      "type": "string",
+      "description": "Correlation identifier spanning across entire workflow"
+    },
+    "causationid": {
+      "type": "string",
+      "description": "Event ID that directly triggered/caused this event"
+    },
+    "is_error": {
+      "type": "boolean",
+      "description": "Optional flag identifying an error event"
+    },
+    "is_compensation": {
+      "type": "boolean",
+      "description": "Optional flag identifying a compensation event"
+    },
+    "data": {
+      "type": "object",
+      "description": "Domain event payload"
+    }
+  }
+}

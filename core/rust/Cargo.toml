@@ -1,0 +1,12 @@
+[workspace]
+members = [
+    "crates/clrinf-core",
+    "crates/clrinf-adapters",
+    "crates/clrinf-cli",
+    "examples/clrinf-auth",
+    "examples/clrinf-kampanya",
+    "examples/generic",
+    "examples/crm-monolith",
+    "examples/ecommerce-monolith",
+]
+resolver = "2"

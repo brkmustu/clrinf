@@ -1,0 +1,241 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.clrinf.com/module-manifest.schema.json",
+  "title": "ClrinfProjectManifest",
+  "description": "Dil-agnostik proje manifest formatı. Tüm clrinf projelerinin kök dizininde 'clrinf.toml' olarak bulunur ve cross-cutting concern modüllerinin konfigürasyonunu beyan eder.",
+  "type": "object",
+  "required": ["project"],
+  "properties": {
+    "project": {
+      "type": "object",
+      "description": "Proje meta verileri ve temel konfigürasyon.",
+      "required": ["name", "lang"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Proje adı. Kod üretiminde namespace/crate/package adı olarak kullanılır.",
+          "pattern": "^[a-zA-Z][a-zA-Z0-9_-]*$"
+        },
+        "lang": {
+          "type": "string",
+          "description": "Hedef programlama dili.",
+          "enum": ["csharp", "rust", "typescript"]
+        },
+        "arch": {
+          "type": "string",
+          "description": "Mimari stili.",
+          "enum": ["flat", "layered", "clean-cqrs"],
+          "default": "clean-cqrs"
+        },
+        "deployment": {
+          "type": "string",
+          "description": "Dağıtım modeli.",
+          "enum": ["monolith", "distributed"],
+          "default": "monolith"
+        },
+        "host_type": {
+          "type": "string",
+          "description": "Uygulama barındırma tipi.",
+          "enum": ["api", "mvc", "console", "worker"],
+          "default": "api"
+        },
+        "dispatcher": {
+          "type": "string",
+          "description": "Komut/sorgu dağıtım mekanizması.",
+          "enum": ["native", "mediatr"],
+          "default": "native"
+        }
+      }
+    },
+    "modules": {
+      "type": "object",
+      "description": "Cross-cutting concern modülleri. Her modül bağımsız olarak etkinleştirilebilir/devre dışı bırakılabilir.",
+      "properties": {
+        "caching": {
+          "$ref": "#/$defs/CachingModule"
+        },
+        "logging": {
+          "$ref": "#/$defs/LoggingModule"
+        },
+        "transaction": {
+          "$ref": "#/$defs/TransactionModule"
+        },
+        "authentication": {
+          "$ref": "#/$defs/AuthenticationModule"
+        },
+        "authorization": {
+          "$ref": "#/$defs/AuthorizationModule"
+        },
+        "error_handling": {
+          "$ref": "#/$defs/ErrorHandlingModule"
+        },
+        "validation": {
+          "$ref": "#/$defs/ValidationModule"
+        },
+        "idempotency": {
+          "$ref": "#/$defs/IdempotencyModule"
+        },
+        "outbox": {
+          "$ref": "#/$defs/OutboxModule"
+        }
+      }
+    }
+  },
+  "$defs": {
+    "CachingModule": {
+      "type": "object",
+      "description": "Önbellekleme modülü. Sorgu sonuçlarını ve sık erişilen verileri önbelleğe alır.",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": false
+        },
+        "provider": {
+          "type": "string",
+          "enum": ["memory", "redis", "distributed"],
+          "default": "memory"
+        },
+        "default_ttl_seconds": {
+          "type": "integer",
+          "description": "Varsayılan önbellek süresi (saniye).",
+          "default": 300,
+          "minimum": 1
+        }
+      }
+    },
+    "LoggingModule": {
+      "type": "object",
+      "description": "Yapılandırılmış günlükleme modülü. Request/response pipeline'ına otomatik loglama ekler.",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": true
+        },
+        "provider": {
+          "type": "string",
+          "enum": ["structured", "console", "opentelemetry"],
+          "default": "structured"
+        }
+      }
+    },
+    "TransactionModule": {
+      "type": "object",
+      "description": "Transaction yönetimi modülü. Komut handler'larını otomatik olarak transaction kapsamına alır.",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": true
+        },
+        "provider": {
+          "type": "string",
+          "enum": ["native", "saga"],
+          "default": "native"
+        }
+      }
+    },
+    "AuthenticationModule": {
+      "type": "object",
+      "description": "Kimlik doğrulama modülü. JWT, OAuth2 veya API Key tabanlı kimlik doğrulama sağlar.",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": false
+        },
+        "provider": {
+          "type": "string",
+          "enum": ["jwt", "oauth2", "apikey"],
+          "default": "jwt"
+        },
+        "jwt": {
+          "type": "object",
+          "description": "JWT-specific konfigürasyon.",
+          "properties": {
+            "issuer": {
+              "type": "string",
+              "default": "clrinf"
+            },
+            "audience": {
+              "type": "string",
+              "default": "clrinf-api"
+            },
+            "expiration_minutes": {
+              "type": "integer",
+              "default": 60,
+              "minimum": 1
+            }
+          }
+        }
+      }
+    },
+    "AuthorizationModule": {
+      "type": "object",
+      "description": "Yetkilendirme modülü. Komut ve sorgu düzeyinde erişim denetimi sağlar.",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": false
+        },
+        "provider": {
+          "type": "string",
+          "enum": ["policy", "rbac", "abac", "cedar"],
+          "default": "policy"
+        },
+        "policy_path": {
+          "type": "string",
+          "description": "Cedar veya RBAC politika dosyalarının bulunduğu dizin.",
+          "default": "policies"
+        }
+      }
+    },
+    "ErrorHandlingModule": {
+      "type": "object",
+      "description": "Standart hata yönetimi. Her zaman etkin, konfigüre edilebilir.",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": true
+        }
+      }
+    },
+    "ValidationModule": {
+      "type": "object",
+      "description": "Girdi doğrulama modülü. Her zaman etkin.",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": true
+        }
+      }
+    },
+    "IdempotencyModule": {
+      "type": "object",
+      "description": "Idempotency modülü. Tekrarlanan isteklerin güvenli işlenmesini sağlar.",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": false
+        },
+        "provider": {
+          "type": "string",
+          "enum": ["memory", "redis", "database"],
+          "default": "memory"
+        }
+      }
+    },
+    "OutboxModule": {
+      "type": "object",
+      "description": "Transactional Outbox Pattern. Event'lerin güvenilir şekilde yayınlanmasını garantiler.",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": false
+        },
+        "provider": {
+          "type": "string",
+          "enum": ["database", "memory"],
+          "default": "database"
+        }
+      }
+    }
+  }
+}

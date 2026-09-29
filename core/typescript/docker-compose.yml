@@ -1,0 +1,23 @@
+services:
+  event-inspector:
+    profiles: ["inspector"]
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "127.0.0.1:4200:4200"
+    environment:
+      - PORT=4200
+      - HOST=0.0.0.0
+      - INSPECTOR_ALLOW_UNAUTHENTICATED=true
+      - NATS_URL=nats://nats:4222
+      - NODE_ENV=development
+    depends_on:
+      - nats
+
+  nats:
+    image: nats:2.10-alpine
+    ports:
+      - "127.0.0.1:4222:4222"
+      - "127.0.0.1:8222:8222"
+    command: ["--jetstream"]

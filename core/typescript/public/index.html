@@ -1,0 +1,971 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>clrinf Event Inspector 2.0 — Trace Waterfall & Event Replay</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-base: #0a0d14;
+      --bg-surface: rgba(18, 24, 38, 0.75);
+      --bg-surface-hover: rgba(28, 36, 56, 0.85);
+      --bg-card: rgba(15, 21, 34, 0.65);
+      --border-color: rgba(255, 255, 255, 0.08);
+      --border-focus: rgba(99, 102, 241, 0.5);
+      
+      --accent-primary: #6366f1;
+      --accent-primary-hover: #4f46e5;
+      --accent-cyan: #06b6d4;
+      --accent-emerald: #10b981;
+      --accent-amber: #f59e0b;
+      --accent-rose: #f43f5e;
+      --accent-purple: #a855f7;
+
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --text-dim: #64748b;
+      
+      --radius-sm: 8px;
+      --radius-md: 12px;
+      --radius-lg: 16px;
+      --font-main: 'Plus Jakarta Sans', system-ui, sans-serif;
+      --font-mono: 'Fira Code', monospace;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg-base);
+      color: var(--text-main);
+      font-family: var(--font-main);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      background-image: 
+        radial-gradient(circle at 15% 15%, rgba(99, 102, 241, 0.12) 0%, transparent 40%),
+        radial-gradient(circle at 85% 85%, rgba(6, 182, 212, 0.10) 0%, transparent 45%);
+      background-attachment: fixed;
+    }
+
+    header {
+      backdrop-filter: blur(16px);
+      background: var(--bg-surface);
+      border-bottom: 1px solid var(--border-color);
+      padding: 1rem 2rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .logo-badge {
+      background: linear-gradient(135deg, var(--accent-primary), var(--accent-cyan));
+      color: #fff;
+      font-weight: 800;
+      font-size: 1.1rem;
+      padding: 0.4rem 0.75rem;
+      border-radius: var(--radius-sm);
+      box-shadow: 0 0 20px rgba(99, 102, 241, 0.35);
+    }
+
+    .brand-title {
+      font-size: 1.25rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+
+    .brand-sub {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .status-pill {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid var(--border-color);
+      padding: 0.4rem 0.8rem;
+      border-radius: 9999px;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--accent-emerald);
+      box-shadow: 0 0 10px var(--accent-emerald);
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      font-family: var(--font-main);
+      font-size: 0.85rem;
+      font-weight: 600;
+      padding: 0.5rem 1rem;
+      border-radius: var(--radius-sm);
+      border: 1px solid transparent;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--accent-primary), var(--accent-primary-hover));
+      color: #fff;
+      box-shadow: 0 4px 14px rgba(99, 102, 241, 0.3);
+    }
+    .btn-primary:hover {
+      box-shadow: 0 6px 20px rgba(99, 102, 241, 0.45);
+      transform: translateY(-1px);
+    }
+
+    .btn-success {
+      background: linear-gradient(135deg, var(--accent-emerald), #059669);
+      color: #fff;
+      box-shadow: 0 4px 14px rgba(16, 185, 129, 0.3);
+    }
+    .btn-success:hover {
+      box-shadow: 0 6px 20px rgba(16, 185, 129, 0.45);
+      transform: translateY(-1px);
+    }
+
+    .btn-outline {
+      background: rgba(255, 255, 255, 0.03);
+      color: var(--text-muted);
+      border-color: var(--border-color);
+    }
+    .btn-outline:hover {
+      background: rgba(255, 255, 255, 0.08);
+      color: var(--text-main);
+    }
+
+    main {
+      flex: 1;
+      padding: 1.5rem 2rem;
+      max-width: 1600px;
+      width: 100%;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+    }
+
+    .metrics-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 1rem;
+    }
+
+    .metric-card {
+      background: var(--bg-surface);
+      backdrop-filter: blur(12px);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-md);
+      padding: 1.1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+    }
+
+    .metric-label {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .metric-value {
+      font-size: 1.7rem;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+    }
+
+    .filter-bar {
+      background: var(--bg-surface);
+      backdrop-filter: blur(12px);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-md);
+      padding: 0.6rem 1rem;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .search-input {
+      flex: 1;
+      min-width: 240px;
+      background: rgba(0, 0, 0, 0.3);
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      padding: 0.45rem 0.9rem;
+      border-radius: var(--radius-sm);
+      font-family: var(--font-main);
+      font-size: 0.85rem;
+      outline: none;
+    }
+    .search-input:focus {
+      border-color: var(--border-focus);
+    }
+
+    .tabs-nav {
+      display: flex;
+      gap: 0.4rem;
+      background: rgba(0, 0, 0, 0.3);
+      padding: 0.25rem;
+      border-radius: var(--radius-sm);
+    }
+
+    .tab-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      font-family: var(--font-main);
+      font-size: 0.8rem;
+      font-weight: 600;
+      padding: 0.4rem 0.85rem;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    .tab-btn.active {
+      background: var(--accent-primary);
+      color: #fff;
+      box-shadow: 0 2px 8px rgba(99, 102, 241, 0.3);
+    }
+
+    .content-area {
+      display: grid;
+      grid-template-columns: 1fr 480px;
+      gap: 1.25rem;
+      flex: 1;
+    }
+
+    @media (max-width: 1100px) {
+      .content-area {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .panel {
+      background: var(--bg-surface);
+      backdrop-filter: blur(16px);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-lg);
+      padding: 1.25rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      overflow: hidden;
+    }
+
+    .panel-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .panel-title {
+      font-size: 1rem;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+    }
+
+    .events-timeline {
+      display: flex;
+      flex-direction: column;
+      gap: 0.65rem;
+      overflow-y: auto;
+      max-height: 620px;
+      padding-right: 0.4rem;
+    }
+
+    .event-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-md);
+      padding: 0.85rem;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      position: relative;
+    }
+    .event-card::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 4px;
+      background: var(--accent-primary);
+    }
+    .event-card.error::before {
+      background: var(--accent-rose);
+    }
+    .event-card:hover, .event-card.selected {
+      border-color: var(--border-focus);
+      background: var(--bg-surface-hover);
+      transform: translateX(4px);
+    }
+
+    .event-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .event-type {
+      font-family: var(--font-mono);
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: #fff;
+    }
+
+    .event-time {
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+      color: var(--text-dim);
+    }
+
+    .badge-row {
+      display: flex;
+      gap: 0.4rem;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .badge {
+      font-size: 0.68rem;
+      font-weight: 600;
+      padding: 0.15rem 0.45rem;
+      border-radius: 4px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--border-color);
+      font-family: var(--font-mono);
+    }
+    .badge-source {
+      background: rgba(99, 102, 241, 0.15);
+      color: #a5b4fc;
+      border-color: rgba(99, 102, 241, 0.3);
+    }
+    .badge-tenant {
+      background: rgba(6, 182, 212, 0.15);
+      color: #67e8f9;
+      border-color: rgba(6, 182, 212, 0.3);
+    }
+    .badge-corr {
+      background: rgba(168, 85, 247, 0.15);
+      color: #d8b4fe;
+      border-color: rgba(168, 85, 247, 0.3);
+    }
+
+    .btn-replay-card {
+      margin-left: auto;
+      background: rgba(16, 185, 129, 0.15);
+      color: #34d399;
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      padding: 0.15rem 0.5rem;
+      border-radius: 4px;
+      font-size: 0.7rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-replay-card:hover {
+      background: rgba(16, 185, 129, 0.35);
+      color: #fff;
+    }
+
+    .json-viewer {
+      background: rgba(0, 0, 0, 0.45);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-md);
+      padding: 0.9rem;
+      font-family: var(--font-mono);
+      font-size: 0.78rem;
+      color: #e2e8f0;
+      overflow: auto;
+      max-height: 560px;
+      line-height: 1.5;
+      white-space: pre-wrap;
+    }
+
+    .sequence-box, .waterfall-box {
+      background: rgba(0, 0, 0, 0.45);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-md);
+      padding: 1.25rem;
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      color: var(--text-main);
+      overflow: auto;
+      max-height: 620px;
+    }
+
+    .seq-step {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      margin-bottom: 0.6rem;
+    }
+    .seq-node {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-color);
+      padding: 0.2rem 0.5rem;
+      border-radius: 4px;
+      font-weight: 600;
+    }
+    .seq-arrow {
+      color: var(--accent-cyan);
+      font-weight: bold;
+    }
+    .seq-msg {
+      color: #f1f5f9;
+    }
+
+    /* Waterfall Styles */
+    .waterfall-group {
+      margin-bottom: 1.5rem;
+      border-bottom: 1px solid var(--border-color);
+      padding-bottom: 1.25rem;
+    }
+    .waterfall-group-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.75rem;
+      color: var(--accent-cyan);
+      font-weight: 700;
+    }
+    .waterfall-row {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      margin-bottom: 0.4rem;
+    }
+    .waterfall-label {
+      width: 180px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      color: #cbd5e1;
+      font-size: 0.75rem;
+      flex-shrink: 0;
+    }
+    .waterfall-track {
+      flex: 1;
+      height: 22px;
+      background: rgba(255, 255, 255, 0.03);
+      border-radius: 4px;
+      position: relative;
+    }
+    .waterfall-bar {
+      position: absolute;
+      top: 2px;
+      bottom: 2px;
+      border-radius: 3px;
+      background: linear-gradient(90deg, var(--accent-primary), var(--accent-cyan));
+      display: flex;
+      align-items: center;
+      padding: 0 6px;
+      font-size: 0.68rem;
+      font-weight: 700;
+      color: #fff;
+      white-space: nowrap;
+    }
+    .waterfall-bar.error {
+      background: linear-gradient(90deg, var(--accent-rose), #fb7185);
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 3rem 1rem;
+      color: var(--text-dim);
+    }
+
+    .toast {
+      position: fixed;
+      bottom: 1.5rem;
+      right: 1.5rem;
+      background: var(--bg-surface);
+      border: 1px solid var(--accent-emerald);
+      color: #fff;
+      padding: 0.75rem 1.25rem;
+      border-radius: var(--radius-sm);
+      font-size: 0.85rem;
+      font-weight: 600;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+      z-index: 1000;
+      animation: slideIn 0.3s ease;
+    }
+    @keyframes slideIn {
+      from { transform: translateY(20px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="brand">
+      <div class="logo-badge">clrinf</div>
+      <div>
+        <div class="brand-title">Event Inspector 2.0</div>
+        <div class="brand-sub">Development Inspector · Local Replay · Estimated Waterfall</div>
+      </div>
+    </div>
+
+    <div class="header-actions">
+      <div class="status-pill">
+        <div class="status-dot" id="ws-status-dot"></div>
+        <span id="ws-status-text">Canlı Dinleyici Aktif</span>
+      </div>
+      <button class="btn btn-primary" id="btn-simulate">
+        ⚡ Belge Akışı Simülasyonu
+      </button>
+      <button class="btn btn-outline" id="btn-clear">
+        🗑️ Temizle
+      </button>
+    </div>
+  </header>
+
+  <main>
+    <div class="metrics-grid">
+      <div class="metric-card">
+        <div class="metric-label">Toplam Event</div>
+        <div class="metric-value" id="metric-total" style="color: var(--accent-cyan);">0</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Correlation Akışı</div>
+        <div class="metric-value" id="metric-correlations" style="color: var(--accent-primary);">0</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Aktif Tenant</div>
+        <div class="metric-value" id="metric-tenants" style="color: var(--accent-emerald);">0</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Hata / Compensating</div>
+        <div class="metric-value" id="metric-errors" style="color: var(--accent-rose);">0</div>
+      </div>
+    </div>
+
+    <div class="filter-bar">
+      <input type="text" class="search-input" id="search-input" placeholder="🔍 Correlation ID, Tenant veya Event Type ile filtrele...">
+      <div class="tabs-nav">
+        <button class="tab-btn active" data-tab="timeline">Timeline</button>
+        <button class="tab-btn" data-tab="sequence">Sequence</button>
+        <button class="tab-btn" data-tab="waterfall">📊 Trace Waterfall</button>
+      </div>
+    </div>
+
+    <div class="content-area">
+      <!-- Main Stream Panel -->
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title" id="tab-heading">Canlı Event Akışı</div>
+          <span style="font-size: 0.8rem; color: var(--text-muted);" id="filtered-count">0 event gösteriliyor</span>
+        </div>
+
+        <div id="timeline-container" class="events-timeline">
+          <div class="empty-state">Henüz yakalanan bir event bulunmuyor. Yukarıdaki "Belge Akışı Simülasyonu" butonuna tıklayarak akış başlatabilirsiniz.</div>
+        </div>
+
+        <div id="sequence-container" class="sequence-box" style="display: none;">
+          <div class="empty-state">Sequence diagram için en az bir correlation akışı gereklidir.</div>
+        </div>
+
+        <div id="waterfall-container" class="waterfall-box" style="display: none;">
+          <div class="empty-state">Trace Waterfall için en az bir event akışı gereklidir.</div>
+        </div>
+      </div>
+
+      <!-- Detail / JSON Inspector Panel -->
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">CloudEvent Zarfı</div>
+          <div style="display: flex; gap: 0.4rem;">
+            <button class="btn btn-success" id="btn-replay-selected" style="padding: 0.25rem 0.6rem; font-size: 0.75rem;" disabled>
+              🔁 Replay Et
+            </button>
+            <button class="btn btn-outline" id="btn-copy-json" style="padding: 0.25rem 0.6rem; font-size: 0.75rem;">
+              📋 Kopyala
+            </button>
+          </div>
+        </div>
+        <pre class="json-viewer" id="json-viewer">// İncelemek veya Replay etmek istediğiniz bir event'e tıklayın.</pre>
+      </div>
+    </div>
+  </main>
+
+  <div id="toast-container"></div>
+
+  <script>
+    let events = [];
+    let selectedEvent = null;
+    let currentTab = 'timeline';
+    let filterQuery = '';
+    const escapeHtml = value => String(value).replace(/[&<>"']/g, char => ({
+      '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+    })[char]);
+
+    const timelineContainer = document.getElementById('timeline-container');
+    const sequenceContainer = document.getElementById('sequence-container');
+    const waterfallContainer = document.getElementById('waterfall-container');
+    const jsonViewer = document.getElementById('json-viewer');
+    const searchInput = document.getElementById('search-input');
+    const filteredCount = document.getElementById('filtered-count');
+    const btnReplaySelected = document.getElementById('btn-replay-selected');
+
+    const metricTotal = document.getElementById('metric-total');
+    const metricCorrelations = document.getElementById('metric-correlations');
+    const metricTenants = document.getElementById('metric-tenants');
+    const metricErrors = document.getElementById('metric-errors');
+
+    function showToast(msg) {
+      const toast = document.createElement('div');
+      toast.className = 'toast';
+      toast.textContent = msg;
+      document.getElementById('toast-container').appendChild(toast);
+      setTimeout(() => toast.remove(), 3000);
+    }
+
+    // WebSocket connection
+    const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const wsUrl = `${wsProtocol}//${window.location.host}/ws`;
+    const socket = new WebSocket(wsUrl);
+
+    socket.onopen = () => {
+      document.getElementById('ws-status-dot').style.background = 'var(--accent-emerald)';
+      document.getElementById('ws-status-text').textContent = 'Canlı Dinleyici Aktif';
+    };
+
+    socket.onclose = () => {
+      document.getElementById('ws-status-dot').style.background = 'var(--accent-rose)';
+      document.getElementById('ws-status-text').textContent = 'Bağlantı Kesildi';
+    };
+
+    socket.onmessage = (e) => {
+      try {
+        const msg = JSON.parse(e.data);
+        if (msg.type === 'init' && Array.isArray(msg.payload)) {
+          events = msg.payload.slice(-500);
+          render();
+        } else if (msg.type === 'event' && msg.payload) {
+          events.push(msg.payload);
+          if (events.length > 500) events.shift();
+          if (selectedEvent && !events.some(event => event.id === selectedEvent.id && event.tenantid === selectedEvent.tenantid)) selectedEvent = null;
+          render();
+        } else if (msg.type === 'clear') {
+          events = [];
+          selectedEvent = null;
+          render();
+        }
+      } catch (err) {
+        console.error('WS Parse Error:', err);
+      }
+    };
+
+    async function replayEvent(eventId, tenantId) {
+      try {
+        const res = await fetch('/api/replay', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ event_id: eventId, tenant_id: tenantId })
+        });
+        if (res.ok) {
+          showToast('🔁 Olay yalnızca Inspector içinde yeniden oynatıldı; NATS yayını yapılmadı.');
+        } else {
+          showToast(`Replay başarısız: ${res.status}`);
+        }
+      } catch (err) {
+        console.error('Replay error:', err);
+      }
+    }
+
+    function updateMetrics() {
+      metricTotal.textContent = events.length;
+      const correlations = new Set(events.map(e => e.correlationid)).size;
+      const tenants = new Set(events.map(e => e.tenantid)).size;
+      const errors = events.filter(e => e.is_error || e.is_compensation).length;
+
+      metricCorrelations.textContent = correlations;
+      metricTenants.textContent = tenants;
+      metricErrors.textContent = errors;
+    }
+
+    function renderTimeline(filtered) {
+      if (filtered.length === 0) {
+        timelineContainer.innerHTML = '<div class="empty-state">Kriterlere uygun event bulunamadı.</div>';
+        return;
+      }
+
+      timelineContainer.innerHTML = filtered.map((evt) => {
+        const isSelected = selectedEvent && selectedEvent.id === evt.id && selectedEvent.tenantid === evt.tenantid ? 'selected' : '';
+        const isError = evt.is_error ? 'error' : '';
+        return `
+          <div class="event-card ${isSelected} ${isError}" data-id="${escapeHtml(evt.id)}" data-tenant="${escapeHtml(evt.tenantid)}">
+            <div class="event-top">
+              <div class="event-type">${escapeHtml(evt.type)}</div>
+              <div class="event-time">${new Date(evt.time).toLocaleTimeString()}</div>
+            </div>
+            <div class="badge-row">
+              <span class="badge badge-source">src: ${escapeHtml(evt.source)}</span>
+              <span class="badge badge-tenant">tenant: ${escapeHtml(evt.tenantid)}</span>
+              <span class="badge badge-corr">corr: ${escapeHtml(evt.correlationid.substring(0, 8))}...</span>
+              ${evt.is_error ? '<span class="badge">error</span>' : ''}
+              ${evt.is_compensation ? '<span class="badge">compensation</span>' : ''}
+              <button class="btn-replay-card" data-replay="${escapeHtml(evt.id)}" data-tenant="${escapeHtml(evt.tenantid)}">🔁 Replay</button>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      document.querySelectorAll('.event-card').forEach(el => {
+        el.addEventListener('click', (e) => {
+          if (e.target.closest('.btn-replay-card')) return;
+          const id = el.getAttribute('data-id');
+          selectedEvent = events.find(item => item.id === id && item.tenantid === el.getAttribute('data-tenant'));
+          btnReplaySelected.disabled = false;
+          renderJsonViewer();
+          render();
+        });
+      });
+
+      document.querySelectorAll('.btn-replay-card').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const id = btn.getAttribute('data-replay');
+          replayEvent(id, btn.getAttribute('data-tenant'));
+        });
+      });
+    }
+
+    function renderSequence(filtered) {
+      if (filtered.length === 0) {
+        sequenceContainer.innerHTML = '<div class="empty-state">Sequence diagram için event akışı bulunmuyor.</div>';
+        return;
+      }
+
+      const byCorr = Object.create(null);
+      filtered.forEach(e => {
+        const key = JSON.stringify([e.tenantid, e.correlationid]);
+        if (!byCorr[key]) byCorr[key] = [];
+        byCorr[key].push(e);
+      });
+
+      let html = '';
+      for (const evts of Object.values(byCorr)) {
+        const corrId = evts[0].correlationid;
+        html += `<div style="margin-bottom: 1.5rem; border-bottom: 1px solid var(--border-color); padding-bottom: 1rem;">`;
+        html += `<div style="font-weight: 700; color: var(--accent-cyan); margin-bottom: 0.5rem;">Workflow: ${escapeHtml(corrId)} / ${escapeHtml(evts[0].tenantid)}</div>`;
+        
+        evts.forEach((evt, i) => {
+          const arrowColor = evt.is_error ? 'var(--accent-rose)' : 'var(--accent-cyan)';
+          html += `
+            <div class="seq-step">
+              <span style="color: var(--text-dim); width: 24px;">#${i + 1}</span>
+              <span class="seq-node">${escapeHtml(evt.source)}</span>
+              <span class="seq-arrow" style="color: ${arrowColor};">──▶ [Observed] ──▶</span>
+              <span class="seq-msg"><b>${escapeHtml(evt.type)}</b></span>
+            </div>
+          `;
+        });
+        html += `</div>`;
+      }
+
+      sequenceContainer.innerHTML = html;
+    }
+
+    function renderWaterfall(filtered) {
+      if (filtered.length === 0) {
+        waterfallContainer.innerHTML = '<div class="empty-state">Trace Waterfall için event akışı bulunmuyor.</div>';
+        return;
+      }
+
+      const byCorr = Object.create(null);
+      filtered.forEach(e => {
+        const key = JSON.stringify([e.tenantid, e.correlationid]);
+        if (!byCorr[key]) byCorr[key] = [];
+        byCorr[key].push(e);
+      });
+
+      let html = '';
+      for (const evts of Object.values(byCorr)) {
+        const corrId = evts[0].correlationid;
+        const sorted = [...evts].sort((a, b) => new Date(a.time).getTime() - new Date(b.time).getTime());
+        const baseTime = sorted.length > 0 ? new Date(sorted[0].time).getTime() : 0;
+        const totalDuration = Math.max(50, new Date(sorted[sorted.length - 1].time).getTime() - baseTime + 40);
+
+        html += `<div class="waterfall-group">`;
+        html += `
+          <div class="waterfall-group-header">
+            <span>Trace: ${escapeHtml(corrId.substring(0, 16))}... / ${escapeHtml(evts[0].tenantid)}</span>
+            <span style="font-size: 0.75rem; color: var(--text-muted);">${totalDuration} ms toplam süre</span>
+          </div>
+        `;
+
+        sorted.forEach((evt, idx) => {
+          const startTime = new Date(evt.time).getTime();
+          const offsetMs = Math.max(0, startTime - baseTime);
+          const nextTime = idx < sorted.length - 1 ? new Date(sorted[idx + 1].time).getTime() : startTime + 40;
+          const durationMs = Math.max(20, nextTime - startTime);
+
+          const leftPercent = Math.min(90, (offsetMs / totalDuration) * 100);
+          const widthPercent = Math.max(8, Math.min(100 - leftPercent, (durationMs / totalDuration) * 100));
+          const isErrorClass = evt.is_error ? 'error' : '';
+
+          html += `
+            <div class="waterfall-row">
+              <div class="waterfall-label" title="${escapeHtml(evt.type)}">
+                [${escapeHtml(evt.source.split('/').pop())}] ${escapeHtml(evt.type)}
+              </div>
+              <div class="waterfall-track">
+                <div class="waterfall-bar ${isErrorClass}" style="left: ${leftPercent}%; width: ${widthPercent}%;">
+                  +${offsetMs}ms (${durationMs}ms)
+                </div>
+              </div>
+            </div>
+          `;
+        });
+
+        html += `</div>`;
+      }
+
+      waterfallContainer.innerHTML = html;
+    }
+
+    function renderJsonViewer() {
+      if (!selectedEvent) {
+        jsonViewer.textContent = '// İncelemek veya Replay etmek istediğiniz bir event\'e tıklayın.';
+        btnReplaySelected.disabled = true;
+        return;
+      }
+      jsonViewer.textContent = JSON.stringify(selectedEvent, null, 2);
+      btnReplaySelected.disabled = false;
+    }
+
+    function render() {
+      updateMetrics();
+
+      const query = filterQuery.toLowerCase().trim();
+      const filtered = events.filter(e => {
+        if (!query) return true;
+        return (
+          e.type.toLowerCase().includes(query) ||
+          e.source.toLowerCase().includes(query) ||
+          e.tenantid.toLowerCase().includes(query) ||
+          e.correlationid.toLowerCase().includes(query)
+        );
+      });
+
+      filteredCount.textContent = `${filtered.length} / ${events.length} event`;
+
+      if (currentTab === 'timeline') {
+        timelineContainer.style.display = 'flex';
+        sequenceContainer.style.display = 'none';
+        waterfallContainer.style.display = 'none';
+        renderTimeline(filtered);
+      } else if (currentTab === 'sequence') {
+        timelineContainer.style.display = 'none';
+        sequenceContainer.style.display = 'block';
+        waterfallContainer.style.display = 'none';
+        renderSequence(filtered);
+      } else if (currentTab === 'waterfall') {
+        timelineContainer.style.display = 'none';
+        sequenceContainer.style.display = 'none';
+        waterfallContainer.style.display = 'block';
+        renderWaterfall(filtered);
+      }
+
+      renderJsonViewer();
+    }
+
+    // Tab switching
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        currentTab = btn.getAttribute('data-tab');
+        document.getElementById('tab-heading').textContent = 
+          currentTab === 'timeline' ? 'Canlı Event Akışı' :
+          currentTab === 'sequence' ? 'Servisler Arası Sequence Akışı' :
+          'Tahmini Event Şelalesi (Waterfall)';
+        render();
+      });
+    });
+
+    // Search filter
+    searchInput.addEventListener('input', (e) => {
+      filterQuery = e.target.value;
+      render();
+    });
+
+    // Simulate Button
+    document.getElementById('btn-simulate').addEventListener('click', async () => {
+      try {
+        const response = await fetch('/api/simulate', { method: 'POST' });
+        showToast(response.ok ? '⚡ Belge akış simülasyonu başlatıldı!' : `Simülasyon başarısız: ${response.status}`);
+      } catch (err) {
+        console.error('Simulate error:', err);
+      }
+    });
+
+    // Clear Button
+    document.getElementById('btn-clear').addEventListener('click', async () => {
+      try {
+        const response = await fetch('/api/events', { method: 'DELETE' });
+        showToast(response.ok ? '🗑️ Olay havuzu temizlendi.' : `Temizleme başarısız: ${response.status}`);
+      } catch (err) {
+        console.error('Clear error:', err);
+      }
+    });
+
+    // Replay Selected Event Button
+    btnReplaySelected.addEventListener('click', () => {
+      if (selectedEvent) {
+        replayEvent(selectedEvent.id, selectedEvent.tenantid);
+      }
+    });
+
+    // Copy JSON Button
+    document.getElementById('btn-copy-json').addEventListener('click', () => {
+      if (selectedEvent) {
+        navigator.clipboard.writeText(JSON.stringify(selectedEvent, null, 2));
+        showToast('📋 JSON panoya kopyalandı.');
+      }
+    });
+  </script>
+</body>
+</html>

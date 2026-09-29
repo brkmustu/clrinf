@@ -1,0 +1,89 @@
+# ==========================================
+# clrinfjs (TS / Bun / Node.js / Turborepo)
+# ==========================================
+
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Build Outputs & Bundles
+dist/
+build/
+out/
+.tsbuildinfo
+*.tsbuildinfo
+
+# Turborepo & Build Cache
+.turbo/
+.cache/
+.parcel-cache/
+
+# Testing & Coverage
+coverage/
+.nyc_output/
+*.lcov
+junit.xml
+test-results/
+
+# Environment Variables & Local Secrets
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.env.*.local
+!.env.example
+!.env.template
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+bun.lockb.log
+
+# Runtime Data / SQLite / Temporary DBs
+data/
+*.sqlite
+*.sqlite3
+*.db
+*.db-journal
+
+# IDE & Editor Files
+.vs/
+.idea/
+*.suo
+*.user
+*.code-workspace
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+
+# Operating System Files
+.DS_Store
+.DS_Store?
+._*
+Thumbs.db
+Desktop.ini
+ehthumbs.db
+
+# Temporary Files
+*.tmp
+*.temp
+*~
+
+# AI & Agent Artifacts / Internal Context
+.context/
+.agents/
+.claude/
+.gemini/
+.opencode/
+agent-context.md
+AGENTS.md
+!/AGENTS.md
+!/agent-context.md

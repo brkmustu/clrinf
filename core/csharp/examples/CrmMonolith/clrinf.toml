@@ -1,0 +1,40 @@
+[project]
+name = "CrmMonolith"
+lang = "csharp"
+arch = "flat"
+deployment = "monolith"
+host_type = "api"
+dispatcher = "native"
+paradigm = "fp"
+profile = "full"
+db_context = "CrmDbContext"
+namespace = "CrmMonolith"
+
+[backend.structure]
+mode = "module"
+folder_name = "Modules"
+
+[modules.caching]
+enabled = true
+provider = "memory"
+
+[modules.logging]
+enabled = true
+provider = "structured"
+
+[modules.transaction]
+enabled = true
+provider = "native"
+
+[modules.authentication]
+enabled = true
+provider = "jwt"
+
+[modules.authorization]
+enabled = true
+provider = "cedar"
+policy_path = "Policies"
+
+[modules.idempotency]
+enabled = true
+provider = "memory"

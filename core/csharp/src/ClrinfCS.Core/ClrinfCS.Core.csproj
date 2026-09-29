@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>true</IsPackable>
+    <PackageId>ClrinfCS.Core</PackageId>
+    <Description>Transport-independent clrinf context, contracts, dispatch and persistence ports.</Description>
+  </PropertyGroup>
+</Project>

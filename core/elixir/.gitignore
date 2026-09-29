@@ -1,0 +1,58 @@
+# ==========================================
+# clrinfex (Elixir / Mix) .gitignore
+# ==========================================
+
+# The directory Mix will write compiled artifacts to.
+/_build/
+
+# If you run "mix test --cover", coverage assets end up here.
+/cover/
+
+# The directory Mix downloads your dependencies to.
+/deps/
+
+# Where 3rd-party dependencies like ExDoc dump generated docs.
+/doc/
+
+# Ignore the build artifacts for native code (Erlang/C).
+/erl_crash.dump
+*.ez
+
+# Ignore temporary files created by editors.
+*~
+*.swp
+*.swo
+
+# Environment Variables & Local Secrets
+.env
+.env.local
+.env.*.local
+!.env.example
+!.env.template
+
+# IDE & Editor Files
+.vs/
+.idea/
+*.suo
+*.user
+*.code-workspace
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+
+# Operating System Files
+.DS_Store
+Thumbs.db
+Desktop.ini
+ehthumbs.db
+
+# AI & Agent Artifacts / Internal Context
+.context/
+.agents/
+.claude/
+.gemini/
+.opencode/
+!/agent-context.md
+AGENTS.md

@@ -1,0 +1,121 @@
+# .NET Core / .NET 5+ derleme çıktıları
+bin/
+obj/
+out/
+publish/
+
+# Visual Studio / Rider geçici dosyaları
+.vs/
+.idea/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Kullanıcıya özel ayarlar
+appsettings.Development.json
+appsettings.Local.json
+appsettings.*.local.json
+secrets.json
+*.secrets.json
+
+# Paket yöneticileri
+packages/
+*.nupkg
+*.snupkg
+NuGet.Config
+!NuGet.Config.template
+
+# Test sonuçları
+TestResults/
+*.coverage
+*.trx
+*.html
+!src/ClrinfCS.OpenApi/api-docs.html
+*.xml
+*.json
+!contracts/**/*.json
+!contracts/*.json
+SampleApp
+reports/
+
+# Loglar ve hata raporları
+logs/
+*.log
+*.err
+*.tmp
+*.temp
+
+# Ortam değişken dosyaları
+.env
+.env.local
+.env.*.local
+
+# Node.js / frontend bağımlılıkları (eğer varsa)
+node_modules/
+npm-debug.log
+yarn-debug.log
+yarn-error.log
+package-lock.json
+yarn.lock
+
+# Docker
+*.dockerignore
+.dockerignore
+!Dockerfile.template
+
+# Visual Studio Code
+.vscode/
+*.code-workspace
+
+# Rider
+*.DotSettings.user
+
+# Windows
+Thumbs.db
+Desktop.ini
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Linux
+*~
+.directory
+
+# Entity Framework Migrations geri alınabilir (isteğe bağlı)
+# Migrations/*.Designer.cs hariç tutmak isterseniz:
+# Migrations/*.Designer.cs
+# Ancak genelde migration dosyaları repo'da tutulur, bu yüzden yorum satırı olarak bıraktım.
+
+# BenchmarkDotNet sonuçları
+BenchmarkDotNet.Artifacts/
+
+# Profiling
+*.vsp
+*.psess
+*.vspx
+*.sap
+*.profiling
+
+# Derleme sırasında oluşan geçici dosyalar
+*.gen.cs
+*.g.cs
+*.i.cs
+
+# AI & Agent Artifacts / Internal Context
+.context/
+.agents/
+.claude/
+.gemini/
+.opencode/
+agent-context.md
+!agent-context.md
+AGENTS.md
+!AGENTS.md
+
+# Local reference-adapter databases
+*.db
+*.db-wal
+*.db-shm

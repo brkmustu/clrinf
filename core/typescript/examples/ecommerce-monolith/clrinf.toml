@@ -1,0 +1,36 @@
+[project]
+name = "ecommerce-monolith"
+lang = "typescript"
+arch = "clean-cqrs"
+deployment = "monolith"
+host_type = "api"
+dispatcher = "native"
+
+[modules.caching]
+enabled = true
+provider = "memory"
+
+[modules.logging]
+enabled = true
+provider = "structured"
+
+[modules.transaction]
+enabled = true
+provider = "native"
+
+[modules.authentication]
+enabled = true
+provider = "jwt"
+
+[modules.authorization]
+enabled = true
+provider = "cedar"
+policy_path = "policies"
+
+[modules.idempotency]
+enabled = true
+provider = "memory"
+
+[modules.outbox]
+enabled = true
+provider = "database"

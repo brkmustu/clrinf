@@ -1,0 +1,28 @@
+# Service Level Objectives (SLO) Template
+service_name: "{{service_name}}"
+version: "1.0.0"
+
+slos:
+  - name: http_availability
+    description: "99.9% of HTTP requests return non-5xx status codes over 30d window"
+    target: 0.999
+    window: 30d
+    indicator:
+      metric: "http_requests_total"
+      filter: "status !~ '5..'"
+
+  - name: http_p99_latency
+    description: "99% of HTTP requests complete within 200ms"
+    target: 0.99
+    threshold_ms: 200
+    window: 30d
+    indicator:
+      metric: "http_request_duration_seconds"
+
+  - name: event_processing_latency
+    description: "99% of domain events are processed within 500ms"
+    target: 0.99
+    threshold_ms: 500
+    window: 30d
+    indicator:
+      metric: "event_processing_duration_seconds"
