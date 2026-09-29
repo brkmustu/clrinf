@@ -3,22 +3,22 @@
 [![CI](https://github.com/brkmustu/clrinf/actions/workflows/ci.yml/badge.svg)](https://github.com/brkmustu/clrinf/actions/workflows/ci.yml)
 [![License: BSL 1.1](https://img.shields.io/badge/License-BSL%201.1-purple.svg)](LICENSE)
 
-**clrinf**, Rust, C#, TypeScript ve Elixir ile **dağıtık sistemler ve modüler monolith mimariler** inşa etmek üzere geliştirilmiş kurumsal bir uygulama çatısıdır. Belirli bir veritabanını, mesaj kuyruğunu veya bulut sağlayıcısını dayatmadan; kanonik veri sözleşmeleri, dile özgü idiomatik iş kuralı motorları, statik mimari denetleyiciler ve otonom yapay zeka ajanları için merkezi bir Meta MCP orkestratörü sunar.
+**clrinf**, Rust, C#, TypeScript ve Elixir ile **dağıtık sistemler ve modüler monolith mimariler** inşa etmek üzere geliştirilmiş çok dilli bir uygulama çatısıdır. Belirli bir veritabanını, mesaj kuyruğunu veya bulut sağlayıcısını dayatmadan; kanonik veri sözleşmeleri, dile özgü idiomatik iş kuralı motorları, statik mimari denetleyiciler ve otonom yapay zeka ajanları için merkezi bir Meta MCP orkestratörü sunar.
 
 ---
 
 ## Temel Mimari Prensipleri
 
-1. **Sözleşme Öncelikli (Contract-First) Bütünlük**: Tüm servisler arası iletişim, JSON Schema (Draft 2020-12) ve CloudEvents 1.0 standartları ile güvence altına alınır.
+1. **Sözleşme Öncelikli (Contract-First) Bütünlük**: Tüm servisler arası iletişim, JSON Schema (Draft 2020-12) ve CloudEvents 1.0 standartları üzerinden yapılandırılır.
 2. **Dile Özgü İdiomatik İş Kuralları**:
    - **C#**: `IBusinessRule<T>` arayüzü, `RulePipeline` ve Roslyn tabanlı mimari denetleyiciler (`ARCH001` - `ARCH004`).
    - **Rust**: `BusinessRule<T>` trait'i, `RulePipeline` ve Syn tabanlı AST linter (`RUST_ARCH001`).
    - **TypeScript**: Saf fonksiyonel `Rule<TCtx>`, `pipeRules` zinciri, `Result<T, E>` monadı ve TS AST linter (`ARCH_TS_001`).
 3. **Çapraz Servis Olay Topolojisi ve Pub/Sub Güvencesi**:
-   - **Publisher**: %100 mekanik, kanonik CloudEvent zarflama ve atomik `OutboxStore` kuyruklama.
-   - **Subscriber**: Otomatik deserialization ve `IdempotencyStore` (`claim`/`complete`/`release`) ile tam mükerrerlik koruması.
+   - **Publisher**: Kod üretici (codegen) tarafından otomatik üretilen kanonik CloudEvent zarflama ve `OutboxStore` kuyruklama.
+   - **Subscriber**: Otomatik deserialization ve `IdempotencyStore` (`claim`/`complete`/`release`) ile at-most-once mükerrerlik kontrolü.
    - **Topoloji Doğrulama**: Dağıtık ortamda ölü olayları (`TOPOLOGY_DEAD_EVENT`), yetim aboneleri (`TOPOLOGY_ORPHAN_SUBSCRIBER`) ve şema evrim zincirlerindeki eksiklikleri (`TOPOLOGY_UPCASTER_MISSING`) derleme/CI öncesinde saptar.
-4. **Merkezi Orkestratör & Meta MCP Gateway**: Otonom yapay zeka kodlama ajanları (Claude, Cursor, Antigravity) için JSON-RPC 2.0 stdio protokolü üzerinden tüm ekosistemi tek noktadan denetleme, kural üretme ve doğrulama yeteneği.
+4. **Merkezi Orkestratör & Meta MCP Gateway**: Otonom yapay zeka kodlama ajanları (Claude, Cursor, Antigravity) için JSON-RPC 2.0 stdio protokolü üzerinden ekosistem bileşenlerini merkezi araçlarla denetleme, kural üretme ve doğrulama yeteneği.
 
 ---
 
@@ -32,7 +32,7 @@
 | **Çok Dilli Dağıtık Sistem** | Kanonik sözleşmeler, Outbox/Inbox adaptörleri, HTTP/mesajlaşma | Tek dil zorunluluğu, tek veri tabanı mecburiyeti |
 | **Otonom Yapay Zeka Geliştirme** | `clrinf-codegen mcp` (Meta MCP Sunucusu) | Diller arası parçalı ve uyumsuz AI araç entegrasyonları |
 
-Monolith içerisinde yerel ACID veritabanı işlemleri esastır. Servis sınırları aşıldığında sistem; Outbox, Inbox, Idempotency ve telafi edici işlemleri (compensation) açık ve mekanik garantilerle yönetir. `correlation_id` izleme (telemetri) içindir; tek başına idempotency anahtarı olarak kullanılamaz.
+Monolith içerisinde yerel ACID veritabanı işlemleri esastır. Servis sınırları aşıldığında sistem; Outbox, Inbox, Idempotency ve telafi edici işlemleri (compensation) açık kalıplar ve yapılandırılabilir adaptörlerle yönetir. `correlation_id` izleme (telemetri) içindir; tek başına idempotency anahtarı olarak kullanılamaz.
 
 ---
 
@@ -41,14 +41,14 @@ Monolith içerisinde yerel ACID veritabanı işlemleri esastır. Servis sınırl
 | Dizin | Sorumluluk ve Kapsam |
 |---|---|
 | [`tools/clrinf-codegen/`](tools/clrinf-codegen/README.md) | Çok dilli kod üretimi, şablonlar (`templates/`), Federated Language Worker orkestrasyonu, Topoloji Doğrulama ve Meta MCP stdio sunucusu |
-| [`clrinfcs/`](clrinfcs/README.md) | .NET 10 / C# 13 çekirdeği, C# sözleşmeleri (`contracts/`), Roslyn linterları (`ARCH001-ARCH004`) ve SQLite referans adaptörü |
-| [`clrinfrs/`](clrinfrs/README.md) | Rust çekirdeği, Rust sözleşmeleri (`contracts/`), Syn mimari linterı (`RUST_ARCH001`), Axum/CQRS ve bellek adaptörleri |
-| [`clrinfjs/`](clrinfjs/README.md) | Bun tabanlı TypeScript çekirdeği, TS sözleşmeleri (`contracts/`), AST linter (`ARCH_TS_001`) ve Event Inspector |
-| [`clrinfex/`](clrinfex/README.md) | Elixir çekirdeği, Elixir sözleşmeleri (`contracts/`) ve canlı olay akış (streaming) köprü adaptörleri |
+| [`core/csharp/`](core/csharp/README.md) | .NET 10 / C# 13 çekirdeği, C# sözleşmeleri (`contracts/`), Roslyn linterları (`ARCH001-ARCH004`) ve SQLite referans adaptörü |
+| [`core/rust/`](core/rust/README.md) | Rust çekirdeği, Rust sözleşmeleri (`contracts/`), Syn mimari linterı (`RUST_ARCH001`), Axum/CQRS ve bellek adaptörleri |
+| [`core/typescript/`](core/typescript/README.md) | Bun tabanlı TypeScript çekirdeği, TS sözleşmeleri (`contracts/`), AST linter (`ARCH_TS_001`) ve Event Inspector |
+| [`core/elixir/`](core/elixir/README.md) | Elixir çekirdeği, Elixir sözleşmeleri (`contracts/`) ve canlı olay akış (streaming) köprü adaptörleri |
 | [`templates/`](templates/) | Manifest tabanlı minimal başlangıç şablonları (`minimal-rust`, `minimal-typescript`, `minimal-csharp`) |
 | [`tests/conformance/`](tests/conformance/README.md) | Tüm dillerin paylaştığı kanonik geçerli/geçersiz tel formatı (wire-format) test verileri |
 
-Dört dil çekirdeği ana depoda bağımsız alt modüller (submodule) olarak yönetilir ve her biri kendi sözleşme ve şemalarını (`contracts/`) taşır. `tools/clrinf-codegen`, ekosistemin birleşik orkestrasyon ve kod üretim merkezidir.
+Tüm dil çekirdekleri (`core/`) bu monorepo içinde yönetilir ve her biri kendi sözleşme ve şemalarını (`contracts/`) taşır. `tools/clrinf-codegen`, ekosistemin birleşik orkestrasyon ve kod üretim merkezidir.
 
 ---
 
@@ -118,7 +118,7 @@ clrinf rule new CheckMaxDiscount --lang all --entity Order
 ```
 
 ### 4. Modüler Uygulama Yaşam Döngüsü & Çok Kiracılı Cedar Yetkilendirme
-Mevcut bir projede veya yeşil alanda sıfır sürtünmeyle modül, entity ve Cedar kuralları yönetin:
+Mevcut bir projede veya yeşil alanda modül, entity ve Cedar kuralları yönetin:
 
 ```bash
 # Projeyi profil ve dispatcher seçimiyle başlat
@@ -146,7 +146,7 @@ clrinf add entity OrderItem -m Orders --prop name:string --prop price:f64
 ### 5. Modül Kataloğu ve Adaptasyon Motoru (`clrinf catalog` / `clrinf module adopt`)
 `clrinf`, geliştiricilerin sıfırdan yazmak zorunda kalmaması için **yerleşik modüller** (CRM Deals, Contacts, Activities, birleşik CRM Suite) ve **altyapı modülleri** (Cedar Authz, Caching, Logging, Transaction, Idempotency, Outbox) sunar.
 
-Geliştirici bu hazır modülleri dilediği projeye (.csproj, Cargo.toml, package.json) **iki farklı felsefede ve sıfır sürtünmeyle** aktarabilir:
+Geliştirici bu hazır modülleri dilediği projeye (.csproj, Cargo.toml, package.json) **iki farklı felsefede** aktarabilir:
 - **Ham (raw / zero-dependency)**: Sıfır harici paket veya kütüphane bağımlılığıyla, tamamen saf ve izole modeller, komutlar, repository portları ve Cedar güvenlik kurallarıyla yerleştirilir.
 - **Kablolanmış (wired / batteries-included)**: `clrinf` ekosisteminin tüm kabiliyetlerini barındıracak şekilde; hedef dilin doğal DI ve modül yapısına (C# `IServiceCollection`, Rust `pub mod`, TS barrel export) ve Cedar yetkilendirme hattına bağlanarak aktarılır.
 
