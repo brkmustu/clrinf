@@ -14,10 +14,13 @@
    - **C#**: `IBusinessRule<T>` arayüzü, `RulePipeline` ve Roslyn tabanlı mimari denetleyiciler (`ARCH001` - `ARCH004`).
    - **Rust**: `BusinessRule<T>` trait'i, `RulePipeline` ve Syn tabanlı AST linter (`RUST_ARCH001`).
    - **TypeScript**: Saf fonksiyonel `Rule<TCtx>`, `pipeRules` zinciri, `Result<T, E>` monadı ve TS AST linter (`ARCH_TS_001`).
-3. **Çapraz Servis Olay Topolojisi ve Pub/Sub Güvencesi**:
-   - **Publisher**: Kod üretici (codegen) tarafından otomatik üretilen kanonik CloudEvent zarflama ve `OutboxStore` kuyruklama.
-   - **Subscriber**: Otomatik deserialization ve `IdempotencyStore` (`claim`/`complete`/`release`) ile at-most-once mükerrerlik kontrolü.
-   - **Topoloji Doğrulama**: Dağıtık ortamda ölü olayları (`TOPOLOGY_DEAD_EVENT`), yetim aboneleri (`TOPOLOGY_ORPHAN_SUBSCRIBER`) ve şema evrim zincirlerindeki eksiklikleri (`TOPOLOGY_UPCASTER_MISSING`) derleme/CI öncesinde saptar.
+3. **Diller Arası Olay Sözleşmesi Koruması**: Derleyicinin göremediği servisler arası bağımlılıkları koruma altına alır; AI ajanı yalnızca iş mantığını yazar.
+   - **Drift Tespiti**: `topology drift` ile şemadaki `x-published-by` / `x-subscribed-by` beyanları gerçek servis kodu ile karşılaştırılır; beyan edilmemiş publish/handle ve üretilen publisher'ı atlayan doğrudan outbox yazımları (`DRIFT_*`) yakalanır.
+   - **Şema Evrimi Analizi**: Sürümler arası alan farkları kırıcı / kırıcı olmayan olarak sınıflandırılır; eksik upcaster (`TOPOLOGY_UPCASTER_MISSING`) tanısı neyin kırıldığını da söyler.
+   - **Etki Analizi**: `topology impact` bir olayı değiştirmeden önce etkilenen servisleri, sürümleri ve yalnızca ilgili kaynak dosyalarını listeler (ajana tüm repo yerine dar bağlam).
+   - **Olay Öncelikli İskelet**: `event subscribe|publish` şemayı günceller, CloudEvent publisher ve idempotent subscriber kabuklarını üretir. Kabuk, `IdempotencyStore` (`claim`/`complete`/`release`) ile **etkin-tek-sefer (effectively-once)** işleme sağlar: Outbox en-az-bir-kez teslim eder, idempotency mükerrerliği engeller.
+   - **PR Raporu**: `topology report` taban (dizin veya git ref) ile mevcut şemalar arasındaki olay topolojisi değişikliklerini reviewer için özetler.
+   - **Topoloji Doğrulama**: Ölü olayları (`TOPOLOGY_DEAD_EVENT`) ve yetim aboneleri (`TOPOLOGY_ORPHAN_SUBSCRIBER`) derleme/CI öncesinde saptar.
 4. **Merkezi Orkestratör & Meta MCP Gateway**: Otonom yapay zeka kodlama ajanları (Claude, Cursor, Antigravity) için JSON-RPC 2.0 stdio protokolü üzerinden ekosistem bileşenlerini merkezi araçlarla denetleme, kural üretme ve doğrulama yeteneği.
 
 ---
@@ -113,6 +116,24 @@ clrinf generate-pubsub \
   --output ./generated-pubsub
 ```
 
+**Kod ↔ sözleşme drift'i, etki analizi, PR raporu ve olay öncelikli iskelet:**
+
+```bash
+# Beyan edilen topoloji gerçek kodla uyuşuyor mu? (CI'da hata ile çıkar)
+clrinf topology drift \
+  --schema-dir tools/clrinf-codegen/schemas \
+  --service billing=./services/billing --service orders=./services/orders
+
+# Bir olayı değiştirmeden önce: kim etkilenir, hangi dosyalar?
+clrinf topology impact orders.placed.v1 --src ./services
+
+# PR için topoloji değişiklik özeti (taban: git ref veya dizin)
+clrinf topology report --base-ref origin/main --fail-on-breaking
+
+# Servisi aboneliğe kaydet + kabukları üret; geriye yalnızca handler gövdesi kalır
+clrinf event subscribe orders.placed.v1 --service billing
+```
+
 ### 3. Federated Language Workers & Mimari Denetim
 Kurulu sistem araçlarını (`dotnet`, `cargo`, `bun`) denetleyin ve mimari kuralları çalıştırın:
 
@@ -195,7 +216,7 @@ Model Context Protocol (JSON-RPC 2.0 stdio) sunucusunu başlatın:
 ```bash
 clrinf mcp
 ```
-*(MCP Araçları: `clrinf_list_catalog`, `clrinf_adopt_module`, `clrinf_module_manage`, `clrinf_add_domain_module`, `clrinf_add_entity`, `clrinf_lint_architecture`, `clrinf_scaffold_rule`, `clrinf_generate_pubsub`, `clrinf_validate_topology`)*
+*(MCP Araçları: `clrinf_list_catalog`, `clrinf_adopt_module`, `clrinf_module_manage`, `clrinf_add_domain_module`, `clrinf_add_entity`, `clrinf_lint_architecture`, `clrinf_scaffold_rule`, `clrinf_generate_pubsub`, `clrinf_validate_topology`, `clrinf_topology_drift`, `clrinf_event_impact`, `clrinf_topology_report`, `clrinf_event_register`)*
 
 > [!TIP]
 > **Geliştiriciler İçin Kaynak Koddan Çalıştırma:** İkili dosyayı kurmadan doğrudan yerel kaynak kod üzerinden denemek isterseniz, komutları `cargo run --manifest-path tools/clrinf-codegen/Cargo.toml -- <komut>` şeklinde de yürütebilirsiniz.

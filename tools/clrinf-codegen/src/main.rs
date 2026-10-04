@@ -1,4 +1,10 @@
+mod compat;
 mod csharp;
+mod drift;
+mod event_scaffold;
+mod impact;
+mod report;
+mod scan;
 mod docs_provider;
 mod generator;
 mod manifest;
@@ -133,6 +139,9 @@ enum Commands {
     /// Validate cross-service pub/sub topology, dead events, and evolution chains
     #[command(subcommand)]
     Topology(TopologyCommands),
+    /// Event-first scaffolding: register a service as publisher/subscriber and regenerate shells
+    #[command(subcommand)]
+    Event(EventCommands),
     /// Check schema validity, unique identities and supported code generation constructs
     Check {
         /// Directory containing JSON schemas
@@ -284,6 +293,102 @@ enum TopologyCommands {
         /// Render ASCII dependency topology graph
         #[arg(long, default_value_t = true)]
         ascii: bool,
+    },
+    /// Detect drift between declared topology (schemas) and what service source code actually does
+    Drift {
+        /// Directory containing JSON schemas
+        #[arg(short, long, default_value = "./tools/clrinf-codegen/schemas")]
+        schema_dir: PathBuf,
+
+        /// Service source mapping as NAME=PATH (repeatable)
+        #[arg(long = "service", required = true)]
+        services: Vec<String>,
+
+        /// Emit machine-readable JSON instead of text
+        #[arg(long)]
+        json: bool,
+    },
+    /// Show which services, versions and source files are affected by changing an event
+    Impact {
+        /// Event type (e.g. billing.invoice.issued.v1) or schema title
+        event: String,
+
+        /// Directory containing JSON schemas
+        #[arg(short, long, default_value = "./tools/clrinf-codegen/schemas")]
+        schema_dir: PathBuf,
+
+        /// Source roots to scan for affected files (repeatable)
+        #[arg(long = "src")]
+        src: Vec<PathBuf>,
+
+        /// Emit machine-readable JSON instead of text
+        #[arg(long)]
+        json: bool,
+    },
+    /// Produce a PR-friendly topology change report comparing a base schema set to the current one
+    Report {
+        /// Current (head) schema directory
+        #[arg(short, long, default_value = "./tools/clrinf-codegen/schemas")]
+        schema_dir: PathBuf,
+
+        /// Base schema directory to compare against
+        #[arg(long, conflicts_with = "base_ref")]
+        base_dir: Option<PathBuf>,
+
+        /// Git ref (branch, tag, commit) whose schema directory is the baseline
+        #[arg(long)]
+        base_ref: Option<String>,
+
+        /// Directory containing YAML upcaster definitions
+        #[arg(short, long, default_value = "./tools/clrinf-codegen/schemas")]
+        upcasters_dir: PathBuf,
+
+        /// Output format: markdown or json
+        #[arg(long, default_value = "markdown")]
+        format: String,
+
+        /// Exit non-zero when the diff contains breaking or error-level changes
+        #[arg(long)]
+        fail_on_breaking: bool,
+    },
+}
+
+#[derive(Subcommand)]
+enum EventCommands {
+    /// Register SERVICE as a subscriber of EVENT_TYPE and regenerate subscriber shells
+    Subscribe {
+        /// Event type declared by x-event-type
+        event_type: String,
+        #[arg(long)]
+        service: String,
+        #[arg(short, long, default_value = "./tools/clrinf-codegen/schemas")]
+        schema_dir: PathBuf,
+        #[arg(short, long, default_value = "./tools/clrinf-codegen/templates")]
+        templates_dir: PathBuf,
+        /// Target language ('rust', 'csharp', 'typescript', or 'all')
+        #[arg(short, long, default_value = "all")]
+        lang: String,
+        #[arg(short, long, default_value = "./generated-pubsub")]
+        output: PathBuf,
+        /// Only update the schema declaration; skip code generation
+        #[arg(long)]
+        no_generate: bool,
+    },
+    /// Register SERVICE as a publisher of EVENT_TYPE and regenerate publisher shells
+    Publish {
+        event_type: String,
+        #[arg(long)]
+        service: String,
+        #[arg(short, long, default_value = "./tools/clrinf-codegen/schemas")]
+        schema_dir: PathBuf,
+        #[arg(short, long, default_value = "./tools/clrinf-codegen/templates")]
+        templates_dir: PathBuf,
+        #[arg(short, long, default_value = "all")]
+        lang: String,
+        #[arg(short, long, default_value = "./generated-pubsub")]
+        output: PathBuf,
+        #[arg(long)]
+        no_generate: bool,
     },
 }
 
@@ -531,6 +636,110 @@ fn main() -> Result<()> {
             if !report.is_valid {
                 anyhow::bail!("Topology validation failed with {} fatal error(s).", report.errors_count());
             }
+        }
+        Commands::Topology(TopologyCommands::Drift {
+            schema_dir,
+            services,
+            json,
+        }) => {
+            let sources = services
+                .iter()
+                .map(|s| drift::ServiceSource::parse(s))
+                .collect::<Result<Vec<_>>>()?;
+            let report = drift::detect(&schema_dir, &sources)?;
+            if json {
+                println!("{}", serde_json::to_string_pretty(&report)?);
+            } else {
+                println!("{}", report.format_diagnostics());
+            }
+            if !report.is_valid {
+                anyhow::bail!("Drift check failed with {} error(s).", report.errors_count());
+            }
+        }
+        Commands::Topology(TopologyCommands::Impact {
+            event,
+            schema_dir,
+            src,
+            json,
+        }) => {
+            let roots = if src.is_empty() { vec![PathBuf::from(".")] } else { src };
+            let report = impact::analyze(&schema_dir, &event, &roots)?;
+            if json {
+                println!("{}", serde_json::to_string_pretty(&report)?);
+            } else {
+                println!("{}", report.format_text());
+            }
+        }
+        Commands::Topology(TopologyCommands::Report {
+            schema_dir,
+            base_dir,
+            base_ref,
+            upcasters_dir,
+            format,
+            fail_on_breaking,
+        }) => {
+            let (base, cleanup) = match (base_dir, base_ref) {
+                (Some(dir), _) => (dir, None),
+                (None, Some(reference)) => {
+                    let dir = report::materialize_git_ref(&schema_dir, &reference)?;
+                    (dir.clone(), Some(dir))
+                }
+                (None, None) => anyhow::bail!("Provide --base-dir or --base-ref"),
+            };
+            let result = report::compare(&base, &schema_dir, Some(&upcasters_dir));
+            if let Some(dir) = cleanup {
+                let _ = std::fs::remove_dir_all(dir);
+            }
+            let diff = result?;
+            match format.as_str() {
+                "json" => println!("{}", serde_json::to_string_pretty(&diff)?),
+                "markdown" | "md" => println!("{}", diff.to_markdown()),
+                other => anyhow::bail!("Unsupported --format '{other}'; use markdown or json"),
+            }
+            if fail_on_breaking && diff.has_breaking() {
+                anyhow::bail!("Topology report contains breaking or error-level changes.");
+            }
+        }
+        Commands::Event(command) => {
+            let (role, event_type, service, schema_dir, templates_dir, lang, output, no_generate) = match command {
+                EventCommands::Subscribe { event_type, service, schema_dir, templates_dir, lang, output, no_generate } => {
+                    (event_scaffold::Role::Subscriber, event_type, service, schema_dir, templates_dir, lang, output, no_generate)
+                }
+                EventCommands::Publish { event_type, service, schema_dir, templates_dir, lang, output, no_generate } => {
+                    (event_scaffold::Role::Publisher, event_type, service, schema_dir, templates_dir, lang, output, no_generate)
+                }
+            };
+            let outcome = event_scaffold::register(&schema_dir, &event_type, role, &service)?;
+            let verb = if role == event_scaffold::Role::Subscriber { "subscriber" } else { "publisher" };
+            if outcome.changed {
+                println!("✅ Registered '{}' as {} of {} in {}", service, verb, event_type, outcome.schema_file.display());
+            } else {
+                println!("ℹ️  '{}' is already a {} of {}.", service, verb, event_type);
+            }
+            if !no_generate {
+                let gen = Generator::new(&templates_dir)?;
+                let langs: Vec<&str> = if lang.eq_ignore_ascii_case("all") {
+                    vec!["rust", "csharp", "typescript"]
+                } else {
+                    vec![lang.as_str()]
+                };
+                for l in langs {
+                    let lang_out = if lang.eq_ignore_ascii_case("all") { output.join(l) } else { output.clone() };
+                    let count = gen.generate_pubsub(&schema_dir, l, &lang_out)?;
+                    println!("📡 Generated {} pub/sub files for {} in {}", count, l, lang_out.display());
+                }
+            }
+            let report = topology::TopologyValidator::validate(&schema_dir, Some(&schema_dir))?;
+            let relevant: Vec<_> = report.issues.iter().filter(|i| i.event_type.starts_with(&event_type) || event_type.contains(&i.event_type)).collect();
+            for issue in relevant {
+                println!("⚠️  [{}] {}", issue.code, issue.message);
+            }
+            println!(
+                "👉 Next: implement the {} body for '{}' ({}). Business logic only; envelope/idempotency are generated.",
+                if role == event_scaffold::Role::Subscriber { "handler" } else { "publish call site" },
+                event_type,
+                outcome.title
+            );
         }
         Commands::GeneratePubsub {
             schema_dir,

@@ -139,6 +139,11 @@ impl TopologyValidator {
         }
 
         let graph = Self::build_graph(&schemas);
+        let by_title: BTreeMap<&str, &ParsedSchema> = schemas
+            .iter()
+            .filter(|s| s.event_type.is_some())
+            .map(|s| (s.title.as_str(), s))
+            .collect();
         let mut issues = Vec::new();
 
         // Check 1: Dead events (Warning)
@@ -197,18 +202,25 @@ impl TopologyValidator {
                         if v1.title != v2.title && !v1.publishers.is_empty() && !v2.subscribers.is_empty() {
                             let pair_key = (v1.title.clone(), v2.title.clone());
                             if !upcaster_pairs.contains(&pair_key) {
+                                let compat = match (by_title.get(v1.title.as_str()), by_title.get(v2.title.as_str())) {
+                                    (Some(old), Some(new)) => {
+                                        crate::compat::summarize(&crate::compat::diff_schemas(old, new))
+                                    }
+                                    _ => "schema diff unavailable".to_string(),
+                                };
                                 issues.push(TopologyIssue {
                                     severity: IssueSeverity::Error,
                                     code: "TOPOLOGY_UPCASTER_MISSING".to_string(),
                                     message: format!(
-                                        "Version gap in event '{}': published as '{}' by [{}] while [{}] subscribes to '{}', but no upcaster chain ('{}' -> '{}') exists.",
+                                        "Version gap in event '{}': published as '{}' by [{}] while [{}] subscribes to '{}', but no upcaster chain ('{}' -> '{}') exists. Compatibility: {}.",
                                         family,
                                         v1.title,
                                         v1.publishers.join(", "),
                                         v2.subscribers.join(", "),
                                         v2.title,
                                         v1.title,
-                                        v2.title
+                                        v2.title,
+                                        compat
                                     ),
                                     event_type: family.clone(),
                                     service: v1.publishers.first().cloned(),

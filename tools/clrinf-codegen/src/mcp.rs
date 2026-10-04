@@ -169,6 +169,58 @@ impl McpServer {
                             }
                         },
                         {
+                            "name": "clrinf_topology_drift",
+                            "description": "Detects drift between declared event topology (x-published-by / x-subscribed-by) and what service source code actually publishes/handles, including raw outbox writes that bypass generated publishers.",
+                            "inputSchema": {
+                                "type": "object",
+                                "properties": {
+                                    "schema_dir": { "type": "string", "description": "Directory containing JSON Schemas (optional)" },
+                                    "services": { "type": "array", "items": { "type": "string" }, "description": "Service source mappings as NAME=PATH" }
+                                },
+                                "required": ["services"]
+                            }
+                        },
+                        {
+                            "name": "clrinf_event_impact",
+                            "description": "Impact analysis for an event: publishers, subscribers, sibling versions, fields and the exact source files affected. Use it to load only the relevant files before changing an event.",
+                            "inputSchema": {
+                                "type": "object",
+                                "properties": {
+                                    "event": { "type": "string", "description": "Event type (x-event-type) or schema title" },
+                                    "schema_dir": { "type": "string", "description": "Directory containing JSON Schemas (optional)" },
+                                    "src": { "type": "array", "items": { "type": "string" }, "description": "Source roots to scan (default: workspace root)" }
+                                },
+                                "required": ["event"]
+                            }
+                        },
+                        {
+                            "name": "clrinf_topology_report",
+                            "description": "PR-style topology change report (added/removed events, subscriber changes, breaking field changes, new diagnostics) comparing a base directory or git ref to the current schemas.",
+                            "inputSchema": {
+                                "type": "object",
+                                "properties": {
+                                    "schema_dir": { "type": "string", "description": "Head schema directory (optional)" },
+                                    "base_dir": { "type": "string", "description": "Base schema directory" },
+                                    "base_ref": { "type": "string", "description": "Git ref used as baseline (alternative to base_dir)" },
+                                    "upcasters_dir": { "type": "string", "description": "Directory containing YAML upcaster definitions (optional)" }
+                                }
+                            }
+                        },
+                        {
+                            "name": "clrinf_event_register",
+                            "description": "Registers a service as publisher or subscriber of an event in its schema and returns what remains for the agent to implement (business logic only).",
+                            "inputSchema": {
+                                "type": "object",
+                                "properties": {
+                                    "event_type": { "type": "string", "description": "x-event-type of the event" },
+                                    "service": { "type": "string", "description": "Service name" },
+                                    "role": { "type": "string", "description": "'publisher' or 'subscriber'" },
+                                    "schema_dir": { "type": "string", "description": "Directory containing JSON Schemas (optional)" }
+                                },
+                                "required": ["event_type", "service", "role"]
+                            }
+                        },
+                        {
                             "name": "clrinf_generate_pubsub",
                             "description": "Generates CloudEvent publisher envelopes and subscriber shells with idempotency enforcement in Rust, C#, and TypeScript.",
                             "inputSchema": {
@@ -596,6 +648,94 @@ impl McpServer {
                     "issues": report.issues,
                     "asciiGraph": report.format_ascii_graph(),
                     "diagnostics": report.format_diagnostics(),
+                }))
+            }
+
+            "clrinf_topology_drift" => {
+                let default_schema = self.workspace_root.as_ref()
+                    .map(|r| r.join("tools/clrinf-codegen/schemas"))
+                    .unwrap_or_else(|| PathBuf::from("./tools/clrinf-codegen/schemas"));
+                let schema_dir = args.get("schema_dir").and_then(|s| s.as_str()).map(Path::new).unwrap_or(&default_schema);
+                let specs: Vec<String> = args.get("services").and_then(|s| s.as_array())
+                    .map(|a| a.iter().filter_map(|v| v.as_str().map(String::from)).collect())
+                    .unwrap_or_default();
+                if specs.is_empty() {
+                    anyhow::bail!("'services' must contain at least one NAME=PATH entry");
+                }
+                let sources = specs.iter().map(|s| crate::drift::ServiceSource::parse(s)).collect::<Result<Vec<_>>>()?;
+                let report = crate::drift::detect(schema_dir, &sources)?;
+                Ok(json!({
+                    "isValid": report.is_valid,
+                    "errorsCount": report.errors_count(),
+                    "warningsCount": report.warnings_count(),
+                    "issues": report.issues,
+                    "diagnostics": report.format_diagnostics(),
+                }))
+            }
+
+            "clrinf_event_impact" => {
+                let default_schema = self.workspace_root.as_ref()
+                    .map(|r| r.join("tools/clrinf-codegen/schemas"))
+                    .unwrap_or_else(|| PathBuf::from("./tools/clrinf-codegen/schemas"));
+                let schema_dir = args.get("schema_dir").and_then(|s| s.as_str()).map(Path::new).unwrap_or(&default_schema);
+                let event = args.get("event").and_then(|s| s.as_str()).context("'event' is required")?;
+                let mut roots: Vec<PathBuf> = args.get("src").and_then(|s| s.as_array())
+                    .map(|a| a.iter().filter_map(|v| v.as_str().map(PathBuf::from)).collect())
+                    .unwrap_or_default();
+                if roots.is_empty() {
+                    roots.push(self.workspace_root.clone().unwrap_or_else(|| PathBuf::from(".")));
+                }
+                let report = crate::impact::analyze(schema_dir, event, &roots)?;
+                let text = report.format_text();
+                let mut value = serde_json::to_value(&report)?;
+                value["summary"] = json!(text);
+                Ok(value)
+            }
+
+            "clrinf_topology_report" => {
+                let default_schema = self.workspace_root.as_ref()
+                    .map(|r| r.join("tools/clrinf-codegen/schemas"))
+                    .unwrap_or_else(|| PathBuf::from("./tools/clrinf-codegen/schemas"));
+                let schema_dir = args.get("schema_dir").and_then(|s| s.as_str()).map(Path::new).unwrap_or(&default_schema);
+                let upcasters_dir = args.get("upcasters_dir").and_then(|s| s.as_str()).map(Path::new).unwrap_or(schema_dir);
+                let (base, cleanup) = match (args.get("base_dir").and_then(|s| s.as_str()), args.get("base_ref").and_then(|s| s.as_str())) {
+                    (Some(dir), _) => (PathBuf::from(dir), None),
+                    (None, Some(reference)) => {
+                        let dir = crate::report::materialize_git_ref(schema_dir, reference)?;
+                        (dir.clone(), Some(dir))
+                    }
+                    (None, None) => anyhow::bail!("Provide 'base_dir' or 'base_ref'"),
+                };
+                let result = crate::report::compare(&base, schema_dir, Some(upcasters_dir));
+                if let Some(dir) = cleanup {
+                    let _ = std::fs::remove_dir_all(dir);
+                }
+                let diff = result?;
+                Ok(json!({
+                    "hasBreaking": diff.has_breaking(),
+                    "markdown": diff.to_markdown(),
+                    "diff": diff,
+                }))
+            }
+
+            "clrinf_event_register" => {
+                let default_schema = self.workspace_root.as_ref()
+                    .map(|r| r.join("tools/clrinf-codegen/schemas"))
+                    .unwrap_or_else(|| PathBuf::from("./tools/clrinf-codegen/schemas"));
+                let schema_dir = args.get("schema_dir").and_then(|s| s.as_str()).map(Path::new).unwrap_or(&default_schema);
+                let event_type = args.get("event_type").and_then(|s| s.as_str()).context("'event_type' is required")?;
+                let service = args.get("service").and_then(|s| s.as_str()).context("'service' is required")?;
+                let role = match args.get("role").and_then(|s| s.as_str()) {
+                    Some("publisher") => crate::event_scaffold::Role::Publisher,
+                    Some("subscriber") => crate::event_scaffold::Role::Subscriber,
+                    _ => anyhow::bail!("'role' must be 'publisher' or 'subscriber'"),
+                };
+                let outcome = crate::event_scaffold::register(schema_dir, event_type, role, service)?;
+                Ok(json!({
+                    "changed": outcome.changed,
+                    "schemaFile": outcome.schema_file.display().to_string(),
+                    "title": outcome.title,
+                    "next": "Run clrinf_generate_pubsub, then implement only the handler/publish call site business logic.",
                 }))
             }
 

@@ -404,3 +404,198 @@ fn test_mcp_pubsub_and_topology_tools() {
     assert!(pubsub_out.join("inventory_reserved_subscriber.rs").exists());
 }
 
+
+fn event_schema(title: &str, event_type: &str, extra: &str, props: &str, required: &str) -> String {
+    format!(
+        r#"{{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "{title}",
+  "x-domain": "orders",
+  "x-event-type": "{event_type}",
+{extra}  "type": "object",
+  "properties": {{ {props} }},
+  "required": [{required}]
+}}"#
+    )
+}
+
+#[test]
+fn test_drift_detects_undeclared_subscriber_and_raw_outbox() {
+    let scratch = Scratch::new();
+    let schemas = scratch.0.join("schemas");
+    let svc = scratch.0.join("billing");
+    std::fs::create_dir_all(&schemas).unwrap();
+    std::fs::create_dir_all(&svc).unwrap();
+    std::fs::write(
+        schemas.join("order_placed.json"),
+        event_schema(
+            "OrderPlaced",
+            "orders.placed.v1",
+            "  \"x-published-by\": [\"orders\"],\n",
+            "\"id\": { \"type\": \"string\" }",
+            "\"id\"",
+        ),
+    )
+    .unwrap();
+    std::fs::write(
+        svc.join("handler.ts"),
+        "export class H implements OrderPlacedHandler {}\nawait outbox.enqueue(evt);\n",
+    )
+    .unwrap();
+
+    let output = run(
+        &[
+            "topology", "drift",
+            "--schema-dir", schemas.to_str().unwrap(),
+            "--service", &format!("billing={}", svc.display()),
+        ],
+        &scratch.0,
+    );
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(!output.status.success(), "drift errors must fail: {stdout}");
+    assert!(stdout.contains("DRIFT_UNDECLARED_SUBSCRIBE"), "{stdout}");
+    assert!(stdout.contains("DRIFT_RAW_OUTBOX_WRITE"), "{stdout}");
+}
+
+#[test]
+fn test_drift_passes_when_code_matches_declaration() {
+    let scratch = Scratch::new();
+    let schemas = scratch.0.join("schemas");
+    let svc = scratch.0.join("billing");
+    std::fs::create_dir_all(&schemas).unwrap();
+    std::fs::create_dir_all(&svc).unwrap();
+    std::fs::write(
+        schemas.join("order_placed.json"),
+        event_schema(
+            "OrderPlaced",
+            "orders.placed.v1",
+            "  \"x-published-by\": [\"orders\"],\n  \"x-subscribed-by\": [\"billing\"],\n",
+            "\"id\": { \"type\": \"string\" }",
+            "\"id\"",
+        ),
+    )
+    .unwrap();
+    std::fs::write(svc.join("handler.ts"), "export class H implements OrderPlacedHandler {}\n").unwrap();
+
+    let output = run(
+        &[
+            "topology", "drift",
+            "--schema-dir", schemas.to_str().unwrap(),
+            "--service", &format!("billing={}", svc.display()),
+        ],
+        &scratch.0,
+    );
+    assert!(output.status.success(), "{:?}", output);
+}
+
+#[test]
+fn test_impact_lists_services_and_files() {
+    let scratch = Scratch::new();
+    let schemas = scratch.0.join("schemas");
+    let src = scratch.0.join("src");
+    std::fs::create_dir_all(&schemas).unwrap();
+    std::fs::create_dir_all(&src).unwrap();
+    std::fs::write(
+        schemas.join("order_placed.json"),
+        event_schema(
+            "OrderPlaced",
+            "orders.placed.v1",
+            "  \"x-published-by\": [\"orders\"],\n  \"x-subscribed-by\": [\"billing\"],\n",
+            "\"id\": { \"type\": \"string\" }",
+            "\"id\"",
+        ),
+    )
+    .unwrap();
+    std::fs::write(src.join("a.ts"), "const t = \"orders.placed.v1\";\nclass X implements OrderPlacedHandler {}\n").unwrap();
+    std::fs::write(src.join("unrelated.ts"), "export const x = 1;\n").unwrap();
+
+    let output = run(
+        &[
+            "topology", "impact", "orders.placed.v1",
+            "--schema-dir", schemas.to_str().unwrap(),
+            "--src", src.to_str().unwrap(),
+        ],
+        &scratch.0,
+    );
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(output.status.success(), "{stdout}");
+    assert!(stdout.contains("billing") && stdout.contains("a.ts"), "{stdout}");
+    assert!(!stdout.contains("unrelated.ts"), "{stdout}");
+}
+
+#[test]
+fn test_report_flags_breaking_changes_and_removed_subscriber() {
+    let scratch = Scratch::new();
+    let base = scratch.0.join("base");
+    let head = scratch.0.join("head");
+    std::fs::create_dir_all(&base).unwrap();
+    std::fs::create_dir_all(&head).unwrap();
+    let extra = "  \"x-published-by\": [\"orders\"],\n  \"x-subscribed-by\": [\"billing\"],\n";
+    std::fs::write(
+        base.join("order_placed.json"),
+        event_schema("OrderPlaced", "orders.placed.v1", extra, "\"id\": { \"type\": \"string\" }", "\"id\""),
+    )
+    .unwrap();
+    std::fs::write(
+        head.join("order_placed.json"),
+        event_schema(
+            "OrderPlaced",
+            "orders.placed.v1",
+            "  \"x-published-by\": [\"orders\"],\n  \"x-subscribed-by\": [\"billing\", \"audit\"],\n",
+            "\"id\": { \"type\": \"string\" }, \"sku\": { \"type\": \"string\" }",
+            "\"id\", \"sku\"",
+        ),
+    )
+    .unwrap();
+
+    let output = run(
+        &[
+            "topology", "report",
+            "--schema-dir", head.to_str().unwrap(),
+            "--base-dir", base.to_str().unwrap(),
+            "--upcasters-dir", head.to_str().unwrap(),
+            "--fail-on-breaking",
+        ],
+        &scratch.0,
+    );
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(!output.status.success(), "{stdout}");
+    assert!(stdout.contains("subscriber added: audit"), "{stdout}");
+    assert!(stdout.contains("BREAKING"), "{stdout}");
+}
+
+#[test]
+fn test_event_subscribe_registers_service_without_generation() {
+    let scratch = Scratch::new();
+    let schemas = scratch.0.join("schemas");
+    std::fs::create_dir_all(&schemas).unwrap();
+    let file = schemas.join("order_placed.json");
+    std::fs::write(
+        &file,
+        event_schema(
+            "OrderPlaced",
+            "orders.placed.v1",
+            "  \"x-published-by\": [\"orders\"],\n",
+            "\"id\": { \"type\": \"string\" }",
+            "\"id\"",
+        ),
+    )
+    .unwrap();
+
+    let args = [
+        "event", "subscribe", "orders.placed.v1",
+        "--service", "billing",
+        "--schema-dir", schemas.to_str().unwrap(),
+        "--no-generate",
+    ];
+    let output = run(&args, &scratch.0);
+    assert!(output.status.success(), "{:?}", output);
+    let text = std::fs::read_to_string(&file).unwrap();
+    assert!(text.contains("\"x-subscribed-by\": [\"billing\"]"), "{text}");
+    serde_json::from_str::<serde_json::Value>(&text).unwrap();
+
+    // Idempotent second run leaves the file unchanged.
+    let again = run(&args, &scratch.0);
+    assert!(again.status.success());
+    assert_eq!(std::fs::read_to_string(&file).unwrap(), text);
+}
