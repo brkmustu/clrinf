@@ -30,6 +30,18 @@ Aynı görev, aynı model, aynı başlangıç commit'i; yalnızca clrinf açık/
 | A (kontrol) | clrinf yok; ajan repoyu kendisi keşfeder |
 | B (clrinf) | `clrinf agents sync`, `clrinf hook install`, MCP `lean` profili |
 
+### Araç bazlı B kolu kurulumu
+
+Gönüllüler farklı araçlar kullanabilir; B kolunu hepsi aynı kural dosyasından kurar. Çalıştırdığınız aracı sonuç tablosuna mutlaka yazın (araç değişkeni sonuçları etkiler; kollar aynı araçta karşılaştırılmalıdır).
+
+| Araç | Talimat dosyası | Hook kurulumu | MCP |
+|---|---|---|---|
+| Claude Code | CLAUDE.md | `clrinf hook install --agent claude` | `clrinf mcp --profile lean` |
+| Cursor | `.cursor/rules/clrinf.mdc` | `clrinf hook install --agent cursor` | `.cursor/mcp.json` içinde `clrinf mcp --profile lean` |
+| Antigravity | `GEMINI.md` / `AGENTS.md` | `clrinf hook install --agent antigravity` | MCP ayarlarında `clrinf mcp --profile lean` |
+| Diğer / hook'suz | `AGENTS.md` | `clrinf hook install --agent git` (commit anında) | `clrinf mcp --profile lean` |
+
+Tüm araçlar için ilk adım `clrinf agents sync`'tir. `clrinf hook install --agent all` hepsini birden kurar. Hook'un çalıştığını doğrulamak için alan katmanına yasaklı bir import ekletip ajanın ihlal mesajını görüp görmediğine bakın; görmüyorsa sonuçlara "hook etkisiz" notu düşün (Antigravity hook şeması resmi dokümandan doğrulanamadı, bkz. `docs/guides/agent-guardrails.md`).
 Önerilen görevler (her biri en az 5 tekrar):
 
 1. Mevcut bir olaya yeni bir servis abone olsun.

@@ -680,6 +680,43 @@ fn test_hook_install_claude_is_idempotent() {
 }
 
 #[test]
+fn test_hook_run_cursor_and_antigravity_dialects_exit_zero_with_json() {
+    let scratch = Scratch::new();
+    let root = rules_project(&scratch);
+    let bad = root.join("src/domain/bad.ts");
+    std::fs::write(&bad, "import db from \"../Infrastructure/db\";\n").unwrap();
+    let file = serde_json::to_string(bad.to_str().unwrap()).unwrap();
+
+    let cursor = format!("{{\"tool_name\":\"Write\",\"tool_input\":{{\"file_path\":{file}}}}}");
+    let out = run_with_stdin(&["hook", "run", "--format", "cursor", "--path", root.to_str().unwrap()], &scratch.0, &cursor);
+    assert!(out.status.success(), "{:?}", out);
+    let v: serde_json::Value = serde_json::from_slice(&out.stdout).unwrap();
+    assert!(v["additional_context"].as_str().unwrap().contains("domain-no-infra"));
+
+    let agy = format!("{{\"toolArgs\":{{\"TargetFile\":{file}}}}}");
+    let out = run_with_stdin(&["hook", "run", "--format", "antigravity", "--path", root.to_str().unwrap()], &scratch.0, &agy);
+    assert!(out.status.success(), "{:?}", out);
+    let v: serde_json::Value = serde_json::from_slice(&out.stdout).unwrap();
+    assert_eq!(v["decision"], "block");
+    assert!(v["reason"].as_str().unwrap().contains("domain-no-infra"));
+}
+
+#[test]
+fn test_hook_install_cursor_and_antigravity_are_idempotent() {
+    let scratch = Scratch::new();
+    let root = scratch.0.join("p");
+    std::fs::create_dir_all(&root).unwrap();
+    for (agent, file) in [("cursor", ".cursor/hooks.json"), ("antigravity", ".agents/hooks.json")] {
+        let args = ["hook", "install", "--agent", agent, "--path", root.to_str().unwrap()];
+        assert!(run(&args, &scratch.0).status.success());
+        let first = std::fs::read_to_string(root.join(file)).unwrap();
+        assert!(first.contains(" hook run --format "), "{first}");
+        assert!(run(&args, &scratch.0).status.success());
+        assert_eq!(std::fs::read_to_string(root.join(file)).unwrap(), first);
+    }
+}
+
+#[test]
 fn test_plan_returns_fill_in_blanks_and_constraints() {
     let scratch = Scratch::new();
     let root = rules_project(&scratch);

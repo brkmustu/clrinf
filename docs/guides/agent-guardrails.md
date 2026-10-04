@@ -39,12 +39,16 @@ Bilinmeyen anahtarlar hata verir (yazım hataları sessizce yutulmaz).
 
 ```bash
 clrinf agents sync                    # talimat dosyalarını üret (CI'da: --check)
-clrinf hook install --agent all       # Claude Code PostToolUse + git pre-commit
+clrinf hook install --agent all       # Claude Code + Cursor + Antigravity + git pre-commit
 clrinf verify                         # tüm proje; --changed ile yalnızca değişenler
 ```
 
 * **Claude Code hook'u** `.claude/settings.json` içine eklenir; mevcut hook'lar korunur, tekrar çalıştırmak değişiklik yapmaz. Ajan bir dosya yazınca `clrinf hook run` çalışır. İhlal varsa çıkış kodu `2` ile stderr'e yazar; ajan mesajı görür ve düzeltir. Başarıda sessizdir.
+* **Cursor hook'u** `.cursor/hooks.json` içine `postToolUse` olarak eklenir (`--format cursor`). Cursor'ın `afterFileEdit` hook'u çıktı kabul etmediği için geri bildirim yapılamaz; bu yüzden `postToolUse` seçildi. İhlal, çıkış kodu `0` ile stdout'a `{"additional_context": ...}` olarak döner. Cursor ayrıca "Third Party Hooks" ayarı açıksa `.claude/settings.json` hook'unu da okuyabilir.
+* **Antigravity hook'u** `.agents/hooks.json` içine `clrinf` adlı hook olarak eklenir (`PostToolUse`, `--format antigravity`). Antigravity komut için **mutlak yol** istediğinden yükleyici çalışan `clrinf` ikilisinin mutlak yolunu yazar; ikiliyi taşırsanız `hook install --agent antigravity` komutunu yeniden çalıştırın. İhlal, çıkış kodu `0` ile stdout'a `{"decision":"block","reason":...}` olarak döner.
 * **Git hook'u** `.git/hooks/pre-commit` olarak yazılır; başka bir hook varsa `--force` olmadan üzerine yazmaz.
+> **Doğrulama durumu:** Claude Code ve Cursor biçimleri resmi dokümana göre yazıldı. Antigravity'nin hook şeması (`.agents/hooks.json`, `PostToolUse`, stdin/stdout JSON) resmi sayfadan doğrudan doğrulanamadı; ikincil kaynaklara dayanıyor. Antigravity'de gerçek bir oturumda denenmeden "çalışıyor" kabul edilmemeli; sorun bulursanız `tools/clrinf-codegen/src/hook.rs` içindeki `Format::Antigravity` ve eşleştirici sabiti tek noktada düzeltilir. Hook'lar ek güvencedir; asıl güvence `git pre-commit` ve CI'daki `clrinf verify`'dır.
+
 * `verify` şunları çalıştırır: topoloji, `clrinf.rules.toml` içindeki servisler için kod↔sözleşme drift'i, `[[forbid]]` kuralları ve değişen dosyalardaki doğrudan outbox yazımları.
 
 ## Boşluk doldurma planı

@@ -408,12 +408,12 @@ enum TopologyCommands {
 enum HookCommands {
     /// Install the hook (claude: PostToolUse after Write/Edit; git: pre-commit running `verify --changed`)
     Install {
-        /// 'claude', 'git' or 'all'
+        /// 'claude', 'cursor', 'antigravity', 'git' or 'all'
         #[arg(long, default_value = "claude")]
         agent: String,
         #[arg(long, default_value = ".")]
         path: PathBuf,
-        /// Executable name written into the hook
+        /// Executable name written into the hook (antigravity resolves it to an absolute path)
         #[arg(long, default_value = "clrinf")]
         command: String,
         /// Replace an existing foreign git pre-commit hook
@@ -431,6 +431,9 @@ enum HookCommands {
     Run {
         #[arg(long, default_value = ".")]
         path: PathBuf,
+        /// Feedback dialect: claude (stderr+exit 2), cursor (additional_context JSON), antigravity (decision JSON)
+        #[arg(long, default_value = "claude")]
+        format: String,
     },
 }
 
@@ -1616,12 +1619,26 @@ fn main() -> Result<()> {
                         println!("ℹ️  Claude Code hook already installed.");
                     }
                 }
+                if all || agent.eq_ignore_ascii_case("cursor") {
+                    if hook::install_cursor(&path, &command)? {
+                        println!("✅ Cursor hook installed in {}", path.join(".cursor/hooks.json").display());
+                    } else {
+                        println!("ℹ️  Cursor hook already installed.");
+                    }
+                }
+                if all || agent.eq_ignore_ascii_case("antigravity") {
+                    if hook::install_antigravity(&path, &command)? {
+                        println!("✅ Antigravity hook installed in {}", path.join(".agents/hooks.json").display());
+                    } else {
+                        println!("ℹ️  Antigravity hook already installed.");
+                    }
+                }
                 if all || agent.eq_ignore_ascii_case("git") {
                     let hook_path = hook::install_git(&path, &command, force)?;
                     println!("✅ Git pre-commit hook installed at {}", hook_path.display());
                 }
-                if !all && !["claude", "git"].contains(&agent.to_ascii_lowercase().as_str()) {
-                    anyhow::bail!("Unknown --agent '{agent}'; use claude, git or all");
+                if !all && !["claude", "cursor", "antigravity", "git"].contains(&agent.to_ascii_lowercase().as_str()) {
+                    anyhow::bail!("Unknown --agent '{agent}'; use claude, cursor, antigravity, git or all");
                 }
             }
             HookCommands::Uninstall { agent, path } => {
@@ -1630,19 +1647,29 @@ fn main() -> Result<()> {
                 if all || agent.eq_ignore_ascii_case("claude") {
                     removed |= hook::uninstall_claude(&path)?;
                 }
+                if all || agent.eq_ignore_ascii_case("cursor") {
+                    removed |= hook::uninstall_cursor(&path)?;
+                }
+                if all || agent.eq_ignore_ascii_case("antigravity") {
+                    removed |= hook::uninstall_antigravity(&path)?;
+                }
                 if all || agent.eq_ignore_ascii_case("git") {
                     removed |= hook::uninstall_git(&path)?;
                 }
                 println!("{}", if removed { "✅ Hooks removed." } else { "ℹ️  No clrinf hooks found." });
             }
-            HookCommands::Run { path } => {
+            HookCommands::Run { path, format } => {
+                let format = hook::Format::parse(&format)?;
                 let stdin = std::io::read_to_string(std::io::stdin()).unwrap_or_default();
-                let (code, message) = hook::run(&path, &stdin);
-                if !message.is_empty() {
-                    eprint!("{message}");
+                let outcome = hook::run_formatted(&path, &stdin, format);
+                if !outcome.stdout.is_empty() {
+                    println!("{}", outcome.stdout);
                 }
-                if code != 0 {
-                    std::process::exit(code);
+                if !outcome.stderr.is_empty() {
+                    eprint!("{}", outcome.stderr);
+                }
+                if outcome.code != 0 {
+                    std::process::exit(outcome.code);
                 }
             }
         },
