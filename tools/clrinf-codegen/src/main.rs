@@ -5,6 +5,12 @@ mod event_scaffold;
 mod impact;
 mod report;
 mod scan;
+mod agents;
+mod bench;
+mod hook;
+mod plan;
+mod rules;
+mod verify;
 mod docs_provider;
 mod generator;
 mod manifest;
@@ -275,7 +281,52 @@ enum Commands {
         project: Option<PathBuf>,
     },
     /// Start Model Context Protocol (MCP) JSON-RPC 2.0 stdio server
-    Mcp,
+    Mcp {
+        /// Tool profile: full (default), events, or lean. Falls back to CLRINF_MCP_PROFILE, then clrinf.rules.toml [mcp]
+        #[arg(long)]
+        profile: Option<String>,
+    },
+    /// Install or run agent hooks that verify architecture after every edit
+    #[command(subcommand)]
+    Hook(HookCommands),
+    /// Verify topology, code-vs-contract drift and dependency rules (clrinf.rules.toml)
+    Verify {
+        /// Project root
+        #[arg(long, default_value = ".")]
+        path: PathBuf,
+        /// Only verify files changed relative to git HEAD (plus untracked)
+        #[arg(long)]
+        changed: bool,
+        /// Emit machine-readable JSON
+        #[arg(long)]
+        json: bool,
+    },
+    /// Measure context cost (tokens) with and without clrinf's targeted slice
+    #[command(subcommand)]
+    Bench(BenchCommands),
+    /// Fill-in-the-blanks plan for an event change (what is left for the agent to implement)
+    Plan {
+        /// Event type declared by x-event-type
+        event_type: String,
+        #[arg(long)]
+        service: String,
+        /// 'subscriber' or 'publisher'
+        #[arg(long, default_value = "subscriber")]
+        role: String,
+        #[arg(short, long)]
+        schema_dir: Option<PathBuf>,
+        /// Source roots to scan (default: project root)
+        #[arg(long = "src")]
+        src: Vec<PathBuf>,
+        /// Register the service in the schema now instead of previewing
+        #[arg(long)]
+        apply: bool,
+        #[arg(long, default_value = ".")]
+        path: PathBuf,
+    },
+    /// Keep AGENTS.md / CLAUDE.md / GEMINI.md / Cursor rules in sync with clrinf.rules.toml
+    #[command(subcommand)]
+    Agents(AgentsCommands),
 }
 
 #[derive(Subcommand)]
@@ -350,6 +401,66 @@ enum TopologyCommands {
         /// Exit non-zero when the diff contains breaking or error-level changes
         #[arg(long)]
         fail_on_breaking: bool,
+    },
+}
+
+#[derive(Subcommand)]
+enum HookCommands {
+    /// Install the hook (claude: PostToolUse after Write/Edit; git: pre-commit running `verify --changed`)
+    Install {
+        /// 'claude', 'git' or 'all'
+        #[arg(long, default_value = "claude")]
+        agent: String,
+        #[arg(long, default_value = ".")]
+        path: PathBuf,
+        /// Executable name written into the hook
+        #[arg(long, default_value = "clrinf")]
+        command: String,
+        /// Replace an existing foreign git pre-commit hook
+        #[arg(long)]
+        force: bool,
+    },
+    /// Remove hooks installed by clrinf
+    Uninstall {
+        #[arg(long, default_value = "all")]
+        agent: String,
+        #[arg(long, default_value = ".")]
+        path: PathBuf,
+    },
+    /// Hook entry point: reads the agent tool payload on stdin (exit code 2 feeds violations back to the agent)
+    Run {
+        #[arg(long, default_value = ".")]
+        path: PathBuf,
+    },
+}
+
+#[derive(Subcommand)]
+enum BenchCommands {
+    /// Context-cost benchmark for an event change plus fixed MCP tool-schema cost per profile
+    Context {
+        /// Event type or schema title
+        event: String,
+        #[arg(short, long)]
+        schema_dir: Option<PathBuf>,
+        /// Source roots to scan (default: project root)
+        #[arg(long = "src")]
+        src: Vec<PathBuf>,
+        #[arg(long, default_value = ".")]
+        path: PathBuf,
+        #[arg(long)]
+        json: bool,
+    },
+}
+
+#[derive(Subcommand)]
+enum AgentsCommands {
+    /// Write/refresh the managed clrinf block in agent instruction files
+    Sync {
+        #[arg(long, default_value = ".")]
+        path: PathBuf,
+        /// Do not write; exit non-zero when files are out of date (CI)
+        #[arg(long)]
+        check: bool,
     },
 }
 
@@ -1479,10 +1590,125 @@ fn main() -> Result<()> {
             let docs = docs_provider::get_language_docs(lang.as_deref(), project.as_deref())?;
             println!("{}", docs);
         }
-        Commands::Mcp => {
-            eprintln!("[clrinf-meta-mcp] Starting Model Context Protocol stdio server...");
-            let server = McpServer::new();
+        Commands::Mcp { profile } => {
+            let rules = rules::Rules::load(Path::new("."))?;
+            let chosen = profile
+                .or_else(|| std::env::var("CLRINF_MCP_PROFILE").ok())
+                .or_else(|| rules.as_ref().and_then(|r| r.file.mcp.profile.clone()));
+            let profile = match chosen {
+                Some(name) => mcp::McpProfile::parse(&name)?,
+                None => mcp::McpProfile::Full,
+            };
+            eprintln!(
+                "[clrinf-meta-mcp] Starting Model Context Protocol stdio server (profile: {})...",
+                profile.name()
+            );
+            let server = McpServer::new().with_profile(profile);
             server.run_stdio()?;
+        }
+        Commands::Hook(command) => match command {
+            HookCommands::Install { agent, path, command, force } => {
+                let all = agent.eq_ignore_ascii_case("all");
+                if all || agent.eq_ignore_ascii_case("claude") {
+                    if hook::install_claude(&path, &command)? {
+                        println!("✅ Claude Code hook installed in {}", path.join(".claude/settings.json").display());
+                    } else {
+                        println!("ℹ️  Claude Code hook already installed.");
+                    }
+                }
+                if all || agent.eq_ignore_ascii_case("git") {
+                    let hook_path = hook::install_git(&path, &command, force)?;
+                    println!("✅ Git pre-commit hook installed at {}", hook_path.display());
+                }
+                if !all && !["claude", "git"].contains(&agent.to_ascii_lowercase().as_str()) {
+                    anyhow::bail!("Unknown --agent '{agent}'; use claude, git or all");
+                }
+            }
+            HookCommands::Uninstall { agent, path } => {
+                let all = agent.eq_ignore_ascii_case("all");
+                let mut removed = false;
+                if all || agent.eq_ignore_ascii_case("claude") {
+                    removed |= hook::uninstall_claude(&path)?;
+                }
+                if all || agent.eq_ignore_ascii_case("git") {
+                    removed |= hook::uninstall_git(&path)?;
+                }
+                println!("{}", if removed { "✅ Hooks removed." } else { "ℹ️  No clrinf hooks found." });
+            }
+            HookCommands::Run { path } => {
+                let stdin = std::io::read_to_string(std::io::stdin()).unwrap_or_default();
+                let (code, message) = hook::run(&path, &stdin);
+                if !message.is_empty() {
+                    eprint!("{message}");
+                }
+                if code != 0 {
+                    std::process::exit(code);
+                }
+            }
+        },
+        Commands::Verify { path, changed, json } => {
+            let only = if changed { Some(hook::changed_files(&path)) } else { None };
+            let report = verify::run(&path, only.as_deref())?;
+            if json {
+                println!("{}", serde_json::to_string_pretty(&report)?);
+            } else {
+                print!("{}", report.format_text(false));
+                println!(
+                    "{} verify: {} check(s) run, {} error(s).",
+                    if report.is_valid { "✅" } else { "❌" },
+                    report.checks.len(),
+                    report.errors_count()
+                );
+            }
+            if !report.is_valid {
+                anyhow::bail!("Verification failed with {} error(s).", report.errors_count());
+            }
+        }
+        Commands::Bench(BenchCommands::Context { event, schema_dir, src, path, json }) => {
+            let rules = rules::Rules::load(&path)?;
+            let schema_dir = schema_dir.unwrap_or_else(|| {
+                rules.as_ref().map(|r| r.schema_dir()).unwrap_or_else(|| path.join(rules::DEFAULT_SCHEMA_DIR))
+            });
+            let roots = if src.is_empty() { vec![path.clone()] } else { src };
+            let result = bench::context(&schema_dir, &event, &roots, rules.as_ref())?;
+            if json {
+                println!("{}", serde_json::to_string_pretty(&result)?);
+            } else {
+                println!("{}", result.format_text());
+            }
+        }
+        Commands::Plan { event_type, service, role, schema_dir, src, apply, path } => {
+            let role = match role.to_ascii_lowercase().as_str() {
+                "subscriber" | "subscribe" => event_scaffold::Role::Subscriber,
+                "publisher" | "publish" => event_scaffold::Role::Publisher,
+                other => anyhow::bail!("Unknown --role '{other}'; use subscriber or publisher"),
+            };
+            let rules = rules::Rules::load(&path)?;
+            let schema_dir = schema_dir.unwrap_or_else(|| {
+                rules.as_ref().map(|r| r.schema_dir()).unwrap_or_else(|| path.join(rules::DEFAULT_SCHEMA_DIR))
+            });
+            let roots = if src.is_empty() { vec![path.clone()] } else { src };
+            let plan = plan::plan_event(&schema_dir, &event_type, &service, role, &roots, apply, rules.as_ref())?;
+            println!("{}", serde_json::to_string_pretty(&plan)?);
+        }
+        Commands::Agents(AgentsCommands::Sync { path, check }) => {
+            let rules = rules::Rules::load(&path)?;
+            let results = agents::sync(&path, rules.as_ref(), check)?;
+            let mut stale = 0;
+            for (file, status) in &results {
+                let label = match status {
+                    agents::Status::Created => "created",
+                    agents::Status::Updated => "updated",
+                    agents::Status::Unchanged => "unchanged",
+                };
+                if *status != agents::Status::Unchanged {
+                    stale += 1;
+                }
+                println!("{label:>9}  {}", file.display());
+            }
+            if check && stale > 0 {
+                anyhow::bail!("{stale} agent instruction file(s) out of date; run `clrinf agents sync`.");
+            }
         }
     }
 

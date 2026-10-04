@@ -10,9 +10,64 @@ use serde_json::{json, Value};
 use std::io::{BufRead, Write};
 use std::path::{Path, PathBuf};
 
+/// Which MCP tools are exposed. Smaller profiles cut the fixed per-session
+/// token cost of tool schemas and reduce tool-selection mistakes in small models.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum McpProfile {
+    Full,
+    Events,
+    Lean,
+}
+
+const LEAN_TOOLS: &[&str] = &[
+    "clrinf_plan_change",
+    "clrinf_verify",
+    "clrinf_event_register",
+    "clrinf_generate_pubsub",
+    "clrinf_scaffold_rule",
+    "clrinf_add_entity",
+    "clrinf_add_domain_module",
+    "clrinf_lint_architecture",
+];
+
+const EVENTS_EXTRA_TOOLS: &[&str] = &[
+    "clrinf_event_impact",
+    "clrinf_topology_drift",
+    "clrinf_topology_report",
+    "clrinf_validate_topology",
+];
+
+impl McpProfile {
+    pub fn parse(value: &str) -> Result<Self> {
+        match value.trim().to_ascii_lowercase().as_str() {
+            "full" => Ok(Self::Full),
+            "events" => Ok(Self::Events),
+            "lean" => Ok(Self::Lean),
+            other => anyhow::bail!("Unknown MCP profile '{other}'; use full, events or lean"),
+        }
+    }
+
+    pub fn name(self) -> &'static str {
+        match self {
+            Self::Full => "full",
+            Self::Events => "events",
+            Self::Lean => "lean",
+        }
+    }
+
+    pub fn allows(self, tool: &str) -> bool {
+        match self {
+            Self::Full => true,
+            Self::Lean => LEAN_TOOLS.contains(&tool),
+            Self::Events => LEAN_TOOLS.contains(&tool) || EVENTS_EXTRA_TOOLS.contains(&tool),
+        }
+    }
+}
+
 pub struct McpServer {
     worker_mgr: WorkerManager,
     workspace_root: Option<PathBuf>,
+    profile: McpProfile,
 }
 
 impl McpServer {
@@ -21,6 +76,7 @@ impl McpServer {
         Self {
             worker_mgr,
             workspace_root: None,
+            profile: McpProfile::Full,
         }
     }
 
@@ -30,10 +86,30 @@ impl McpServer {
         Self {
             worker_mgr,
             workspace_root: Some(root),
+            profile: McpProfile::Full,
         }
     }
 
+    pub fn with_profile(mut self, profile: McpProfile) -> Self {
+        self.profile = profile;
+        self
+    }
+
     pub fn handle_request(&self, request: &Value) -> Result<Option<Value>> {
+        let mut response = self.handle_request_inner(request)?;
+        if request.get("method").and_then(|m| m.as_str()) == Some("tools/list") && self.profile != McpProfile::Full {
+            if let Some(tools) = response
+                .as_mut()
+                .and_then(|r| r.pointer_mut("/result/tools"))
+                .and_then(|t| t.as_array_mut())
+            {
+                tools.retain(|t| t["name"].as_str().map_or(false, |n| self.profile.allows(n)));
+            }
+        }
+        Ok(response)
+    }
+
+    fn handle_request_inner(&self, request: &Value) -> Result<Option<Value>> {
         let method = request.get("method").and_then(|m| m.as_str()).unwrap_or("");
 
         // In JSON-RPC 2.0 and MCP specification:
@@ -218,6 +294,33 @@ impl McpServer {
                                     "schema_dir": { "type": "string", "description": "Directory containing JSON Schemas (optional)" }
                                 },
                                 "required": ["event_type", "service", "role"]
+                            }
+                        },
+                        {
+                            "name": "clrinf_plan_change",
+                            "description": "Fill-in-the-blanks plan for an event change. Previews (or applies) registering a service as publisher/subscriber and returns only what is left to implement: symbols to fill in, files to read, generated files not to edit, and architecture constraints.",
+                            "inputSchema": {
+                                "type": "object",
+                                "properties": {
+                                    "kind": { "type": "string", "description": "'event_subscribe' or 'event_publish'" },
+                                    "event_type": { "type": "string", "description": "x-event-type of the event" },
+                                    "service": { "type": "string", "description": "Service name" },
+                                    "apply": { "type": "boolean", "description": "Register the service in the schema now (default: preview only)" },
+                                    "src": { "type": "array", "items": { "type": "string" }, "description": "Source roots to scan (default: workspace root)" },
+                                    "schema_dir": { "type": "string", "description": "Directory containing JSON Schemas (optional)" }
+                                },
+                                "required": ["kind", "event_type", "service"]
+                            }
+                        },
+                        {
+                            "name": "clrinf_verify",
+                            "description": "Runs project verification (topology, code-vs-contract drift, dependency rules from clrinf.rules.toml). Use after edits; pass 'files' to check only what changed.",
+                            "inputSchema": {
+                                "type": "object",
+                                "properties": {
+                                    "files": { "type": "array", "items": { "type": "string" }, "description": "Only verify these files (default: whole project)" },
+                                    "path": { "type": "string", "description": "Project root (default: workspace root)" }
+                                }
                             }
                         },
                         {
@@ -407,6 +510,9 @@ impl McpServer {
     }
 
     fn execute_tool(&self, name: &str, args: &Value) -> Result<Value> {
+        if !self.profile.allows(name) {
+            anyhow::bail!("Tool '{}' is not available in the '{}' MCP profile", name, self.profile.name());
+        }
         match name {
             "clrinf_inspect_ecosystem" => {
                 let workers = self.worker_mgr.resolve_all_workers();
@@ -736,6 +842,51 @@ impl McpServer {
                     "schemaFile": outcome.schema_file.display().to_string(),
                     "title": outcome.title,
                     "next": "Run clrinf_generate_pubsub, then implement only the handler/publish call site business logic.",
+                }))
+            }
+
+            "clrinf_plan_change" => {
+                let root = self.workspace_root.clone().unwrap_or_else(|| PathBuf::from("."));
+                let rules = crate::rules::Rules::load(&root)?;
+                let default_schema = rules.as_ref().map(|r| r.schema_dir())
+                    .unwrap_or_else(|| root.join(crate::rules::DEFAULT_SCHEMA_DIR));
+                let schema_dir = args.get("schema_dir").and_then(|s| s.as_str()).map(PathBuf::from).unwrap_or(default_schema);
+                let role = match args.get("kind").and_then(|s| s.as_str()) {
+                    Some("event_subscribe") => crate::event_scaffold::Role::Subscriber,
+                    Some("event_publish") => crate::event_scaffold::Role::Publisher,
+                    _ => anyhow::bail!("'kind' must be 'event_subscribe' or 'event_publish'"),
+                };
+                let event_type = args.get("event_type").and_then(|s| s.as_str()).context("'event_type' is required")?;
+                let service = args.get("service").and_then(|s| s.as_str()).context("'service' is required")?;
+                let apply = args.get("apply").and_then(|v| v.as_bool()).unwrap_or(false);
+                let mut roots: Vec<PathBuf> = args.get("src").and_then(|s| s.as_array())
+                    .map(|a| a.iter().filter_map(|v| v.as_str().map(PathBuf::from)).collect())
+                    .unwrap_or_default();
+                if roots.is_empty() {
+                    roots.push(root.clone());
+                }
+                let plan = crate::plan::plan_event(&schema_dir, event_type, service, role, &roots, apply, rules.as_ref())?;
+                Ok(serde_json::to_value(plan)?)
+            }
+
+            "clrinf_verify" => {
+                let root = args.get("path").and_then(|s| s.as_str()).map(PathBuf::from)
+                    .or_else(|| self.workspace_root.clone())
+                    .unwrap_or_else(|| PathBuf::from("."));
+                let files: Vec<PathBuf> = args.get("files").and_then(|s| s.as_array())
+                    .map(|a| a.iter().filter_map(|v| v.as_str()).map(|p| {
+                        let p = PathBuf::from(p);
+                        if p.is_absolute() { p } else { root.join(p) }
+                    }).collect())
+                    .unwrap_or_default();
+                let only = if files.is_empty() { None } else { Some(files.as_slice()) };
+                let report = crate::verify::run(&root, only)?;
+                Ok(json!({
+                    "isValid": report.is_valid,
+                    "errorsCount": report.errors_count(),
+                    "checks": report.checks,
+                    "issues": report.issues,
+                    "diagnostics": report.format_text(false),
                 }))
             }
 

@@ -21,7 +21,8 @@
    - **Olay Öncelikli İskelet**: `event subscribe|publish` şemayı günceller, CloudEvent publisher ve idempotent subscriber kabuklarını üretir. Kabuk, `IdempotencyStore` (`claim`/`complete`/`release`) ile **etkin-tek-sefer (effectively-once)** işleme sağlar: Outbox en-az-bir-kez teslim eder, idempotency mükerrerliği engeller.
    - **PR Raporu**: `topology report` taban (dizin veya git ref) ile mevcut şemalar arasındaki olay topolojisi değişikliklerini reviewer için özetler.
    - **Topoloji Doğrulama**: Ölü olayları (`TOPOLOGY_DEAD_EVENT`) ve yetim aboneleri (`TOPOLOGY_ORPHAN_SUBSCRIBER`) derleme/CI öncesinde saptar.
-4. **Merkezi Orkestratör & Meta MCP Gateway**: Otonom yapay zeka kodlama ajanları (Claude, Cursor, Antigravity) için JSON-RPC 2.0 stdio protokolü üzerinden ekosistem bileşenlerini merkezi araçlarla denetleme, kural üretme ve doğrulama yeteneği.
+4. **Merkezi Orkestratör & Meta MCP Gateway**: Otonom yapay zeka kodlama ajanları (Claude, Cursor, Antigravity) için JSON-RPC 2.0 stdio protokolü üzerinden ekosistem bileşenlerini merkezi araçlarla denetleme, kural üretme ve doğrulama yeteneği. `--profile lean` ile oturum başına sabit araç şeması maliyeti düşürülebilir.
+5. **Ajan Korumaları**: Tek kural dosyasından (`clrinf.rules.toml`) beslenen otomatik koruma. `clrinf hook install` ajanın her düzenlemesinden sonra ilgili kontrolleri çalıştırır ve ihlali ajana geri bildirir; `clrinf plan` mekanik işleri yapıp ajana yalnızca doldurulacak sembolleri bırakır; `clrinf agents sync` aynı kuralları `AGENTS.md` / `CLAUDE.md` / Cursor kurallarına yazar; `clrinf bench context` bağlam maliyetini ölçer. Ayrıntılar: [Ajan Korumaları](docs/guides/agent-guardrails.md), [Benchmark Protokolü](docs/benchmarks/README.md).
 
 ---
 
@@ -216,7 +217,7 @@ Model Context Protocol (JSON-RPC 2.0 stdio) sunucusunu başlatın:
 ```bash
 clrinf mcp
 ```
-*(MCP Araçları: `clrinf_list_catalog`, `clrinf_adopt_module`, `clrinf_module_manage`, `clrinf_add_domain_module`, `clrinf_add_entity`, `clrinf_lint_architecture`, `clrinf_scaffold_rule`, `clrinf_generate_pubsub`, `clrinf_validate_topology`, `clrinf_topology_drift`, `clrinf_event_impact`, `clrinf_topology_report`, `clrinf_event_register`)*
+*(MCP Araçları: `clrinf_list_catalog`, `clrinf_adopt_module`, `clrinf_module_manage`, `clrinf_add_domain_module`, `clrinf_add_entity`, `clrinf_lint_architecture`, `clrinf_scaffold_rule`, `clrinf_generate_pubsub`, `clrinf_validate_topology`, `clrinf_topology_drift`, `clrinf_event_impact`, `clrinf_topology_report`, `clrinf_event_register`, `clrinf_plan_change`, `clrinf_verify`. Profiller: `full`, `events`, `lean` — `clrinf mcp --profile lean`)*
 
 > [!TIP]
 > **Geliştiriciler İçin Kaynak Koddan Çalıştırma:** İkili dosyayı kurmadan doğrudan yerel kaynak kod üzerinden denemek isterseniz, komutları `cargo run --manifest-path tools/clrinf-codegen/Cargo.toml -- <komut>` şeklinde de yürütebilirsiniz.

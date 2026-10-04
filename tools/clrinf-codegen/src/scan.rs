@@ -65,6 +65,20 @@ pub fn ident_lines(text: &str, ident: &str) -> Vec<usize> {
         .collect()
 }
 
+/// Load one supported source file (None for unsupported extensions or unreadable files).
+pub fn load_source(path: &Path) -> Option<SourceFile> {
+    let supported = path
+        .extension()
+        .and_then(|e| e.to_str())
+        .map_or(false, |ext| SOURCE_EXTENSIONS.contains(&ext.to_ascii_lowercase().as_str()));
+    if !supported {
+        return None;
+    }
+    let content = std::fs::read_to_string(path).ok()?;
+    let generated = content.contains(GENERATED_MARKER);
+    Some(SourceFile { path: path.to_path_buf(), content, generated })
+}
+
 /// Recursively collect supported source files below `root`.
 pub fn collect_sources(root: &Path) -> Result<Vec<SourceFile>> {
     let mut files = Vec::new();

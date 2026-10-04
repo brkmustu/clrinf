@@ -112,7 +112,7 @@ fn first_usage<'a>(sources: &'a [SourceFile], idents: &[String]) -> Option<(&'a 
     None
 }
 
-fn raw_outbox_writes(file: &SourceFile) -> Vec<usize> {
+pub fn raw_outbox_writes(file: &SourceFile) -> Vec<usize> {
     file.content
         .lines()
         .enumerate()
