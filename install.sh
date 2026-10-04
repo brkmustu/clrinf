@@ -24,7 +24,6 @@ DEFAULT_SYSTEM_BIN="/usr/local/bin"
 INSTALL_DIR="${DEFAULT_USER_BIN}"
 IS_SYSTEM=false
 FORCE_BUILD=false
-SETUP_LMSTUDIO=true
 DO_UNINSTALL=false
 
 show_help() {
@@ -40,7 +39,6 @@ ${BOLD}SEÇENEKLER:${NC}
     --system             Sistem geneline kur (/usr/local/bin) [sudo gerektirir]
     --dir <PATH>         Özel bir hedef kurulum dizini belirle
     --build              Kaynak koddan yeniden derlemeyi zorunlu kıl (cargo build --release)
-    --no-lmstudio        LM Studio entegrasyonunu ve mcp.json yapılandırmasını atla
     --uninstall          Yüklü ikili dosyaları ve sembolik bağları kaldır
     -h, --help           Bu yardım mesajını göster
 
@@ -66,10 +64,6 @@ while [[ $# -gt 0 ]]; do
             ;;
         --build)
             FORCE_BUILD=true
-            shift
-            ;;
-        --no-lmstudio)
-            SETUP_LMSTUDIO=false
             shift
             ;;
         --uninstall)
@@ -290,55 +284,6 @@ if [[ ":$PATH:" == *":${INSTALL_DIR}:"* ]]; then
     PATH_CHECK=true
 fi
 
-# 3. LM Studio Automatic Configuration
-if [ "${SETUP_LMSTUDIO}" = true ]; then
-    LMSTUDIO_DIR="${HOME}/.lmstudio"
-    LMSTUDIO_MCP="${LMSTUDIO_DIR}/mcp.json"
-
-    if [ -d "${LMSTUDIO_DIR}" ]; then
-        echo -e "${CYAN}🤖 LM Studio algılandı (${LMSTUDIO_DIR})...${NC}"
-        
-        # Merge clrinf server into mcp.json safely using python3 or jq
-        if command -v python3 &> /dev/null; then
-            python3 -c "
-import json, os
-
-path = os.path.expanduser('${LMSTUDIO_MCP}')
-data = {'mcpServers': {}}
-
-if os.path.exists(path):
-    try:
-        with open(path, 'r', encoding='utf-8') as f:
-            content = f.read().strip()
-            if content:
-                data = json.loads(content)
-    except Exception as e:
-        data = {'mcpServers': {}}
-
-if 'mcpServers' not in data or not isinstance(data['mcpServers'], dict):
-    data['mcpServers'] = {}
-
-data['mcpServers']['clrinf'] = {
-    'command': 'clrinf-codegen',
-    'args': ['mcp'],
-    'env': {
-        'RUST_LOG': 'info'
-    }
-}
-
-with open(path, 'w', encoding='utf-8') as f:
-    json.dump(data, f, indent=2, ensure_ascii=False)
-print('✅ LM Studio mcp.json dosyasına clrinf sunucusu otomatik kaydedildi.')
-"
-        elif command -v jq &> /dev/null; then
-            if [ -f "${LMSTUDIO_MCP}" ]; then
-                TMP_FILE=$(mktemp)
-                jq '.mcpServers.clrinf = {"command": "clrinf-codegen", "args": ["mcp"], "env": {"RUST_LOG": "info"}}' "${LMSTUDIO_MCP}" > "${TMP_FILE}" && mv "${TMP_FILE}" "${LMSTUDIO_MCP}"
-                echo -e "${GREEN}✅ LM Studio mcp.json dosyasına clrinf sunucusu eklendi.${NC}"
-            fi
-        fi
-    fi
-fi
 
 echo ""
 echo -e "${GREEN}${BOLD}🎉 clrinf CLI ve MCP Sunucusu başarıyla kuruldu!${NC}"

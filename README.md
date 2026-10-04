@@ -66,6 +66,16 @@ curl -fsSL https://raw.githubusercontent.com/brkmustu/clrinf/master/install.sh |
 
 *(Kaynak koddan derlemek isterseniz: depoyu klonlayıp `./install.sh --build` komutunu çalıştırabilirsiniz.)*
 
+### Hızlı Kurulum (Windows - PowerShell)
+
+PowerShell üzerinden en güncel sürümü doğrudan kullanıcı dizininize (`%LOCALAPPDATA%\clrinf\bin`) kurabilirsiniz:
+
+```powershell
+irm https://raw.githubusercontent.com/brkmustu/clrinf/master/install.ps1 | iex
+```
+
+*(Kaynak koddan derlemek isterseniz: depoyu klonlayıp `.\install.ps1 -Build` komutunu çalıştırabilirsiniz.)*
+
 ---
 
 ## Hızlı Başlangıç
