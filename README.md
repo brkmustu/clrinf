@@ -1,28 +1,51 @@
-# clrinf — Sözleşme Öncelikli, Çok Dilli Dağıtık Uygulama Altyapısı
+# clrinf — Yapay Zeka Ajanları için Mimari Koruma, Token Verimliliği ve Kod Üretim Altyapısı
 
 [![CI](https://github.com/brkmustu/clrinf/actions/workflows/ci.yml/badge.svg)](https://github.com/brkmustu/clrinf/actions/workflows/ci.yml)
 [![License: BSL 1.1](https://img.shields.io/badge/License-BSL%201.1-purple.svg)](LICENSE)
 
-**clrinf**, Rust, C#, TypeScript ve Elixir ile **dağıtık sistemler ve modüler monolith mimariler** inşa etmek üzere geliştirilmiş çok dilli bir uygulama çatısıdır. Belirli bir veritabanını, mesaj kuyruğunu veya bulut sağlayıcısını dayatmadan; kanonik veri sözleşmeleri, dile özgü idiomatik iş kuralı motorları, statik mimari denetleyiciler ve otonom yapay zeka ajanları için merkezi bir Meta MCP orkestratörü sunar.
+> **Modüler Monolith'ten Çok Dilli Dağıtık Sistemlere**: Yapay zeka ajanlarını mimari sınırlar içinde kalmaya zorlayan, hazır şablonlarla token tüketimini düşürmeye yardımcı olan ve karmaşıklaşan projelerde kontrolü korumaya destek sunan açık kaynaklı geliştirme altyapısı.
+
+**clrinf**, yapay zeka kodlama ajanlarıyla (Claude Code, Cursor, Antigravity, Copilot vb.) yazılım geliştirirken; **mimari anlamda daha stabil kod üretimine katkı sunmak**, **hazır şablonlarla token tüketimini düşürmeye yardımcı olmak** ve **daha düşük parametreli dil modellerinde (SLM/Local LLM) bile ajanları belirli mimari sınırlar dahilinde tutabilmek** amacıyla geliştirilmektedir.
+
+Geliştiriciye başlangıçta peşinen bir mikroservis ya da dağıtık sistem mimarisi **dayatmaz**. İster tek bir süreçte (in-process) çalışan yalın bir **modüler monolith** ile başlayın, ister projeniz zamanla **çok dilli (Rust, C#, TypeScript, Elixir) dağıtık sistemlere** evrilsin; `clrinf`, yapay zeka ajanlarını önceden tanımlanmış mimari kurallar ve sözleşmeler içinde kalmaya zorlayarak, özellikle karmaşıklaşan projelerde kontrolü kaybetmeden geliştirme yapabilmenize destek olmayı hedefler.
+
+---
+
+## Neden clrinf?
+
+Yapay zeka ajanları hızlı kod üretebilir; ancak proje büyüdükçe mimari sınırları ihlal etme, katmanları birbirine karıştırma ve kontrolsüz token tüketme eğilimindedir. Üstelik bu durum, yüksek maliyetli "frontier" modeller yerine daha ekonomik veya yerel modeller kullanıldığında çok daha belirgin hale gelir. `clrinf`, bu zorlukları hafifletmek ve geliştiriciye yardımcı olmak için üç temel hedefe odaklanır:
+
+1. **Daha Düşük Modellerde Bile Mimari Sınırları Koruma Desteği**
+   - Yapay zeka modelleri büyüdükçe yetenekleri artsa da mimari katmanları ihlal etme riski devam eder. `clrinf` bir kalite garantisi sunmaz; ancak ajanı deterministik kurallarla sınırlandırarak, daha düşük parametreli veya yerel modellerde (SLM / Local LLM) bile mimari açıdan daha tutarlı kod üretilmesine katkı sağlamaya çalışır.
+   - Roslyn linter'ları (`ARCH001-ARCH004`), Syn AST denetleyicileri (`RUST_ARCH001`) ve TypeScript AST linter'ları (`ARCH_TS_001`) ile mimari sınırları derleme seviyesinde denetler.
+   - Ajan mimari bir kuralı atladığında IDE ve Git hook'ları (`clrinf hook install`) geri bildirim üreterek ajanın belirlenen sınırlar içinde kalmasını hatırlatır; mimari sapmaların erkenden fark edilmesine yardımcı olur.
+
+2. **Hazır Kod Üretim Şablonlarıyla Token Tüketimini Düşürme**
+   - Ajanların sıfırdan mimari iskelet veya DTO kurgulamaya çalışırken yüksek miktarda token tüketmesinin önüne geçmeye yardımcı olur.
+   - CLI iskeletleyicileri (`clrinf rule new`, `clrinf add module/entity`), yerleşik modül kataloğu (`clrinf catalog` / `clrinf module adopt`) ve boşluk doldurma planları (`clrinf plan`) ile mekanik işlerin şablonlar üzerinden ilerlemesini sağlar.
+   - Ajanın tüm projeyi baştan sona okuması yerine; `clrinf plan` ve Graft bağlam grafiği ile yalnızca doldurması gereken iş mantığına ve dar dosya bağlamına odaklanması hedeflenir. `--profile lean` Meta MCP sunucusu ile oturum başına araç şeması token maliyeti düşürülür.
+
+3. **Karmaşık ve Dağıtık Projelerde Kontrolü Elde Tutma**
+   - Dağıtık sistem bir **önkoşul veya ilk adım değil**, proje karmaşıklaştığında devreye giren bir **ölçeklenme seçeneğidir**.
+   - Proje büyüyüp çok servisli veya dağıtık bir yapıya evrildiğinde; sözleşme öncelikli yapı (JSON Schema, CloudEvents), drift tespiti (`clrinf topology drift`), etki analizi (`clrinf topology impact`) ve Outbox/Idempotency şablonları sayesinde, yapay zeka ajanları ile çalışırken mimari kontrolün kaybedilmemesine destek olur.
 
 ---
 
 ## Temel Mimari Prensipleri
 
-1. **Sözleşme Öncelikli (Contract-First) Bütünlük**: Tüm servisler arası iletişim, JSON Schema (Draft 2020-12) ve CloudEvents 1.0 standartları üzerinden yapılandırılır.
-2. **Dile Özgü İdiomatik İş Kuralları**:
+1. **Ajan Korumaları ve Dar Bağlam (Agent Guardrails & Context Efficiency)**: Tek kural dosyasından (`clrinf.rules.toml`) beslenen otomatik koruma. `clrinf hook install` (Claude Code, Cursor, Antigravity, git pre-commit) ajanın her dosya düzenlemesinden sonra kuralları denetler; `clrinf plan` mekanik işleri yapıp ajana yalnızca doldurulacak iş mantığını ve dar dosya bağlamını bırakır; `clrinf agents sync` aynı kuralları `AGENTS.md` / `CLAUDE.md` / Cursor kurallarına yazar. Ayrıntılar: [Ajan Korumaları](docs/guides/agent-guardrails.md), [Benchmark Protokolü](docs/benchmarks/README.md).
+2. **Dile Özgü İdiomatik İş Kuralları & Derleyici Seviyesinde Denetim**:
    - **C#**: `IBusinessRule<T>` arayüzü, `RulePipeline` ve Roslyn tabanlı mimari denetleyiciler (`ARCH001` - `ARCH004`).
    - **Rust**: `BusinessRule<T>` trait'i, `RulePipeline` ve Syn tabanlı AST linter (`RUST_ARCH001`).
    - **TypeScript**: Saf fonksiyonel `Rule<TCtx>`, `pipeRules` zinciri, `Result<T, E>` monadı ve TS AST linter (`ARCH_TS_001`).
-3. **Diller Arası Olay Sözleşmesi Koruması**: Derleyicinin göremediği servisler arası bağımlılıkları koruma altına alır; AI ajanı yalnızca iş mantığını yazar.
-   - **Drift Tespiti**: `topology drift` ile şemadaki `x-published-by` / `x-subscribed-by` beyanları gerçek servis kodu ile karşılaştırılır; beyan edilmemiş publish/handle ve üretilen publisher'ı atlayan doğrudan outbox yazımları (`DRIFT_*`) yakalanır.
-   - **Şema Evrimi Analizi**: Sürümler arası alan farkları kırıcı / kırıcı olmayan olarak sınıflandırılır; eksik upcaster (`TOPOLOGY_UPCASTER_MISSING`) tanısı neyin kırıldığını da söyler.
-   - **Etki Analizi**: `topology impact` bir olayı değiştirmeden önce etkilenen servisleri, sürümleri ve yalnızca ilgili kaynak dosyalarını listeler (ajana tüm repo yerine dar bağlam).
-   - **Olay Öncelikli İskelet**: `event subscribe|publish` şemayı günceller, CloudEvent publisher ve idempotent subscriber kabuklarını üretir. Kabuk, `IdempotencyStore` (`claim`/`complete`/`release`) ile **etkin-tek-sefer (effectively-once)** işleme sağlar: Outbox en-az-bir-kez teslim eder, idempotency mükerrerliği engeller.
-   - **PR Raporu**: `topology report` taban (dizin veya git ref) ile mevcut şemalar arasındaki olay topolojisi değişikliklerini reviewer için özetler.
-   - **Topoloji Doğrulama**: Ölü olayları (`TOPOLOGY_DEAD_EVENT`) ve yetim aboneleri (`TOPOLOGY_ORPHAN_SUBSCRIBER`) derleme/CI öncesinde saptar.
-4. **Merkezi Orkestratör & Meta MCP Gateway**: Otonom yapay zeka kodlama ajanları (Claude, Cursor, Antigravity) için JSON-RPC 2.0 stdio protokolü üzerinden ekosistem bileşenlerini merkezi araçlarla denetleme, kural üretme ve doğrulama yeteneği. `--profile lean` ile oturum başına sabit araç şeması maliyeti düşürülebilir.
-5. **Ajan Korumaları**: Tek kural dosyasından (`clrinf.rules.toml`) beslenen otomatik koruma. `clrinf hook install` ajanın her düzenlemesinden sonra ilgili kontrolleri çalıştırır ve ihlali ajana geri bildirir; `clrinf plan` mekanik işleri yapıp ajana yalnızca doldurulacak sembolleri bırakır; `clrinf agents sync` aynı kuralları `AGENTS.md` / `CLAUDE.md` / Cursor kurallarına yazar; `clrinf bench context` bağlam maliyetini ölçer. Ayrıntılar: [Ajan Korumaları](docs/guides/agent-guardrails.md), [Benchmark Protokolü](docs/benchmarks/README.md).
+3. **Sözleşme Öncelikli (Contract-First) Bütünlük**: Tüm veri modelleri ve servisler arası iletişim, dilden bağımsız kanonik JSON Schema (Draft 2020-12) ve CloudEvents 1.0 standartları üzerinden yapılandırılır; modeller otomatik üretilir.
+4. **Karmaşık ve Dağıtık Sistemlerde Olay Topolojisi Koruması**: Sistem büyüdüğünde derleyicinin göremediği servisler arası bağımlılıkları koruma altına alır:
+   - **Drift Tespiti**: `topology drift` ile şemadaki `x-published-by` / `x-subscribed-by` beyanları gerçek servis kodu ile karşılaştırılır; beyan edilmemiş publish/handle ve doğrudan outbox yazımları (`DRIFT_*`) yakalanır.
+   - **Şema Evrimi Analizi**: Sürümler arası alan farkları kırıcı / kırıcı olmayan olarak sınıflandırılır; eksik upcaster (`TOPOLOGY_UPCASTER_MISSING`) tanısı neyin kırıldığını bildirir.
+   - **Etki Analizi**: `topology impact` bir olayı değiştirmeden önce etkilenen servisleri, sürümleri ve yalnızca ilgili kaynak dosyalarını listeler (ajana tüm repo yerine dar bağlam verir).
+   - **Olay Öncelikli İskelet**: `event subscribe|publish` şemayı günceller, CloudEvent publisher ve idempotent subscriber kabuklarını üretir. Kabuk, `IdempotencyStore` (`claim`/`complete`/`release`) ile **etkin-tek-sefer (effectively-once)** işleme sağlar.
+   - **PR Raporu & Topoloji Doğrulama**: `topology report` PR'da topoloji farklarını özetler; ölü olayları (`TOPOLOGY_DEAD_EVENT`) ve yetim aboneleri (`TOPOLOGY_ORPHAN_SUBSCRIBER`) derleme/CI öncesinde saptar.
+5. **Merkezi Orkestratör & Meta MCP Gateway**: Otonom yapay zeka kodlama ajanları (Claude, Cursor, Antigravity) için JSON-RPC 2.0 stdio protokolü üzerinden ekosistem bileşenlerini merkezi araçlarla denetleme, kural üretme ve doğrulama yeteneği. `--profile lean` ile oturum başına sabit araç şeması token maliyeti düşürülür.
 
 ---
 
@@ -30,13 +53,14 @@
 
 | Senaryo | Kullanılan Bileşenler | Gereksinim Dışı Unsurlar |
 |---|---|---|
-| **Kanonik Veri & DTO Üretimi** | JSON Schema + `clrinf-codegen` | Çalışma zamanı servisleri, NATS, Docker |
-| **Çapraz Servis Olay Doğrulama** | `clrinf-codegen topology check` + `generate-pubsub` | Taşıma katmanı bağımlılıkları (Kafka/NATS zorunluluğu yoktur) |
-| **Modüler Monolith** | İlgili dilin çekirdeği, süreç-içi dispatch, bellek/SQLite adaptörü | Mikroservis bölünmesi, dağıtık kilit, mesaj brokerı |
-| **Çok Dilli Dağıtık Sistem** | Kanonik sözleşmeler, Outbox/Inbox adaptörleri, HTTP/mesajlaşma | Tek dil zorunluluğu, tek veri tabanı mecburiyeti |
-| **Otonom Yapay Zeka Geliştirme** | `clrinf-codegen mcp` (Meta MCP Sunucusu) | Diller arası parçalı ve uyumsuz AI araç entegrasyonları |
+| **Modüler Monolith (Önerilen Başlangıç)** | İlgili dilin çekirdeği, süreç-içi dispatch, bellek/SQLite adaptörü, izole iş kuralları | Mikroservis bölünmesi, dağıtık kilit, mesaj brokerı, Docker |
+| **Yapay Zeka ile Güvenli Geliştirme** | `clrinf hook`, `clrinf plan`, `clrinf catalog/adopt`, Meta MCP Gateway | Token israfı, mimari sapmalar, devasa dosya bağlamı yükleme |
+| **Kanonik Veri & DTO Üretimi** | JSON Schema + `clrinf generate` | Çalışma zamanı servisleri, NATS, Docker |
+| **Çok Dilli Dağıtık Sistem (İhtiyaç Halinde Ölçeklenme)** | Kanonik sözleşmeler, Outbox/Inbox adaptörleri, HTTP/mesajlaşma, topoloji denetimi | Tek dil mecburiyeti, tek veri tabanı zorunluluğu, kontrolsüz drift |
+| **Çapraz Servis Olay Doğrulama** | `clrinf topology check` + `generate-pubsub` | Taşıma katmanı bağımlılıkları (Kafka/NATS zorunluluğu yoktur) |
 
-Monolith içerisinde yerel ACID veritabanı işlemleri esastır. Servis sınırları aşıldığında sistem; Outbox, Inbox, Idempotency ve telafi edici işlemleri (compensation) açık kalıplar ve yapılandırılabilir adaptörlerle yönetir. `correlation_id` izleme (telemetri) içindir; tek başına idempotency anahtarı olarak kullanılamaz.
+> [!NOTE]
+> **Mimari Esneklik ve Ölçeklenme:** Varsayılan olarak en yalın başlangıç olan **Modüler Monolith** yaklaşımı ve yerel ACID veritabanı işlemleri desteklenir. Dağıtık sistemler veya mikroservisler bir zorunluluk değil; projeniz büyüyüp servis sınırları aşıldığında Outbox, Inbox, Idempotency ve telafi edici işlemler (compensation) gibi açık kalıplarla güvenle devreye alınabilecek bir yetenektir. `correlation_id` telemetri izleme içindir; tek başına idempotency anahtarı olarak kullanılamaz.
 
 ---
 
@@ -222,15 +246,6 @@ clrinf mcp
 > [!TIP]
 > **Geliştiriciler İçin Kaynak Koddan Çalıştırma:** İkili dosyayı kurmadan doğrudan yerel kaynak kod üzerinden denemek isterseniz, komutları `cargo run --manifest-path tools/clrinf-codegen/Cargo.toml -- <komut>` şeklinde de yürütebilirsiniz.
 
----
-
-## Temel Amaç ve Mimari Odak
-
-clrinf, geliştiricilerin yapay zeka desteğiyle çalışırken mimari çerçeveyi korumalarını kolaylaştırmayı hedefler:
-
-- **Token Tasarrufu ve Bağlam Verimliliği:** Tüm kod tabanını bütünüyle modele yüklemek yerine; modüler manifestler (`clrinf.toml`), odaklı CLI araçları ve Graft bağlam grafiği sayesinde yapay zekaya yalnızca ihtiyaç duyduğu dar ve isabetli bağlamın verilmesini kolaylaştırarak token tüketimini düşürmeye yardımcı olur.
-- **Yapay Zeka Destekli Geliştirmede Net Mimari Çerçeveler:** Kodlama ajanlarının mimari sapmalara yönelmesini sınırlandırmak adına deterministik linter'lar (Roslyn, Syn AST, TS Compiler API), tip-güvenli kural motorları ve açık sözleşmeler ile geliştirmelerin belirlenen mimari sınırlar dahilinde kalmasını destekleyen denetim mekanizmaları sunar.
-- **Düşük Parametreli Modellerle Çalışırken Araç Desteği:** Yalnızca devasa frontier modellere bağımlı kalmadan; küçük ve yerel dil modelleriyle (SLM / Local LLM) çalışırken de mimari kaliteyi, tasarım disiplinini ve kod tutarlılığını yüksek tutabilmek için geliştiricinin elini güçlendiren araçlar ve kurallar sağlar.
 
 ---
 
