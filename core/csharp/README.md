@@ -17,7 +17,7 @@ a service split.
 | `examples/DistributedService` | HTTP producer/receiver with separate databases |
 | `examples/CrmMonolith` | Containerized Modular Monolith reference (`Modules/` container, EF Core SQLite, Minimal APIs) |
 | `examples/EcommerceMonolith` | Direct Bounded Contexts reference (Top-level slices, pure FP, Native Dispatcher, Cedar authz) |
-| `src/ClrinfCS` / `src/ClrinfCS.OpenApi` | Roslyn AST worker CLI tool (lint, migrate, mcp) and native OpenAPI support |
+| `src/ClrinfCS` / `src/ClrinfCS.OpenApi` | Roslyn AST worker CLI tool (lint, migrate) and native OpenAPI support |
 
 Add project references to the core and the adapter you need, or package them for
 your own NuGet feed. No hosted service, broker or dependency injection container
@@ -277,25 +277,5 @@ clrinfcs migrate --to clean-cqrs --dry-run
 clrinfcs migrate --to clean-cqrs
 ```
 
-### 3. EF Core Migrasyon Yönetimi (`clrinfcs migration`)
-Migrasyonları katman yapısına uygun izole dizinlerde (Persistence/Migrations) oluşturur ve uygular:
-```bash
-# Yeni migrasyon ekle
-clrinfcs migration add AddProductsTable
-
-# Veritabanına migrasyonları uygula
-clrinfcs migration apply
-```
-
-### 4. Model Context Protocol (MCP) Server (`clrinfcs mcp`)
-AI ajanları için Roslyn AST linter ve mimari doğrulama fonksiyonlarını stdio JSON-RPC 2.0 üzerinden sunar:
-```bash
-clrinfcs mcp
-```
-
-### 5. AI Kural Sentezleyici (`clrinfcs ai rule`)
-Belirtilen varlık ve kural için Roslyn uyumlu iş kuralı iskeleti sentezler:
-```bash
-clrinfcs ai rule CheckMaxDiscount --entity Order
-```
-
+### Kod üretimi ve ajan arayüzü
+Kural iskeleti üretimi (`clrinf-codegen rule new --lang csharp`), MCP sunucusu (`clrinf-codegen mcp`) ve EF Core migrasyon komutları artık bu araçta değildir. Kod üretimi ve ajan erişimi `tools/clrinf-codegen` tarafından sağlanır; `clrinfcs` yalnızca Roslyn tabanlı `lint` ve `migrate` işlerini yürütür.

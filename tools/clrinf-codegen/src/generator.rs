@@ -546,6 +546,65 @@ impl Generator {
         Ok(created)
     }
 
+    /// Scaffolds an isolated `IBusinessRule<T>` class plus xUnit tests for C#.
+    /// Never overwrites existing files.
+    pub fn scaffold_rule_csharp(
+        &self,
+        rule_name: &str,
+        entity: Option<&str>,
+        error_code: Option<&str>,
+        description: Option<&str>,
+        namespace: Option<&str>,
+        rules_dir: &Path,
+        tests_dir: &Path,
+    ) -> Result<Vec<PathBuf>> {
+        ensure_safe_output(rules_dir)?;
+        ensure_safe_output(tests_dir)?;
+
+        let mut rule_pascal = rule_name.to_upper_camel_case();
+        if !rule_pascal.ends_with("Rule") {
+            rule_pascal.push_str("Rule");
+        }
+        let entity_name = entity.unwrap_or("Entity").to_upper_camel_case();
+        let command_name = format!("Create{entity_name}Command");
+        let default_err = format!(
+            "{}_VIOLATION",
+            rule_pascal.trim_end_matches("Rule").to_snake_case().to_uppercase()
+        );
+        let err_code = error_code.unwrap_or(&default_err);
+        let default_desc = format!("Validates {rule_pascal} on {entity_name}");
+        let desc = description.unwrap_or(&default_desc).replace(['\r', '\n'], " ").replace('"', "'");
+
+        let mut context = TeraContext::new();
+        context.insert("rule_name", &rule_pascal);
+        context.insert("entity", &entity_name);
+        context.insert("command_name", &command_name);
+        context.insert("error_code", err_code);
+        context.insert("description", &desc);
+        context.insert("namespace", namespace.unwrap_or("Application"));
+
+        let rule_path = rules_dir.join(format!("{rule_pascal}.cs"));
+        let test_path = tests_dir.join(format!("{rule_pascal}Tests.cs"));
+        for p in [&rule_path, &test_path] {
+            if p.exists() {
+                anyhow::bail!("Refusing to overwrite existing file: {}", p.display());
+            }
+        }
+        std::fs::create_dir_all(rules_dir)
+            .with_context(|| format!("Failed to create directory: {}", rules_dir.display()))?;
+        std::fs::create_dir_all(tests_dir)
+            .with_context(|| format!("Failed to create directory: {}", tests_dir.display()))?;
+
+        let rule_rendered = self.tera.render("csharp/rule.tera", &context)
+            .context("Failed rendering csharp/rule.tera")?;
+        std::fs::write(&rule_path, rule_rendered)?;
+        let test_rendered = self.tera.render("csharp/rule_test.tera", &context)
+            .context("Failed rendering csharp/rule_test.tera")?;
+        std::fs::write(&test_path, test_rendered)?;
+
+        Ok(vec![rule_path, test_path])
+    }
+
     fn find_schema_files(&self, dir: &Path) -> Result<Vec<PathBuf>> {
         discover_files(dir, &["json"])
     }

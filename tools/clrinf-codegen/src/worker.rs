@@ -517,21 +517,51 @@ impl WorkerManager {
 
         match kind {
             WorkerKind::CSharp => {
+                let templates_dir = self
+                    .workspace_root
+                    .as_ref()
+                    .map(|r| r.join("tools/clrinf-codegen/templates"))
+                    .filter(|p| p.is_dir())
+                    .or_else(|| self.workspace_root.as_ref().map(|r| r.join("templates")))
+                    .unwrap_or_else(|| PathBuf::from("./tools/clrinf-codegen/templates"));
+                if !templates_dir.is_dir() {
+                    bail!(
+                        "Cannot find clrinf templates directory at {}",
+                        templates_dir.display()
+                    );
+                }
+
+                let rules_dir = target_dir
+                    .map(|p| p.to_path_buf())
+                    .unwrap_or_else(|| PathBuf::from("Features").join(entity_name).join("Rules"));
+                let tests_dir = if target_dir.is_none() && Path::new("tests").is_dir() {
+                    PathBuf::from("tests").join(format!("{entity_name}Tests")).join("Rules")
+                } else {
+                    rules_dir.join("Tests")
+                };
+
                 let desc = format!("Validates {rule_name} on {entity_name}");
-                let cmd_name = format!("Create{entity_name}Command");
-                let args = vec![
-                    "ai",
-                    "rule",
-                    &desc,
-                    "-m",
-                    entity_name,
-                    "-n",
+                let gen = crate::generator::Generator::new(&templates_dir)?;
+                let files = gen.scaffold_rule_csharp(
                     rule_name,
-                    "-c",
-                    &cmd_name,
-                ];
-                self.execute_cmd(&worker, &args)
+                    entity,
+                    error_code,
+                    Some(&desc),
+                    None,
+                    &rules_dir,
+                    &tests_dir,
+                )?;
+                let created: Vec<String> =
+                    files.iter().map(|f| f.display().to_string()).collect();
+                Ok(WorkerExecutionResult {
+                    worker: WorkerKind::CSharp,
+                    success: true,
+                    exit_code: Some(0),
+                    stdout: format!("Scaffolded C# rule: {}", created.join(", ")),
+                    stderr: String::new(),
+                })
             }
+
             WorkerKind::Rust => {
                 let cmd_name = format!("Create{entity_name}Command");
                 let args = vec![
@@ -617,9 +647,31 @@ impl WorkerManager {
         let worker = self.resolve_worker(kind);
         match kind {
             WorkerKind::CSharp => {
-                let args = vec!["add", "module", module_name, "BaseDbContext"];
-                self.execute_cmd_in_dir(&worker, &args, project_path)
+                let project_dir = project_path
+                    .map(|p| p.to_path_buf())
+                    .unwrap_or_else(|| PathBuf::from("."));
+                let abs_path = std::fs::canonicalize(&project_dir).unwrap_or(project_dir);
+                let (manifest, _) = crate::manifest::ProjectManifest::discover(&abs_path)?;
+                let opts = crate::csharp::module::AddModuleOptions {
+                    module_name,
+                    project_path: &abs_path,
+                    manifest: &manifest,
+                    pattern: None,
+                };
+                let res = crate::csharp::module::add_module(&opts)?;
+                Ok(WorkerExecutionResult {
+                    worker: WorkerKind::CSharp,
+                    success: true,
+                    exit_code: Some(0),
+                    stdout: format!(
+                        "✅ {} dosya oluşturuldu, {} dosya güncellendi.",
+                        res.files_created.len(),
+                        res.files_modified.len()
+                    ),
+                    stderr: String::new(),
+                })
             }
+
             WorkerKind::Rust => {
                 let mut args = vec!["add", "module", module_name];
                 let path_buf;
