@@ -91,11 +91,16 @@ const CSHARP_DOCS: &str = r#"# clrinf C# (.NET) Development & Architecture Guide
 
 ## 1. Architectural Guardrails (Roslyn Enforced)
 - **ARCH001 (Zero Leakage):** Domain katmanında EF Core, ASP.NET Core, Web veya JSON kütüphaneleri YASAKTIR. Saf C# olmalıdır.
-- **ARCH002 (Business Rules):** İş kuralları `IBusinessRule<T>` uygulamalı, `EvaluateAsync(entity, ctx)` sunmalıdır. Asla çıplak `throw new Exception()` fırlatma; `RuleResult.Success()` veya `RuleResult.Failure(code, message)` dön.
+- **ARCH002 (Business Rules):** İş kuralları `IBusinessRule<T>`, `IBeforeCreateRule<T>`, `IBeforeUpdateRule<T>` veya `IBeforeDeleteRule<T>` uygulamalı; `RuleResult.Success()` veya `RuleResult.Failed(code, message)` dön. Asla çıplak `throw new Exception()` fırlatma.
 - **ARCH003 (Controller Isolation):** Web API Controller'larına `DbContext` doğrudan enjekte edilemez; CQRS Handler zorunludur.
 - **ARCH004 (CQRS Contract):** Komut ve sorgular `IRequest<T>` veya `IRequireOperationClaim` sözleşmelerine uymalıdır.
+- **ARCH005 (Hook Placement):** `IBefore*Rule<TEntity>` hook'ları `Rules/` klasöründe olmalı; `*Hook` sınıfları hook arayüzünü uygulamalıdır.
 
-## 2. Idiomatic Code Patterns
+## 2. AOT CRUD Pattern
+- Entity'ye `[GenerateCrudEndpoints]` ekleyin; standart CRUD handler ve Minimal API endpoint'leri derleme anında üretilir. `obj/` altındaki üretilmiş dosyaları okumayın.
+- İş kuralı için `clrinf rule new ActiveProductsCheck --lang csharp --entity Category --on before-delete` kullanın; kural `IBeforeDeleteRule<Category>` üretir ve `CrudRuleRunner` tarafından sıralı/çalıştırılır.
+- Operasyonu fiziksel dosyaya çıkarmak için `clrinfcs eject Category --operation Update`; generator Smart Override ile o operasyonu artık üretmez.
+- Entity'de tenant alanını `[CrudIgnore]` ile işaretleyin; `Id` ve tenant istemci DTO'sundan alınmaz.
 ```csharp
 // Business Rule
 public sealed class OrderMinimumAmountRule : IBusinessRule<Order>
@@ -318,7 +323,7 @@ const ALL_DOCS: &str = r#"# clrinf Multi-Language Architecture & Guidelines
 clrinf; C#, Rust, TypeScript ve Elixir dillerinde Clean Architecture, CQRS / OTP, monadik Result hata yönetimi ve Amazon Cedar çok kiracılı yetkilendirme sağlayan sözleşme-öncelikli bir framework'tür.
 
 Dile özel kurallar için `lang` parametresiyle çağırın:
-- `csharp`: Roslyn ARCH001-ARCH004, IBusinessRule, Native Dispatcher
+- `csharp`: Roslyn ARCH001-ARCH005, IBusinessRule / IBefore*Rule, Native Dispatcher, AOT CRUD generator
 - `rust`: Syn RUST_ARCH001 zero-panic, Result<T, DomainError>
 - `typescript`: TS AST ARCH_TS_001, pipeRules, Result.err
 - `elixir`: AST ARCH_EX_001-004, OTP GenServer/Supervisor, Result monad

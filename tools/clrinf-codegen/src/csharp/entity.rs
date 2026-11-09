@@ -71,6 +71,100 @@ fn resolve_csharp_type(short: &str) -> &str {
     }
 }
 
+/// Options for adding an entity with the AOT CRUD pattern.
+pub struct AddAotEntityOptions<'a> {
+    pub entity_name: &'a str,
+    pub module_name: &'a str,
+    pub properties: &'a [(&'a str, &'a str)],
+    pub id_type: Option<&'a str>,
+    pub project_path: &'a Path,
+    pub manifest: &'a ProjectManifest,
+}
+
+/// Add an entity that relies on the ClrinfCS AOT generator.
+/// Only the entity file is written; CRUD handlers and endpoints are generated at compile time.
+pub fn add_aot_entity(opts: &AddAotEntityOptions) -> Result<AddEntityResult> {
+    let entity_name = opts.entity_name.to_upper_camel_case();
+    let module_name = opts.module_name.to_upper_camel_case();
+    let project_namespace = opts.manifest.project.namespace
+        .as_deref()
+        .unwrap_or(&opts.manifest.project.name);
+    let folder_name = opts.manifest.project.folder_name
+        .as_deref()
+        .unwrap_or("Modules");
+
+    let id_type_raw = opts.id_type
+        .or_else(|| {
+            opts.manifest.declared_modules.iter()
+                .find(|m| m.name.eq_ignore_ascii_case(&entity_name))
+                .map(|m| m.id_type.as_str())
+        })
+        .unwrap_or("Guid");
+    let id_type = resolve_csharp_type(id_type_raw);
+    let id_default = match id_type {
+        "string" => "string.Empty",
+        "int" | "long" => "0",
+        _ => "Guid.NewGuid()",
+    };
+
+    let modules_dir = resolve_modules_dir(opts.project_path, opts.manifest)?;
+    let entity_dir = modules_dir.join(&module_name);
+    fs::create_dir_all(&entity_dir)
+        .with_context(|| format!("Failed to create module dir: {}", entity_dir.display()))?;
+
+    let entity_path = entity_dir.join(format!("{}.cs", entity_name));
+    if entity_path.exists() {
+        anyhow::bail!("Refusing to overwrite existing entity: {}", entity_path.display());
+    }
+
+    let mut body = String::new();
+    body.push_str("using ClrinfCS.Core;\n\n");
+    body.push_str(&format!("namespace {}.{}.{};\n\n", project_namespace, folder_name, module_name));
+    body.push_str("/// <summary>\n");
+    body.push_str("/// CRUD entity. Standard handlers and Minimal API endpoints are generated at compile time.\n");
+    body.push_str("/// Edit only hook rules or eject a specific operation when custom behavior is needed.\n");
+    body.push_str("/// </summary>\n");
+    body.push_str("[GenerateCrudEndpoints]\n");
+    body.push_str(&format!("public class {} : ITenantScoped\n", entity_name));
+    body.push_str("{\n");
+    body.push_str(&format!("    public {} Id {{ get; set; }} = {};\n", id_type, id_default));
+    body.push_str("    [CrudIgnore] public string TenantId { get; set; } = \"default\";\n");
+    for (name, ptype) in opts.properties {
+        let prop_name = name.to_upper_camel_case();
+        if prop_name.eq_ignore_ascii_case("Id") || prop_name.eq_ignore_ascii_case("TenantId") {
+            continue;
+        }
+        body.push_str(&format!(
+            "    public {} {} {{ get; set; }} = default!;\n",
+            resolve_csharp_type(ptype),
+            prop_name
+        ));
+    }
+    body.push_str("}\n");
+
+    fs::write(&entity_path, body)
+        .with_context(|| format!("Failed to write {}", entity_path.display()))?;
+
+    let mut files_modified = Vec::new();
+    let db_context_name = opts.manifest.project.db_context
+        .as_deref()
+        .unwrap_or("BaseDbContext");
+    let persistence_layer = resolve_persistence_layer(opts.manifest);
+    if let Some(ctx_path) = injector::find_dbcontext(opts.project_path, &persistence_layer, db_context_name) {
+        let using_line = format!("using {}.{}.{};", project_namespace, folder_name, module_name);
+        injector::add_using(&ctx_path, &using_line)?;
+        let plural = pluralize(&entity_name);
+        if injector::add_dbset_property(&ctx_path, &entity_name, &plural)? {
+            files_modified.push(ctx_path);
+        }
+    }
+
+    Ok(AddEntityResult {
+        files_created: vec![entity_path],
+        files_modified,
+    })
+}
+
 /// Add an entity using vertical slice templates.
 /// Generates <Entity>.cs, Create.cs, Update.cs, Delete.cs, GetById.cs, GetList.cs under Modules/<module>.
 pub fn add_entity(opts: &AddEntityOptions) -> Result<AddEntityResult> {
@@ -416,6 +510,51 @@ paradigm = "oop"
         let update_content = fs::read_to_string(item_dir.join("Update.cs"))?;
         assert!(update_content.contains("throw new KeyNotFoundException"));
         assert!(!create_content.contains("{% if"));
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_add_aot_entity_writes_only_entity() -> Result<()> {
+        let dir = tempdir()?;
+        let project_dir = dir.path().join("AotShop");
+        fs::create_dir_all(project_dir.join("src").join("Application").join("Modules"))?;
+
+        let toml = r#"
+[project]
+name = "AotShop"
+lang = "csharp"
+arch = "clean-cqrs"
+namespace = "AotShop"
+pattern = "aot"
+"#;
+        let manifest = ProjectManifest::from_toml(toml)?;
+        let props = [("name", "string"), ("slug", "string")];
+
+        let opts = AddAotEntityOptions {
+            entity_name: "Category",
+            module_name: "Catalog",
+            properties: &props,
+            id_type: None,
+            project_path: &project_dir,
+            manifest: &manifest,
+        };
+
+        let res = add_aot_entity(&opts)?;
+        assert_eq!(res.files_created.len(), 1);
+        assert!(res.files_modified.is_empty());
+
+        let file = project_dir
+            .join("src/Application/Modules/Catalog/Category.cs");
+        assert!(file.exists());
+        let content = fs::read_to_string(&file)?;
+        assert!(content.contains("\n[GenerateCrudEndpoints]\n"));
+        assert!(!content.contains("#[GenerateCrudEndpoints]"));
+        assert!(content.contains("public class Category : ITenantScoped"));
+        assert!(content.contains("[CrudIgnore] public string TenantId"));
+        assert!(content.contains("public string Name { get; set; }"));
+        assert!(content.contains("public string Slug { get; set; }"));
+        assert!(!content.contains("Create.cs"));
 
         Ok(())
     }

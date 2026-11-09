@@ -25,6 +25,8 @@ const LEAN_TOOLS: &[&str] = &[
     "clrinf_event_register",
     "clrinf_generate_pubsub",
     "clrinf_scaffold_rule",
+    "clrinf_crud_eject",
+    "clrinf_crud_map",
     "clrinf_add_entity",
     "clrinf_add_domain_module",
     "clrinf_lint_architecture",
@@ -173,9 +175,33 @@ impl McpServer {
                                     "lang": { "type": "string", "description": "Language target: csharp, rust, typescript, elixir, or all" },
                                     "entity": { "type": "string", "description": "Domain entity or command name (e.g. Order)" },
                                     "error_code": { "type": "string", "description": "Canonical error code (e.g. MAX_DISCOUNT_EXCEEDED)" },
+                                    "on": { "type": "string", "description": "Entity hook point: before-create, before-update or before-delete (optional)" },
                                     "target_dir": { "type": "string", "description": "Target directory (optional)" }
                                 },
                                 "required": ["rule_name"]
+                            }
+                        },
+                        {
+                            "name": "clrinf_crud_map",
+                            "description": "Returns entity -> generated/ejected CRUD operations, hook rules, file paths and resolved dispatcher for C# projects. Use before changing CRUD behaviour.",
+                            "inputSchema": {
+                                "type": "object",
+                                "properties": {
+                                    "path": { "type": "string", "description": "Project or source directory (optional, defaults to current directory)" }
+                                }
+                            }
+                        },
+                        {
+                            "name": "clrinf_crud_eject",
+                            "description": "Ejects one AOT CRUD operation into physical handler/endpoint files. Smart Override stops generating that operation.",
+                            "inputSchema": {
+                                "type": "object",
+                                "properties": {
+                                    "entity": { "type": "string", "description": "Entity name (e.g. Category)" },
+                                    "operation": { "type": "string", "description": "Create, Update, Delete, GetById or GetList" },
+                                    "project": { "type": "string", "description": "Project or solution path (optional)" }
+                                },
+                                "required": ["entity", "operation"]
                             }
                         },
                         {
@@ -227,7 +253,8 @@ impl McpServer {
                                     "template": { "type": "string", "description": "Template name (optional, see template list)" },
                                     "arch": { "type": "string", "description": "Architecture style for C#: clean-cqrs, flat, layered (default: clean-cqrs)" },
                                     "paradigm": { "type": "string", "description": "Paradigm for C#: fp or oop (default: fp)" },
-                                    "dispatcher": { "type": "string", "description": "Dispatcher for C#: native or mediatr (default: native)" },
+                                    "dispatcher": { "type": "string", "description": "Dispatcher for C#: native, mediatr, or mediatornet (default: native)" },
+                                    "pattern": { "type": "string", "description": "CRUD generation pattern for C#: flat, aot, separated, basic (default: flat)" },
                                     "templates_dir": { "type": "string", "description": "Directory containing templates (optional)" }
                                 },
                                 "required": ["name"]
@@ -386,6 +413,7 @@ impl McpServer {
                                         "items": { "type": "string" },
                                         "description": "Properties in 'name:type' format (e.g. ['name:string', 'price:f64'])"
                                     },
+                                    "pattern": { "type": "string", "description": "Generation pattern for C#: 'aot', 'vertical-slice', or 'separated' (defaults to manifest pattern)" },
                                     "path": { "type": "string", "description": "Project directory path (default: current directory)" }
                                 },
                                 "required": ["name", "module"]
@@ -571,6 +599,7 @@ impl McpServer {
                 let entity = args.get("entity").and_then(|e| e.as_str());
                 let error_code = args.get("error_code").and_then(|e| e.as_str());
                 let target_dir = args.get("target_dir").and_then(|t| t.as_str()).map(Path::new);
+                let hook = args.get("on").and_then(|o| o.as_str());
 
                 let kinds: Vec<WorkerKind> = if lang_arg.eq_ignore_ascii_case("all") {
                     WorkerKind::all().to_vec()
@@ -582,7 +611,7 @@ impl McpServer {
 
                 let mut results = Vec::new();
                 for kind in kinds {
-                    match self.worker_mgr.scaffold_rule(kind, rule_name, entity, error_code, target_dir) {
+                    match self.worker_mgr.scaffold_rule(kind, rule_name, entity, error_code, target_dir, hook) {
                         Ok(res) => results.push(json!({
                             "worker": kind.as_str(),
                             "success": res.success,
@@ -598,6 +627,36 @@ impl McpServer {
                 }
 
                 Ok(json!({ "scaffoldResults": results }))
+            }
+
+            "clrinf_crud_map" => {
+                let path = args.get("path").and_then(|p| p.as_str()).unwrap_or(".");
+                let res = self
+                    .worker_mgr
+                    .crud_map(Some(Path::new(path)), true)?;
+                if !res.success {
+                    return Ok(json!({
+                        "success": false,
+                        "stderr": res.stderr,
+                        "exitCode": res.exit_code,
+                    }));
+                }
+                let parsed: Value = serde_json::from_str(&res.stdout)
+                    .unwrap_or_else(|_| json!({ "raw": res.stdout }));
+                Ok(parsed)
+            }
+
+            "clrinf_crud_eject" => {
+                let entity = args.get("entity").and_then(|e| e.as_str()).context("entity is required")?;
+                let operation = args.get("operation").and_then(|o| o.as_str()).context("operation is required")?;
+                let project = args.get("project").and_then(|p| p.as_str()).map(Path::new);
+                let res = self.worker_mgr.eject_crud(entity, operation, project, true)?;
+                Ok(json!({
+                    "success": res.success,
+                    "stdout": res.stdout,
+                    "stderr": res.stderr,
+                    "exitCode": res.exit_code,
+                }))
             }
 
             "clrinf_scaffold_otp" => {
@@ -703,6 +762,13 @@ impl McpServer {
                         _ => crate::manifest::Dispatcher::Native,
                     };
                     let paradigm = args.get("paradigm").and_then(|p| p.as_str()).unwrap_or("fp");
+                    let pattern_str = args.get("pattern").and_then(|p| p.as_str()).unwrap_or("flat");
+                    let pattern_style = match pattern_str.to_lowercase().as_str() {
+                        "aot" => crate::manifest::PatternStyle::Aot,
+                        "separated" => crate::manifest::PatternStyle::Separated,
+                        "basic" => crate::manifest::PatternStyle::Basic,
+                        _ => crate::manifest::PatternStyle::Flat,
+                    };
                     let target_dir = PathBuf::from(name);
                     let parent_dir = target_dir.parent().unwrap_or_else(|| Path::new("."));
                     let project_name = target_dir.file_name().and_then(|s| s.to_str()).unwrap_or(name);
@@ -714,6 +780,7 @@ impl McpServer {
                         host_type: crate::manifest::HostType::Api,
                         dispatcher: disp,
                         paradigm,
+                        pattern: pattern_style,
                         profile: "standard",
                         db_context: None,
                         skip_dotnet_exec: false,
@@ -727,6 +794,7 @@ impl McpServer {
                         "architecture": arch_str,
                         "paradigm": paradigm,
                         "dispatcher": disp_str,
+                        "pattern": pattern_style.as_str(),
                         "directory": res.project_dir.display().to_string(),
                         "files_created": res.files_created.iter().map(|f| f.display().to_string()).collect::<Vec<_>>()
                     }))
@@ -1012,6 +1080,7 @@ impl McpServer {
                     let pattern = args.get("pattern").and_then(|p| p.as_str()).map(|s| match s.to_lowercase().as_str() {
                         "basic" => crate::manifest::PatternStyle::Basic,
                         "separated" => crate::manifest::PatternStyle::Separated,
+                        "aot" => crate::manifest::PatternStyle::Aot,
                         _ => crate::manifest::PatternStyle::Flat,
                     });
                     let opts = crate::csharp::module::AddModuleOptions {
@@ -1073,6 +1142,37 @@ impl McpServer {
                 }
 
                 if manifest.project.lang == crate::manifest::Lang::CSharp {
+                    let _ = crate::csharp::project::sync_crud_build_settings(&abs_path, &manifest)?;
+                    let effective_pattern = args
+                        .get("pattern")
+                        .and_then(|p| p.as_str())
+                        .unwrap_or_else(|| match manifest.project.pattern {
+                            crate::manifest::PatternStyle::Aot => "aot",
+                            crate::manifest::PatternStyle::Separated => "separated",
+                            _ => "vertical-slice",
+                        });
+
+                    if effective_pattern.eq_ignore_ascii_case("aot") {
+                        let opts = crate::csharp::entity::AddAotEntityOptions {
+                            entity_name: name,
+                            module_name: module,
+                            properties: &parsed_props,
+                            id_type: args.get("id_type").and_then(|v| v.as_str()),
+                            project_path: &abs_path,
+                            manifest: &manifest,
+                        };
+                        let res = crate::csharp::entity::add_aot_entity(&opts)?;
+                        return Ok(json!({
+                            "entity": name,
+                            "module": module,
+                            "language": "csharp",
+                            "pattern": "aot",
+                            "success": true,
+                            "files_created": res.files_created.iter().map(|p| p.to_string_lossy()).collect::<Vec<_>>(),
+                            "files_modified": res.files_modified.iter().map(|p| p.to_string_lossy()).collect::<Vec<_>>(),
+                        }));
+                    }
+
                     let templates_dir = if let Some(ref root) = self.worker_mgr.workspace_root() {
                         root.join("tools").join("clrinf-codegen").join("templates")
                     } else {

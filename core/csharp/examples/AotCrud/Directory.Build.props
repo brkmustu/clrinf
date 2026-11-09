@@ -1,0 +1,10 @@
+<Project>
+  <PropertyGroup>
+    <ClrinfCrudDispatcher>native</ClrinfCrudDispatcher>
+    <ClrinfCrudSecured>false</ClrinfCrudSecured>
+  </PropertyGroup>
+  <ItemGroup>
+    <CompilerVisibleProperty Include="ClrinfCrudDispatcher" />
+    <CompilerVisibleProperty Include="ClrinfCrudSecured" />
+  </ItemGroup>
+</Project>

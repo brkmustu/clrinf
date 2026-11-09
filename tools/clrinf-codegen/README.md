@@ -84,6 +84,31 @@ clrinf-codegen module adopt deals \
     - `flat` (Default): Decomposes modules into clean, focused flat files (`<Module>Objects.cs`, `<Module>Rules.cs`, `<Module>Handlers.cs`, `<Module>Module.cs`) without deep folder nesting.
     - `basic`: Bundles all module definitions into a single `<Module>Module.cs` file.
 
+## AOT CRUD (compile-time handlers)
+
+C# entities marked with `[GenerateCrudEndpoints]` get handlers and Minimal API
+endpoints from `ClrinfCS.Generators`; only the entity, hook rules and ejected
+operations exist on disk.
+
+```bash
+# Entity-only AOT scaffolding
+clrinf-codegen add entity Category -m Catalog --pattern aot -p name:string -p slug:string
+
+# Hook rule instead of editing generated handlers
+clrinf-codegen rule new ActiveProductsCheck --lang csharp --entity Category --on before-delete
+
+# Agent map: generated/ejected operations, hooks, dispatcher
+clrinf-codegen crud-map --json
+
+# Eject one operation to physical files (clrinfcs proxy)
+clrinf-codegen eject Category --operation Update --json
+```
+
+The manifest `dispatcher` value is synced into `Directory.Build.props` as
+`ClrinfCrudDispatcher` (compiler-visible to the generator). `mediatornet` also
+adds the `Mediator.Net` package reference. Linter rules: `ARCH002` accepts
+`IBefore*Rule<T>`; `ARCH005` enforces hook placement under `Rules/`.
+
 ## Federated Language Worker Model & Meta MCP
 
 `clrinf-codegen` acts as the **central orchestrator and Meta MCP Gateway** for the polyglot ecosystem:

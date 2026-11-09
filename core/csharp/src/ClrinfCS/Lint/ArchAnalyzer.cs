@@ -102,29 +102,59 @@ public class ArchAnalyzer
             var lineNo = lineSpan.StartLinePosition.Line + 1;
 
             // ARCH002: Rule Convention
-            if (normalizedPath.Contains("/Rules/") || typeName.EndsWith("Rule", StringComparison.OrdinalIgnoreCase))
+            var baseTypes = typeDecl.BaseList?.Types
+                .Select(t => t.Type.ToString())
+                .ToArray() ?? Array.Empty<string>();
+            var implementsBusinessRule = baseTypes.Any(t =>
+                t.StartsWith("IBusinessRule") || t.Equals("BaseBusinessRules"));
+            var implementsHookRule = baseTypes.Any(t =>
+                t.StartsWith("IBefore") && t.Contains("Rule"));
+            var implementsRule = implementsBusinessRule || implementsHookRule;
+            var isRulesFolder = normalizedPath.Contains("/Rules/");
+
+            if (isRulesFolder || typeName.EndsWith("Rule", StringComparison.OrdinalIgnoreCase) ||
+                typeName.EndsWith("Hook", StringComparison.OrdinalIgnoreCase))
             {
                 if (!typeName.Equals("BaseBusinessRules", StringComparison.OrdinalIgnoreCase) &&
-                    !typeName.EndsWith("Rules", StringComparison.OrdinalIgnoreCase))
+                    !typeName.EndsWith("Rules", StringComparison.OrdinalIgnoreCase) &&
+                    !implementsRule)
                 {
-                    var implementsRule = typeDecl.BaseList?.Types.Any(t =>
-                    {
-                        var tText = t.Type.ToString();
-                        return tText.StartsWith("IBusinessRule") || tText.Equals("BaseBusinessRules");
-                    }) ?? false;
-
-                    if (!implementsRule)
-                    {
-                        violations.Add(new ArchViolation(
-                            "ARCH002",
-                            "Warning",
-                            $"'{typeName}' kural sınıfı IBusinessRule<TContext> arayüzünü uygulamalı veya BaseBusinessRules'tan türemelidir.",
-                            filePath,
-                            lineNo,
-                            typeName
-                        ));
-                    }
+                    violations.Add(new ArchViolation(
+                        "ARCH002",
+                        "Warning",
+                        $"'{typeName}' kural sınıfı IBusinessRule<TContext> veya IBefore{{Create|Update|Delete}}Rule<TEntity> arayüzünü uygulamalıdır.",
+                        filePath,
+                        lineNo,
+                        typeName
+                    ));
                 }
+            }
+
+            // ARCH005: Hook placement — hook rules must live under a Rules/ folder,
+            // and hook-named classes must implement a hook contract.
+            if (implementsHookRule && !isRulesFolder)
+            {
+                violations.Add(new ArchViolation(
+                    "ARCH005",
+                    "Warning",
+                    $"'{typeName}' hook kuralı bir '/Rules/' klasörü altında yer almalıdır.",
+                    filePath,
+                    lineNo,
+                    typeName
+                ));
+            }
+            else if ((typeName.EndsWith("Hook", StringComparison.OrdinalIgnoreCase) ||
+                      typeName.Contains("Hook", StringComparison.OrdinalIgnoreCase)) &&
+                     !implementsRule)
+            {
+                violations.Add(new ArchViolation(
+                    "ARCH005",
+                    "Warning",
+                    $"'{typeName}' hook sınıfı IBefore{{Create|Update|Delete}}Rule<TEntity> arayüzünü uygulamalıdır.",
+                    filePath,
+                    lineNo,
+                    typeName
+                ));
             }
 
             // ARCH003: Direct DbContext in Controller / API Host

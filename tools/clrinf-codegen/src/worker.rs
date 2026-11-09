@@ -422,8 +422,43 @@ impl WorkerManager {
         })
     }
 
-    pub fn lint(&self, kind: WorkerKind, path: Option<&Path>) -> Result<WorkerExecutionResult> {
-        let worker = self.resolve_worker(kind);
+    /// Ejects one generated CRUD operation into physical files via the C# worker.
+    pub fn eject_crud(
+        &self,
+        entity: &str,
+        operation: &str,
+        project: Option<&Path>,
+        json: bool,
+    ) -> Result<WorkerExecutionResult> {
+        let worker = self.resolve_worker(WorkerKind::CSharp);
+        let project_str;
+        let mut args = vec!["eject", entity, "--operation", operation];
+        if let Some(path) = project {
+            project_str = path.display().to_string();
+            args.push("--project");
+            args.push(&project_str);
+        }
+        if json {
+            args.push("--json");
+        }
+        self.execute_cmd(&worker, &args)
+    }
+
+    /// Returns the agent-oriented CRUD map for a C# project.
+    pub fn crud_map(&self, path: Option<&Path>, json: bool) -> Result<WorkerExecutionResult> {
+        let worker = self.resolve_worker(WorkerKind::CSharp);
+        let path_str = path.map(|p| p.display().to_string());
+        let mut args = vec!["crud-map"];
+        if let Some(ref p) = path_str {
+            args.push(p.as_str());
+        }
+        if json {
+            args.push("--json");
+        }
+        self.execute_cmd(&worker, &args)
+    }
+
+    pub fn lint(&self, kind: WorkerKind, path: Option<&Path>) -> Result<WorkerExecutionResult> {        let worker = self.resolve_worker(kind);
         let path_str = path.map(|p| p.display().to_string());
 
         match kind {
@@ -509,6 +544,7 @@ impl WorkerManager {
         entity: Option<&str>,
         error_code: Option<&str>,
         target_dir: Option<&Path>,
+        hook: Option<&str>,
     ) -> Result<WorkerExecutionResult> {
         let worker = self.resolve_worker(kind);
         let entity_name = entity.unwrap_or("Entity");
@@ -550,6 +586,7 @@ impl WorkerManager {
                     None,
                     &rules_dir,
                     &tests_dir,
+                    hook,
                 )?;
                 let created: Vec<String> =
                     files.iter().map(|f| f.display().to_string()).collect();

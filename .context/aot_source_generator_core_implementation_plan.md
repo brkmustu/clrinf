@@ -129,3 +129,21 @@ flowchart TD
 ## Açık nokta
 
 Faz 4'teki OpenAPI yaklaşımı (paketi genişletmek mi, metadata'dan belge üretmek mi) o faza girerken netleştirilecek; diğer tüm kararlar yukarıda kapalı.
+
+---
+
+## Uygulama Durumu (bu çalışma)
+
+- **Faz 1 — tamam:** `ClrinfCS.Core/Crud.cs` (CRUD kontratları, hook arayüzleri, `CrudRuleRunner`, `CrudQuery`/`PagedResult`, `CrudConflictException`, `CrudEndpointParameterMetadata`). Testler: `CrudRuleRunnerTests`.
+- **Faz 2 — tamam:** `ClrinfCS.Generators` incremental generator; Native + Mediator.Net, Smart Override, `CLRCRUD001-003`, per-op dosyalar, `RequestDelegate` + manuel route/query binding ve `Utf8JsonWriter`/`JsonDocument` tabanlı sıfır-yansımalı (zero-reflection) DTO/request JSON serileştirmesi. Testler: `ClrinfCS.Generators.Tests` (11 test).
+- **Faz 3 — tamam:** `add entity --pattern aot`, `rule new --on`, `Directory.Build.props` senkronu, `ARCH005` + `ARCH002` genişletmesi, ajan kural bloğu.
+- **Faz 4 — tamam:** `ClrinfCS.Adapters.EfCore` + `examples/AotCrud` + `ClrinfCS.OpenApi` Minimal API entegrasyonu. EF adapter test edildi. `examples/AotCrud` hem `dotnet build` hem de `dotnet publish -p:EnableAotCrudPublish=true -r linux-x64` (Native AOT, `JsonSerializerIsReflectionEnabledByDefault` kapalı) ile **0 uyarı / 0 hata** üretiyor.
+- **Faz 5 — tamam:** `clrinfcs eject`, `clrinfcs crud-map --json`, `clrinf-codegen eject|crud-map`, MCP `clrinf_crud_eject` / `clrinf_crud_map`. Eject gidiş-dönüşü hem normal derlemede hem `PublishAot=true` altında doğrulandı.
+
+### Çözülen Açık Noktalar
+
+1. **AOT + source-generated Minimal API (Çözüldü):** `CrudEmitter.EmitEndpoint`, `MapX(Delegate)` yerine doğrudan `MapX(pattern, (RequestDelegate)(...))` ve `GeneratedCrudEndpointSupport` üzerinden `IParsable<T>` tabanlı manuel route/query binding üretiyor. Native AOT publish sırasında üretilen 20 `IL2026/IL3050` uyarısı tamamen giderildi.
+2. **AOT JSON (Çözüldü):** `CrudEmitter.EmitModels` ve `EmitRequestRecord`, üretilen DTO (`{Entity}Dto`, `PagedResult<{Entity}Dto>`) ve request (`Create{Entity}Request`, `Update{Entity}Request`) tipleri için `Utf8JsonWriter` ve `JsonDocument` kullanan `ToJsonBytes` / `ReadJsonAsync` metotlarını doğrudan üretiyor (`GeneratedCrudJsonSupport`). Reflection tabanlı JSON serileştirmesine veya harici `JsonSerializerContext` tanımına ihtiyaç kalmadı.
+3. **Eject + `PublishAot` (Çözüldü):** Eject edilen endpoint'ler de `RequestDelegate` + manuel binding kullandığından `RequestDelegateGenerator` müdahalesine takılmıyor; eject sonrasında da `PublishAot=true` derlemesi sıfır hata ve sıfır uyarı ile tamamlanıyor. Ayrıca `EjectCliCommand` içinde `MSBuildWorkspace` çevrimdışı `NuGetAudit` uyarılarından etkilenmeyecek şekilde sertleştirildi.
+4. **OpenAPI (Çözüldü):** `ClrinfCS.OpenApi` (`OpenApiGenerator` ve `ClrinfOpenApiExtensions`), MVC `IActionDescriptorCollectionProvider` yanında Minimal API `EndpointDataSource` (`RouteEndpoint`) hattını da okuyacak şekilde genişletildi (`ITagsMetadata`, `IEndpointNameMetadata`, `IAcceptsMetadata`, `IProducesResponseTypeMetadata`, `CrudEndpointParameterMetadata`). Belge serileştirmesi `Utf8JsonWriter` ile AOT-uyumlu hale getirildi ve `examples/AotCrud` içerisine bağlandı.
+

@@ -17,7 +17,7 @@ Yapay zeka ajanları hızlı kod üretebilir; ancak proje büyüdükçe mimari s
 
 1. **Daha Düşük Modellerde Bile Mimari Sınırları Koruma Desteği**
    - Yapay zeka modelleri büyüdükçe yetenekleri artsa da mimari katmanları ihlal etme riski devam eder. `clrinf` bir kalite garantisi sunmaz; ancak ajanı deterministik kurallarla sınırlandırarak, daha düşük parametreli veya yerel modellerde (SLM / Local LLM) bile mimari açıdan daha tutarlı kod üretilmesine katkı sağlamaya çalışır.
-   - Roslyn linter'ları (`ARCH001-ARCH004`), Syn AST denetleyicileri (`RUST_ARCH001`) ve TypeScript AST linter'ları (`ARCH_TS_001`) ile mimari sınırları derleme seviyesinde denetler.
+   - Roslyn linter'ları (`ARCH001-ARCH005`), Syn AST denetleyicileri (`RUST_ARCH001`) ve TypeScript AST linter'ları (`ARCH_TS_001`) ile mimari sınırları derleme seviyesinde denetler.
    - Ajan mimari bir kuralı atladığında IDE ve Git hook'ları (`clrinf hook install`) geri bildirim üreterek ajanın belirlenen sınırlar içinde kalmasını hatırlatır; mimari sapmaların erkenden fark edilmesine yardımcı olur.
 
 2. **Hazır Kod Üretim Şablonlarıyla Token Tüketimini Düşürme**
@@ -35,7 +35,7 @@ Yapay zeka ajanları hızlı kod üretebilir; ancak proje büyüdükçe mimari s
 
 1. **Ajan Korumaları ve Dar Bağlam (Agent Guardrails & Context Efficiency)**: Tek kural dosyasından (`clrinf.rules.toml`) beslenen otomatik koruma. `clrinf hook install` (Claude Code, Cursor, Antigravity, git pre-commit) ajanın her dosya düzenlemesinden sonra kuralları denetler; `clrinf plan` mekanik işleri yapıp ajana yalnızca doldurulacak iş mantığını ve dar dosya bağlamını bırakır; `clrinf agents sync` aynı kuralları `AGENTS.md` / `CLAUDE.md` / Cursor kurallarına yazar. Ayrıntılar: [Ajan Korumaları](docs/guides/agent-guardrails.md), [Benchmark Protokolü](docs/benchmarks/README.md).
 2. **Dile Özgü İdiomatik İş Kuralları & Derleyici Seviyesinde Denetim**:
-   - **C#**: `IBusinessRule<T>` arayüzü, `RulePipeline` ve Roslyn tabanlı mimari denetleyiciler (`ARCH001` - `ARCH004`).
+   - **C#**: `IBusinessRule<T>` arayüzü, `RulePipeline` ve Roslyn tabanlı mimari denetleyiciler (`ARCH001` - `ARCH005`).
    - **Rust**: `BusinessRule<T>` trait'i, `RulePipeline` ve Syn tabanlı AST linter (`RUST_ARCH001`).
    - **TypeScript**: Saf fonksiyonel `Rule<TCtx>`, `pipeRules` zinciri, `Result<T, E>` monadı ve TS AST linter (`ARCH_TS_001`).
 3. **Sözleşme Öncelikli (Contract-First) Bütünlük**: Tüm veri modelleri ve servisler arası iletişim, dilden bağımsız kanonik JSON Schema (Draft 2020-12) ve CloudEvents 1.0 standartları üzerinden yapılandırılır; modeller otomatik üretilir.
@@ -69,7 +69,7 @@ Yapay zeka ajanları hızlı kod üretebilir; ancak proje büyüdükçe mimari s
 | Dizin | Sorumluluk ve Kapsam |
 |---|---|
 | [`tools/clrinf-codegen/`](tools/clrinf-codegen/README.md) | Çok dilli kod üretimi, şablonlar (`templates/`), Federated Language Worker orkestrasyonu, Topoloji Doğrulama ve Meta MCP stdio sunucusu |
-| [`core/csharp/`](core/csharp/README.md) | .NET 10 / C# 13 çekirdeği, C# sözleşmeleri (`contracts/`), Roslyn linterları (`ARCH001-ARCH004`) ve SQLite referans adaptörü |
+| [`core/csharp/`](core/csharp/README.md) | .NET 10 / C# 13 çekirdeği, C# sözleşmeleri (`contracts/`), Roslyn linterları (`ARCH001-ARCH005`), AOT CRUD source generator ve SQLite/EF Core referans adaptörleri |
 | [`core/rust/`](core/rust/README.md) | Rust çekirdeği, Rust sözleşmeleri (`contracts/`), Syn mimari linterı (`RUST_ARCH001`), Axum/CQRS ve bellek adaptörleri |
 | [`core/typescript/`](core/typescript/README.md) | Bun tabanlı TypeScript çekirdeği, TS sözleşmeleri (`contracts/`), AST linter (`ARCH_TS_001`) ve Event Inspector |
 | [`core/elixir/`](core/elixir/README.md) | Elixir çekirdeği, Elixir sözleşmeleri (`contracts/`) ve canlı olay akış (streaming) köprü adaptörleri |
@@ -197,6 +197,18 @@ clrinf add module Orders
 
 # İlgili modüle CRUD entity'si, repository portu ve tenant koruması ekle
 clrinf add entity OrderItem -m Orders --prop name:string --prop price:f64
+
+# AOT CRUD: yalnızca entity dosyası yaz; handler/endpoint'ler derleme anında üretilir
+clrinf add entity OrderItem -m Orders --pattern aot --prop name:string --prop price:f64
+
+# Hook kuralı (generated handler'a dokunmadan iş kuralı ekle)
+clrinf rule new ActiveProductsCheck --lang csharp --entity Category --on before-delete
+
+# Etkin/ejected CRUD haritası (ajan bağlamı)
+clrinf crud-map --json
+
+# Bir operasyonu fiziksel dosyaya çıkar (Smart Override devreye girer)
+clrinf eject Category --operation Update
 ```
 
 ### 5. Modül Kataloğu ve Adaptasyon Motoru (`clrinf catalog` / `clrinf module adopt`)

@@ -1,6 +1,7 @@
 using System;
 using System.Text;
 using ClrinfCS;
+using ClrinfCS.Commands.Crud;
 using ClrinfCS.Commands.Migrate;
 using ClrinfCS.IoC.SpectreConsoleCli;
 using Microsoft.Extensions.DependencyInjection;
@@ -43,6 +44,22 @@ app.Configure(config =>
         .WithExample(new[] { "lint" })
         .WithExample(new[] { "lint", "src/MyProject" })
         .WithExample(new[] { "lint", "--strict" });
+    #endregion
+
+    #region Eject Command (AOT CRUD -> physical files)
+    config
+        .AddCommand<EjectCliCommand>(name: "eject")
+        .WithDescription("Bir CRUD operasyonunu AOT generator'dan çıkarır ve fiziksel C# dosyası yazar")
+        .WithExample(new[] { "eject", "Category", "--operation", "Update" })
+        .WithExample(new[] { "eject", "Category", "-o", "Delete", "--json" });
+    #endregion
+
+    #region CRUD Map Command (agent context)
+    config
+        .AddCommand<CrudMapCliCommand>(name: "crud-map")
+        .WithDescription("Entity -> etkin/ejected CRUD operasyonları, hook'lar ve dispatcher haritasını verir")
+        .WithExample(new[] { "crud-map" })
+        .WithExample(new[] { "crud-map", "src/MyProject", "--json" });
     #endregion
 });
 

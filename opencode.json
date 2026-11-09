@@ -4,9 +4,7 @@
     "graft": {
       "type": "local",
       "command": [
-        "npx",
-        "-y",
-        "@nanonets/graft",
+        "graft",
         "mcp"
       ],
       "enabled": true

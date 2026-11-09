@@ -557,6 +557,7 @@ impl Generator {
         namespace: Option<&str>,
         rules_dir: &Path,
         tests_dir: &Path,
+        hook: Option<&str>,
     ) -> Result<Vec<PathBuf>> {
         ensure_safe_output(rules_dir)?;
         ensure_safe_output(tests_dir)?;
@@ -574,6 +575,19 @@ impl Generator {
         let err_code = error_code.unwrap_or(&default_err);
         let default_desc = format!("Validates {rule_pascal} on {entity_name}");
         let desc = description.unwrap_or(&default_desc).replace(['\r', '\n'], " ").replace('"', "'");
+        let namespace = namespace.unwrap_or("Application");
+
+        let hook_type = match hook {
+            None => None,
+            Some(value) => Some(match value.to_lowercase().replace('_', "-").as_str() {
+                "before-create" | "create" => "Create",
+                "before-update" | "update" => "Update",
+                "before-delete" | "delete" => "Delete",
+                other => anyhow::bail!(
+                    "Unknown hook '{other}'. Use before-create, before-update or before-delete."
+                ),
+            }),
+        };
 
         let mut context = TeraContext::new();
         context.insert("rule_name", &rule_pascal);
@@ -581,7 +595,10 @@ impl Generator {
         context.insert("command_name", &command_name);
         context.insert("error_code", err_code);
         context.insert("description", &desc);
-        context.insert("namespace", namespace.unwrap_or("Application"));
+        context.insert("namespace", namespace);
+        context.insert("entity_namespace", namespace);
+        context.insert("priority", &1);
+        context.insert("hook_type", hook_type.unwrap_or("Create"));
 
         let rule_path = rules_dir.join(format!("{rule_pascal}.cs"));
         let test_path = tests_dir.join(format!("{rule_pascal}Tests.cs"));
@@ -595,11 +612,17 @@ impl Generator {
         std::fs::create_dir_all(tests_dir)
             .with_context(|| format!("Failed to create directory: {}", tests_dir.display()))?;
 
-        let rule_rendered = self.tera.render("csharp/rule.tera", &context)
-            .context("Failed rendering csharp/rule.tera")?;
+        let (rule_template, test_template) = if hook_type.is_some() {
+            ("csharp/hook_rule.tera", "csharp/hook_rule_test.tera")
+        } else {
+            ("csharp/rule.tera", "csharp/rule_test.tera")
+        };
+
+        let rule_rendered = self.tera.render(rule_template, &context)
+            .with_context(|| format!("Failed rendering {rule_template}"))?;
         std::fs::write(&rule_path, rule_rendered)?;
-        let test_rendered = self.tera.render("csharp/rule_test.tera", &context)
-            .context("Failed rendering csharp/rule_test.tera")?;
+        let test_rendered = self.tera.render(test_template, &context)
+            .with_context(|| format!("Failed rendering {test_template}"))?;
         std::fs::write(&test_path, test_rendered)?;
 
         Ok(vec![rule_path, test_path])
@@ -624,5 +647,81 @@ impl Generator {
         context.insert("subscribed_by", &schema.subscribed_by);
         context.insert("version", &schema.version);
         context
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::path::PathBuf;
+    use tempfile::tempdir;
+
+    fn generator() -> Generator {
+        Generator::new(&PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("templates")).unwrap()
+    }
+
+    #[test]
+    fn hook_rule_uses_before_interface_and_entity_namespace() -> Result<()> {
+        let dir = tempdir()?;
+        let rules = dir.path().join("Rules");
+        let tests = dir.path().join("Tests");
+
+        let files = generator().scaffold_rule_csharp(
+            "ActiveProductsCheck",
+            Some("Category"),
+            Some("CATEGORY_HAS_ACTIVE_PRODUCTS"),
+            None,
+            Some("Shop.Domain"),
+            &rules,
+            &tests,
+            Some("before-delete"),
+        )?;
+
+        assert_eq!(files.len(), 2);
+        let rule = std::fs::read_to_string(&files[0])?;
+        assert!(rule.contains("IBeforeDeleteRule<Category>"));
+        assert!(rule.contains("using Shop.Domain;"));
+        assert!(rule.contains("namespace Shop.Domain.Features.Category.Rules;"));
+        assert!(rule.contains("CATEGORY_HAS_ACTIVE_PRODUCTS"));
+
+        let test = std::fs::read_to_string(&files[1])?;
+        assert!(test.contains("hook.EvaluateAsync(entity, Context)"));
+        Ok(())
+    }
+
+    #[test]
+    fn default_rule_keeps_business_rule_template() -> Result<()> {
+        let dir = tempdir()?;
+        let files = generator().scaffold_rule_csharp(
+            "CheckMaxDiscount",
+            Some("Order"),
+            None,
+            None,
+            Some("Shop.Domain"),
+            &dir.path().join("Rules"),
+            &dir.path().join("Tests"),
+            None,
+        )?;
+
+        let rule = std::fs::read_to_string(&files[0])?;
+        assert!(rule.contains("IBusinessRule<CreateOrderCommand>"));
+        assert!(!rule.contains("IBefore"));
+        Ok(())
+    }
+
+    #[test]
+    fn unknown_hook_is_rejected() {
+        let dir = tempdir().unwrap();
+        let result = generator().scaffold_rule_csharp(
+            "Check",
+            Some("Order"),
+            None,
+            None,
+            None,
+            &dir.path().join("Rules"),
+            &dir.path().join("Tests"),
+            Some("after-create"),
+        );
+        assert!(result.is_err());
     }
 }

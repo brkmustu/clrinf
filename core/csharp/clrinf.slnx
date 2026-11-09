@@ -2,11 +2,14 @@
   <Folder Name="/src/">
     <Project Path="src/ClrinfCS/ClrinfCS.csproj" />
     <Project Path="src/ClrinfCS.Core/ClrinfCS.Core.csproj" />
+    <Project Path="src/ClrinfCS.Generators/ClrinfCS.Generators.csproj" />
     <Project Path="src/ClrinfCS.Adapters.Sqlite/ClrinfCS.Adapters.Sqlite.csproj" />
+    <Project Path="src/ClrinfCS.Adapters.EfCore/ClrinfCS.Adapters.EfCore.csproj" />
     <Project Path="src/ClrinfCS.OpenApi/ClrinfCS.OpenApi.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/ClrinfCS.Tests/ClrinfCS.Tests.csproj" />
+    <Project Path="tests/ClrinfCS.Generators.Tests/ClrinfCS.Generators.Tests.csproj" />
   </Folder>
   <Folder Name="/examples/">
     <Project Path="examples/Documents/Documents.csproj" />
@@ -17,5 +20,6 @@
     <Project Path="examples/PureNativeApp/PureNativeApp.csproj" />
     <Project Path="examples/CrmMonolith/CrmMonolith.csproj" />
     <Project Path="examples/EcommerceMonolith/EcommerceMonolith.csproj" />
+    <Project Path="examples/AotCrud/AotCrud.csproj" />
   </Folder>
 </Solution>

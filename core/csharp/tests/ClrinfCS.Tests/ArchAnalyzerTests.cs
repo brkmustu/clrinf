@@ -86,8 +86,75 @@ public class DiscountLimitRule : IBusinessRule<object>
     }
 
     [Fact]
-    public void Controller_InjectingDbContextDirectly_ReportsARCH003()
+    public void HookRule_ImplementingBeforeDeleteRule_ReportsNoViolation()
     {
+        string code = @"
+using ClrinfCS.Core;
+
+namespace MyProject.Application.Features.Categories.Rules;
+
+public class CategoryActiveProductsCheckRule : IBeforeDeleteRule<Category>
+{
+    public ValueTask<RuleResult> EvaluateAsync(Category entity, RequestContext requestContext, CancellationToken cancellationToken = default)
+    {
+        return ValueTask.FromResult(RuleResult.Success());
+    }
+}
+";
+        var violations = new List<ArchViolation>();
+        ArchAnalyzer.AnalyzeFile(
+            "/repo/src/MyProject.Application/Features/Categories/Rules/CategoryActiveProductsCheckRule.cs",
+            code, violations);
+
+        Assert.DoesNotContain(violations, v => v.RuleId == "ARCH002");
+        Assert.DoesNotContain(violations, v => v.RuleId == "ARCH005");
+    }
+
+    [Fact]
+    public void HookRule_OutsideRulesFolder_ReportsARCH005()
+    {
+        string code = @"
+using ClrinfCS.Core;
+
+namespace MyProject.Application.Features.Categories;
+
+public class CategoryActiveProductsCheckRule : IBeforeDeleteRule<Category>
+{
+    public ValueTask<RuleResult> EvaluateAsync(Category entity, RequestContext requestContext, CancellationToken cancellationToken = default)
+    {
+        return ValueTask.FromResult(RuleResult.Success());
+    }
+}
+";
+        var violations = new List<ArchViolation>();
+        ArchAnalyzer.AnalyzeFile(
+            "/repo/src/MyProject.Application/Features/Categories/CategoryActiveProductsCheckRule.cs",
+            code, violations);
+
+        Assert.Contains(violations, v => v.RuleId == "ARCH005" && v.Severity == "Warning");
+    }
+
+    [Fact]
+    public void HookNamedClass_WithoutHookContract_ReportsARCH005()
+    {
+        string code = @"
+namespace MyProject.Application.Features.Categories;
+
+public class CategoryActiveProductsCheckHook
+{
+    public void Check() {}
+}
+";
+        var violations = new List<ArchViolation>();
+        ArchAnalyzer.AnalyzeFile(
+            "/repo/src/MyProject.Application/Features/Categories/CategoryActiveProductsCheckHook.cs",
+            code, violations);
+
+        Assert.Contains(violations, v => v.RuleId == "ARCH005" && v.Severity == "Warning");
+    }
+
+    [Fact]
+    public void Controller_InjectingDbContextDirectly_ReportsARCH003()    {
         string code = @"
 using Microsoft.AspNetCore.Mvc;
 

@@ -178,9 +178,13 @@ enum Commands {
         #[arg(long, default_value = "fp")]
         paradigm: String,
 
-        /// Dispatcher framework ('native', 'mediatr')
+        /// Dispatcher framework ('native', 'mediatr', 'mediatornet')
         #[arg(long, default_value = "native")]
         dispatcher: String,
+
+        /// Code generation pattern ('flat', 'aot', 'separated', 'basic')
+        #[arg(long, default_value = "flat")]
+        pattern: String,
 
         /// Directory containing templates
         #[arg(long, default_value = "./templates")]
@@ -198,6 +202,33 @@ enum Commands {
         /// Optional file or directory path to scan
         #[arg(short, long)]
         path: Option<PathBuf>,
+    },
+    /// Eject one AOT CRUD operation into physical handler/endpoint files (clrinfcs proxy)
+    Eject {
+        /// Entity name
+        entity: String,
+
+        /// Operation: Create, Update, Delete, GetById or GetList
+        #[arg(short, long)]
+        operation: String,
+
+        /// Project or solution path
+        #[arg(short, long)]
+        project: Option<PathBuf>,
+
+        /// Emit machine-readable JSON
+        #[arg(long)]
+        json: bool,
+    },
+    /// Show entity -> generated/ejected CRUD operations, hooks and dispatcher (clrinfcs proxy)
+    CrudMap {
+        /// Project or source directory (defaults to current directory)
+        #[arg(default_value = ".")]
+        path: PathBuf,
+
+        /// Emit machine-readable JSON
+        #[arg(long)]
+        json: bool,
     },
     /// Manage business rules across language workers
     #[command(subcommand)]
@@ -230,6 +261,10 @@ enum Commands {
         /// Dispatcher framework: 'native', 'mediatr', or 'mediatornet'
         #[arg(long, default_value = "native")]
         dispatcher: String,
+
+        /// Code generation pattern: 'flat', 'aot', 'separated', or 'basic'
+        #[arg(long, default_value = "flat")]
+        pattern: String,
     },
     /// Manage cross-cutting concern modules
     #[command(subcommand)]
@@ -531,6 +566,10 @@ enum RuleCommands {
         #[arg(long)]
         error_code: Option<String>,
 
+        /// Entity hook point: before-create, before-update or before-delete (omit for IBusinessRule)
+        #[arg(long)]
+        on: Option<String>,
+
         /// Target directory
         #[arg(short, long)]
         target_dir: Option<PathBuf>,
@@ -674,9 +713,9 @@ enum AddCommands {
         #[arg(short, long)]
         prop: Vec<String>,
 
-        /// Code generation pattern: 'vertical-slice' (single file per operation) or 'separated' (legacy multi-file)
-        #[arg(long, default_value = "vertical-slice")]
-        pattern: String,
+        /// Code generation pattern: 'aot', 'vertical-slice', or 'separated' (defaults to manifest pattern)
+        #[arg(long)]
+        pattern: Option<String>,
 
         /// Directory containing Tera templates
         #[arg(long, default_value = "./templates")]
@@ -945,38 +984,56 @@ fn main() -> Result<()> {
                 }
             }
 
+            if manifest.project.lang == manifest::Lang::CSharp {
+                let _ = csharp::project::sync_crud_build_settings(&abs_path, &manifest)?;
+            }
+
             // 2. Iterate declared modules
             for module in &manifest.declared_modules {
                 println!("\n📦 Modül üretiliyor: '{}' ...", module.name);
-                let mod_opts = csharp::module::AddModuleOptions {
-                    module_name: &module.name,
-                    project_path: &abs_path,
-                    manifest: &manifest,
-                    pattern: Some(manifest.project.pattern),
-                };
-                let mod_res = csharp::module::add_module(&mod_opts)?;
-                total_created += mod_res.files_created.len();
-                total_modified += mod_res.files_modified.len();
-
-                // Entity generation with vertical slices
                 let props: Vec<(&str, &str)> = module
                     .properties
                     .iter()
                     .map(|p| (p.name.as_str(), p.prop_type.as_str()))
                     .collect();
 
-                let ent_opts = csharp::entity::AddEntityOptions {
-                    entity_name: &module.name,
-                    module_name: &module.name,
-                    properties: &props,
-                    id_type: Some(module.id_type.as_str()),
-                    project_path: &abs_path,
-                    manifest: &manifest,
-                    templates_dir: &tpl_dir,
-                };
-                let ent_res = csharp::entity::add_entity(&ent_opts)?;
-                total_created += ent_res.files_created.len();
-                total_modified += ent_res.files_modified.len();
+                if manifest.project.pattern == manifest::PatternStyle::Aot {
+                    let ent_opts = csharp::entity::AddAotEntityOptions {
+                        entity_name: &module.name,
+                        module_name: &module.name,
+                        properties: &props,
+                        id_type: Some(module.id_type.as_str()),
+                        project_path: &abs_path,
+                        manifest: &manifest,
+                    };
+                    let ent_res = csharp::entity::add_aot_entity(&ent_opts)?;
+                    total_created += ent_res.files_created.len();
+                    total_modified += ent_res.files_modified.len();
+                } else {
+                    let mod_opts = csharp::module::AddModuleOptions {
+                        module_name: &module.name,
+                        project_path: &abs_path,
+                        manifest: &manifest,
+                        pattern: Some(manifest.project.pattern),
+                    };
+                    let mod_res = csharp::module::add_module(&mod_opts)?;
+                    total_created += mod_res.files_created.len();
+                    total_modified += mod_res.files_modified.len();
+
+                    // Entity generation with vertical slices
+                    let ent_opts = csharp::entity::AddEntityOptions {
+                        entity_name: &module.name,
+                        module_name: &module.name,
+                        properties: &props,
+                        id_type: Some(module.id_type.as_str()),
+                        project_path: &abs_path,
+                        manifest: &manifest,
+                        templates_dir: &tpl_dir,
+                    };
+                    let ent_res = csharp::entity::add_entity(&ent_opts)?;
+                    total_created += ent_res.files_created.len();
+                    total_modified += ent_res.files_modified.len();
+                }
             }
 
             println!(
@@ -1056,6 +1113,7 @@ fn main() -> Result<()> {
             arch,
             paradigm,
             dispatcher,
+            pattern,
             templates_dir,
         } => {
             if let Some(ref tmpl) = template {
@@ -1075,6 +1133,12 @@ fn main() -> Result<()> {
                         "mediatornet" => manifest::Dispatcher::MediatorNet,
                         _ => manifest::Dispatcher::Native,
                     };
+                    let pattern_style = match pattern.to_lowercase().as_str() {
+                        "aot" => manifest::PatternStyle::Aot,
+                        "separated" => manifest::PatternStyle::Separated,
+                        "basic" => manifest::PatternStyle::Basic,
+                        _ => manifest::PatternStyle::Flat,
+                    };
                     let target_dir = PathBuf::from(&name);
                     let parent_dir = target_dir.parent().unwrap_or_else(|| Path::new("."));
                     let project_name = target_dir.file_name().and_then(|s| s.to_str()).unwrap_or(&name);
@@ -1086,6 +1150,7 @@ fn main() -> Result<()> {
                         host_type: manifest::HostType::Api,
                         dispatcher: disp,
                         paradigm: &paradigm,
+                        pattern: pattern_style,
                         profile: "standard",
                         db_context: None,
                         skip_dotnet_exec: false,
@@ -1118,6 +1183,37 @@ fn main() -> Result<()> {
                     println!("   \x1b[33mKurulum Rehberi:\x1b[0m {}", w.install_hint);
                 }
                 println!();
+            }
+        }
+        Commands::Eject {
+            entity,
+            operation,
+            project,
+            json,
+        } => {
+            let mgr = WorkerManager::new();
+            let res = mgr.eject_crud(&entity, &operation, project.as_deref(), json)?;
+            if res.success {
+                print!("{}", res.stdout);
+                if !res.stderr.trim().is_empty() {
+                    eprintln!("{}", res.stderr.trim());
+                }
+            } else {
+                eprintln!("{}", res.stderr.trim());
+                std::process::exit(res.exit_code.unwrap_or(1));
+            }
+        }
+        Commands::CrudMap { path, json } => {
+            let mgr = WorkerManager::new();
+            let res = mgr.crud_map(Some(&path), json)?;
+            if res.success {
+                print!("{}", res.stdout);
+                if !res.stderr.trim().is_empty() {
+                    eprintln!("{}", res.stderr.trim());
+                }
+            } else {
+                eprintln!("{}", res.stderr.trim());
+                std::process::exit(res.exit_code.unwrap_or(1));
             }
         }
         Commands::Lint { lang, path } => {
@@ -1164,6 +1260,7 @@ fn main() -> Result<()> {
             lang,
             entity,
             error_code,
+            on,
             target_dir,
         }) => {
             let mgr = WorkerManager::new();
@@ -1177,7 +1274,7 @@ fn main() -> Result<()> {
 
             for kind in kinds {
                 println!("⚡ Scaffolding business rule '{}' for \x1b[1m{}\x1b[0m ...", name, kind.as_str());
-                match mgr.scaffold_rule(kind, &name, entity.as_deref(), error_code.as_deref(), target_dir.as_deref()) {
+                match mgr.scaffold_rule(kind, &name, entity.as_deref(), error_code.as_deref(), target_dir.as_deref(), on.as_deref()) {
                     Ok(res) => {
                         if !res.stdout.trim().is_empty() {
                             println!("{}", res.stdout.trim());
@@ -1229,6 +1326,7 @@ fn main() -> Result<()> {
             arch,
             profile,
             dispatcher,
+            pattern,
         } => {
             let abs_path = std::fs::canonicalize(&path).unwrap_or_else(|_| path.clone());
             let detected = manifest::detect_project(&abs_path);
@@ -1278,6 +1376,13 @@ fn main() -> Result<()> {
                 _ => manifest::Dispatcher::Native,
             };
 
+            let pattern_enum = match pattern.to_lowercase().as_str() {
+                "aot" => manifest::PatternStyle::Aot,
+                "separated" => manifest::PatternStyle::Separated,
+                "basic" => manifest::PatternStyle::Basic,
+                _ => manifest::PatternStyle::Flat,
+            };
+
             let manifest_path = abs_path.join("clrinf.toml");
             if manifest_path.exists() {
                 anyhow::bail!(
@@ -1298,6 +1403,7 @@ fn main() -> Result<()> {
                     lang: lang_enum,
                     arch: arch_enum,
                     dispatcher: dispatcher_enum,
+                    pattern: pattern_enum,
                     ..Default::default()
                 },
                 modules: modules_config,
@@ -1308,6 +1414,10 @@ fn main() -> Result<()> {
                 std::fs::create_dir_all(&abs_path)?;
             }
             m.save(&manifest_path)?;
+
+            if lang_enum == manifest::Lang::CSharp {
+                let _ = csharp::project::sync_crud_build_settings(&abs_path, &m)?;
+            }
 
             // If 'full' profile was requested, automatically scaffold and wire all modules
             if profile.eq_ignore_ascii_case("full") || profile.eq_ignore_ascii_case("batteries") || profile.eq_ignore_ascii_case("all") {
@@ -1435,6 +1545,7 @@ fn main() -> Result<()> {
                     let pattern_style = match pattern.to_lowercase().as_str() {
                         "basic" => manifest::PatternStyle::Basic,
                         "separated" => manifest::PatternStyle::Separated,
+                        "aot" => manifest::PatternStyle::Aot,
                         _ => manifest::PatternStyle::Flat,
                     };
                     let opts = csharp::module::AddModuleOptions {
@@ -1501,7 +1612,30 @@ fn main() -> Result<()> {
 
             match m.project.lang {
                 manifest::Lang::CSharp => {
-                    if pattern.eq_ignore_ascii_case("vertical-slice") {
+                    csharp::project::sync_crud_build_settings(&abs_path, &m)?;
+                    let effective_pattern = pattern.as_deref().unwrap_or_else(|| match m.project.pattern {
+                        manifest::PatternStyle::Aot => "aot",
+                        manifest::PatternStyle::Separated => "separated",
+                        _ => "vertical-slice",
+                    });
+                    if effective_pattern.eq_ignore_ascii_case("aot") {
+                        println!(
+                            "🚀 Entity ekleniyor (AOT CRUD): '{}' -> Modül: '{}' ...",
+                            name, module
+                        );
+                        let opts = csharp::entity::AddAotEntityOptions {
+                            entity_name: &name,
+                            module_name: &module,
+                            properties: &parsed_props,
+                            id_type: None,
+                            project_path: &abs_path,
+                            manifest: &m,
+                        };
+                        let result = csharp::entity::add_aot_entity(&opts)?;
+                        println!("\n✅ {} dosya oluşturuldu; MSBuild dispatcher ayarları eşitlendi.",
+                            result.files_created.len()
+                        );
+                    } else if effective_pattern.eq_ignore_ascii_case("vertical-slice") || effective_pattern.eq_ignore_ascii_case("flat") {
                         println!(
                             "🚀 Entity ekleniyor (vertical-slice): '{}' -> Modül: '{}' ...",
                             name, module

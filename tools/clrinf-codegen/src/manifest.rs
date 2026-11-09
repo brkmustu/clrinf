@@ -234,6 +234,9 @@ pub enum PatternStyle {
     Flat,
     Separated,
     Basic,
+    /// Entity-only AOT CRUD: handlers/endpoints are generated at compile time.
+    #[serde(rename = "aot")]
+    Aot,
 }
 
 impl Default for PatternStyle {
@@ -248,6 +251,7 @@ impl PatternStyle {
             PatternStyle::Flat => "flat",
             PatternStyle::Separated => "separated",
             PatternStyle::Basic => "basic",
+            PatternStyle::Aot => "aot",
         }
     }
 }
@@ -833,6 +837,7 @@ impl ProjectManifest {
         let pattern = match backend.pattern.as_deref() {
             Some("separated") => PatternStyle::Separated,
             Some("basic") => PatternStyle::Basic,
+            Some("aot") => PatternStyle::Aot,
             Some("flat") | Some("vertical-slice") | _ => PatternStyle::Flat,
         };
 

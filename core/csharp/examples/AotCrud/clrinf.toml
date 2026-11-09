@@ -1,0 +1,8 @@
+[project]
+name = "AotCrud"
+lang = "csharp"
+arch = "clean-cqrs"
+pattern = "aot"
+dispatcher = "native"
+namespace = "AotCrud"
+secured = false

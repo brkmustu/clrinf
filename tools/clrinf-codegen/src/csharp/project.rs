@@ -1,10 +1,124 @@
-use crate::manifest::{ArchStyle, Dispatcher, HostType};
+use crate::manifest::{ArchStyle, Dispatcher, HostType, PatternStyle, ProjectManifest};
 use anyhow::{Context, Result};
 use heck::ToUpperCamelCase;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
+/// Result of synchronising manifest CRUD settings into MSBuild files.
+#[allow(dead_code)]
+pub struct CrudBuildSyncResult {
+    pub files_modified: Vec<PathBuf>,
+}
+
+/// Writes the manifest dispatcher/security choice into `Directory.Build.props`
+/// as compiler-visible MSBuild properties. The generator never reads clrinf.toml.
+pub fn sync_crud_build_settings(
+    project_path: &Path,
+    manifest: &ProjectManifest,
+) -> Result<CrudBuildSyncResult> {
+    let mut files_modified = Vec::new();
+
+    let props_path = project_path.join("Directory.Build.props");
+    let original = fs::read_to_string(&props_path).unwrap_or_else(|_| "<Project>\n</Project>\n".to_string());
+    let mut updated = original.clone();
+
+    let dispatcher = match manifest.project.dispatcher {
+        Dispatcher::MediatorNet => "mediatornet",
+        Dispatcher::Mediatr => "mediatr",
+        Dispatcher::Native => "native",
+    };
+    updated = upsert_property(&updated, "ClrinfCrudDispatcher", dispatcher);
+    updated = upsert_property(
+        &updated,
+        "ClrinfCrudSecured",
+        if manifest.project.secured { "true" } else { "false" },
+    );
+    updated = ensure_compiler_visible_property(&updated, "ClrinfCrudDispatcher");
+    updated = ensure_compiler_visible_property(&updated, "ClrinfCrudSecured");
+
+    if updated != original {
+        fs::write(&props_path, &updated)
+            .with_context(|| format!("Failed to write {}", props_path.display()))?;
+        files_modified.push(props_path);
+    }
+
+    if manifest.project.dispatcher == Dispatcher::MediatorNet {
+        if let Some(csproj) = find_main_csproj(project_path) {
+            let original = fs::read_to_string(&csproj).unwrap_or_default();
+            let mut updated = original.clone();
+            if !updated.contains("Include=\"Mediator.Net\"") {
+                updated = upsert_item_group_entry(
+                    &updated,
+                    "<PackageReference Include=\"Mediator.Net\" Version=\"1.2.0\" />",
+                );
+            }
+            if updated != original {
+                fs::write(&csproj, &updated)
+                    .with_context(|| format!("Failed to write {}", csproj.display()))?;
+                files_modified.push(csproj);
+            }
+        }
+    }
+
+    Ok(CrudBuildSyncResult { files_modified })
+}
+
+fn find_main_csproj(project_path: &Path) -> Option<PathBuf> {
+    let mut candidates: Vec<PathBuf> = walkdir::WalkDir::new(project_path)
+        .max_depth(4)
+        .into_iter()
+        .filter_map(|entry| entry.ok())
+        .map(|entry| entry.into_path())
+        .filter(|path| {
+            path.extension().and_then(|e| e.to_str()) == Some("csproj")
+                && !path.components().any(|c| {
+                    let v = c.as_os_str().to_string_lossy();
+                    v == "bin" || v == "obj" || v == "tests"
+                })
+        })
+        .collect();
+    candidates.sort_by_key(|p| p.components().count());
+    candidates.into_iter().next()
+}
+
+fn upsert_property(xml: &str, name: &str, value: &str) -> String {
+    let open = format!("<{name}>");
+    let close = format!("</{name}>");
+    if let Some(start) = xml.find(&open) {
+        if let Some(end) = xml[start..].find(&close) {
+            let end = start + end + close.len();
+            return format!("{}{}{}{}{}", &xml[..start], open, value, close, &xml[end..]);
+        }
+    }
+
+    let block = format!("  <PropertyGroup>\n    <{name}>{value}</{name}>\n  </PropertyGroup>\n");
+    if let Some(pos) = xml.find("</Project>") {
+        return format!("{}{}{}", &xml[..pos], block, &xml[pos..]);
+    }
+    format!("<Project>\n{block}</Project>\n")
+}
+
+fn ensure_compiler_visible_property(xml: &str, name: &str) -> String {
+    if xml.contains(&format!("Include=\"{name}\"")) {
+        return xml.to_string();
+    }
+    upsert_item_group_entry(
+        xml,
+        &format!("<CompilerVisibleProperty Include=\"{name}\" />"),
+    )
+}
+
+fn upsert_item_group_entry(xml: &str, entry: &str) -> String {
+    if let Some(pos) = xml.find("</ItemGroup>") {
+        return format!("{}{}\n{}", &xml[..pos], format!("    {entry}"), &xml[pos..]);
+    }
+    let block = format!("  <ItemGroup>\n    {entry}\n  </ItemGroup>\n");
+    if let Some(pos) = xml.find("</Project>") {
+        return format!("{}{}{}", &xml[..pos], block, &xml[pos..]);
+    }
+    format!("<Project>\n{block}</Project>\n")
+}
 #[allow(dead_code)]
 pub struct CreateProjectOptions<'a> {
     pub name: &'a str,
@@ -13,6 +127,7 @@ pub struct CreateProjectOptions<'a> {
     pub host_type: HostType,
     pub dispatcher: Dispatcher,
     pub paradigm: &'a str,
+    pub pattern: PatternStyle,
     pub profile: &'a str,
     pub db_context: Option<&'a str>,
     pub skip_dotnet_exec: bool,
@@ -55,6 +170,11 @@ pub fn create_project(opts: &CreateProjectOptions) -> Result<CreateProjectResult
         ArchStyle::CleanCqrs => "clean-cqrs",
     };
     let db_ctx = opts.db_context.unwrap_or("BaseDbContext");
+    let pattern_line = if opts.pattern == PatternStyle::Aot {
+        "pattern = \"aot\"\n"
+    } else {
+        ""
+    };
     let toml_content = format!(
         r#"[project]
 name = "{project_name}"
@@ -62,7 +182,7 @@ lang = "csharp"
 arch = "{arch_str}"
 paradigm = "{}"
 dispatcher = "{}"
-db_context = "{db_ctx}"
+{pattern_line}db_context = "{db_ctx}"
 profile = "{}"
 "#,
         opts.paradigm,
@@ -83,6 +203,12 @@ profile = "{}"
         }
         ArchStyle::CleanCqrs => {
             scaffold_clean_cqrs(&project_dir, &project_name, opts, &mut files_created)?;
+        }
+    }
+
+    if opts.pattern == PatternStyle::Aot {
+        if let Ok(manifest) = ProjectManifest::from_toml(&toml_content) {
+            let _ = sync_crud_build_settings(&project_dir, &manifest)?;
         }
     }
 
@@ -234,8 +360,43 @@ public class {db_context_name} : DbContext
 
     // Program.cs
     let program_path = api_dir.join("Program.cs");
-    let program_content = format!(
-        r#"using {project_name}.Persistence.Contexts;
+    let program_content = if opts.pattern == PatternStyle::Aot {
+        format!(
+            r#"using ClrinfCS.Core;
+using ClrinfCS.Generated;
+using {project_name}.Persistence.Contexts;
+using Microsoft.EntityFrameworkCore;
+
+var builder = WebApplication.CreateBuilder(args);
+
+// Database configuration (SQLite default)
+builder.Services.AddDbContext<{db_context_name}>(options =>
+    options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection") ?? "Data Source=app.db"));
+
+builder.Services.AddGeneratedCrud();
+
+var app = builder.Build();
+
+using (var scope = app.Services.CreateScope())
+{{
+    var db = scope.ServiceProvider.GetRequiredService<{db_context_name}>();
+    db.Database.EnsureCreated();
+}}
+
+app.MapGeneratedCrudEndpoints(http =>
+{{
+    var tenant = http.Request.Headers.TryGetValue("X-Tenant-Id", out var value) && !string.IsNullOrWhiteSpace(value)
+        ? value.ToString()
+        : "default";
+    return new RequestContext(tenant, http.TraceIdentifier, "http-request");
+}});
+
+app.Run();
+"#
+        )
+    } else {
+        format!(
+            r#"using {project_name}.Persistence.Contexts;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -261,7 +422,8 @@ app.MapControllers();
 
 app.Run();
 "#
-    );
+        )
+    };
     fs::write(&program_path, program_content)?;
     files.push(program_path);
 
@@ -329,8 +491,31 @@ public class {db_context_name} : DbContext
     files.push(db_context_path);
 
     let program_path = src_dir.join("Program.cs");
-    let program_content = format!(
-        r#"using {project_name}.Data;
+    let program_content = if opts.pattern == PatternStyle::Aot {
+        format!(
+            r#"using ClrinfCS.Core;
+using ClrinfCS.Generated;
+using {project_name}.Data;
+using Microsoft.EntityFrameworkCore;
+
+var builder = WebApplication.CreateBuilder(args);
+builder.Services.AddDbContext<{db_context_name}>(opt => opt.UseSqlite("Data Source=app.db"));
+builder.Services.AddGeneratedCrud();
+
+var app = builder.Build();
+app.MapGeneratedCrudEndpoints(http =>
+{{
+    var tenant = http.Request.Headers.TryGetValue("X-Tenant-Id", out var value) && !string.IsNullOrWhiteSpace(value)
+        ? value.ToString()
+        : "default";
+    return new RequestContext(tenant, http.TraceIdentifier, "http-request");
+}});
+app.Run();
+"#
+        )
+    } else {
+        format!(
+            r#"using {project_name}.Data;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -341,7 +526,8 @@ var app = builder.Build();
 app.MapControllers();
 app.Run();
 "#
-    );
+        )
+    };
     fs::write(&program_path, program_content)?;
     files.push(program_path);
 
@@ -584,6 +770,7 @@ mod tests {
             host_type: HostType::Api,
             dispatcher: Dispatcher::Native,
             paradigm: "fp",
+            pattern: PatternStyle::Flat,
             profile: "standard",
             db_context: None,
             skip_dotnet_exec: true,
@@ -603,6 +790,75 @@ mod tests {
         assert!(toml_str.contains("fp"));
         assert!(toml_str.contains("native"));
 
+        Ok(())
+    }
+
+    #[test]
+    fn test_create_project_aot_pattern() -> Result<()> {
+        let dir = tempdir()?;
+        let opts = CreateProjectOptions {
+            name: "AotService",
+            target_path: dir.path(),
+            arch: ArchStyle::CleanCqrs,
+            host_type: HostType::Api,
+            dispatcher: Dispatcher::Native,
+            paradigm: "fp",
+            pattern: PatternStyle::Aot,
+            profile: "standard",
+            db_context: None,
+            skip_dotnet_exec: true,
+        };
+
+        let res = create_project(&opts)?;
+        let toml_str = fs::read_to_string(res.project_dir.join("clrinf.toml"))?;
+        assert!(toml_str.contains("pattern = \"aot\""));
+
+        let props_str = fs::read_to_string(res.project_dir.join("Directory.Build.props"))?;
+        assert!(props_str.contains("<ClrinfCrudDispatcher>native</ClrinfCrudDispatcher>"));
+        assert!(props_str.contains("<CompilerVisibleProperty Include=\"ClrinfCrudDispatcher\" />"));
+
+        let program_str = fs::read_to_string(res.project_dir.join("src").join("Api").join("Program.cs"))?;
+        assert!(program_str.contains("AddGeneratedCrud()"));
+        assert!(program_str.contains("MapGeneratedCrudEndpoints"));
+
+        Ok(())
+    }
+
+    #[test]
+    fn sync_crud_build_settings_writes_compiler_visible_properties_and_package() -> Result<()> {
+        let dir = tempdir()?;
+        let project_dir = dir.path().join("Shop");
+        fs::create_dir_all(&project_dir)?;
+        fs::write(
+            project_dir.join("Directory.Build.props"),
+            "<Project>\n  <PropertyGroup>\n    <TargetFramework>net10.0</TargetFramework>\n  </PropertyGroup>\n</Project>\n",
+        )?;
+        fs::write(
+            project_dir.join("Shop.csproj"),
+            "<Project Sdk=\"Microsoft.NET.Sdk\">\n  <PropertyGroup>\n    <TargetFramework>net10.0</TargetFramework>\n  </PropertyGroup>\n</Project>\n",
+        )?;
+
+        let manifest = ProjectManifest::from_toml(
+            r#"
+[project]
+name = "Shop"
+lang = "csharp"
+dispatcher = "mediatornet"
+secured = true
+"#,
+        )?;
+
+        let result = sync_crud_build_settings(&project_dir, &manifest)?;
+        assert_eq!(result.files_modified.len(), 2);
+
+        let props = fs::read_to_string(project_dir.join("Directory.Build.props"))?;
+        assert!(props.contains("<ClrinfCrudDispatcher>mediatornet</ClrinfCrudDispatcher>"));
+        assert!(props.contains("<ClrinfCrudSecured>true</ClrinfCrudSecured>"));
+        assert!(props.contains("<CompilerVisibleProperty Include=\"ClrinfCrudDispatcher\" />"));
+        assert!(props.contains("<CompilerVisibleProperty Include=\"ClrinfCrudSecured\" />"));
+
+        let csproj = fs::read_to_string(project_dir.join("Shop.csproj"))?;
+        assert!(csproj.contains("Include=\"Mediator.Net\""));
         Ok(())
     }
 }

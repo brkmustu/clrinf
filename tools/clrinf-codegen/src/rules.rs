@@ -204,6 +204,7 @@ pub fn render_agent_block(rules: Option<&Rules>) -> String {
     out.push_str("### Workflow\n");
     out.push_str("- Before changing or adding an event, call `clrinf_plan_change` (or `clrinf topology impact <event>`) and load only the files it lists.\n");
     out.push_str("- Register publishers/subscribers with `clrinf event subscribe|publish`; implement only the handler body or publish call site.\n");
+    out.push_str("- C# CRUD: never read generated files under `obj/`. Change behavior with a hook rule (`clrinf rule new --on before-create|before-update|before-delete`) or eject one operation (`clrinfcs eject <Entity> --operation <Op>`).\n");
     out.push_str("- Verify with `clrinf verify --changed` (runs automatically after edits when `clrinf hook install` was used).\n\n");
     out.push_str("### Rules\n");
     for line in constraint_lines(rules) {

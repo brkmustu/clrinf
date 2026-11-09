@@ -11,12 +11,15 @@ a service split.
 | Project | Purpose |
 | --- | --- |
 | `src/ClrinfCS.Core` | Context, canonical errors/CloudEvents, explicit dispatcher, tenant storage and inbox/outbox ports; no database or web dependencies |
+| `src/ClrinfCS.Generators` | Compile-time AOT CRUD source generator: handlers, Minimal API endpoints, DTOs and DI/endpoint registration |
 | `src/ClrinfCS.Adapters.Sqlite` | Durable local reference adapter using Microsoft.Data.Sqlite |
+| `src/ClrinfCS.Adapters.EfCore` | `EfCrudStore<TEntity,TKey,TDbContext>` for the AOT CRUD port; tenant-scoped reads/writes |
 | `examples/Documents` | Shared example module used unchanged by both deployment modes |
 | `examples/ModularMonolith` | In-process module delivery using the same event contracts |
 | `examples/DistributedService` | HTTP producer/receiver with separate databases |
 | `examples/CrmMonolith` | Containerized Modular Monolith reference (`Modules/` container, EF Core SQLite, Minimal APIs) |
 | `examples/EcommerceMonolith` | Direct Bounded Contexts reference (Top-level slices, pure FP, Native Dispatcher, Cedar authz) |
+| `examples/AotCrud` | Compile-time CRUD reference: entity + hook rule only; generator emits handlers/endpoints |
 | `src/ClrinfCS` / `src/ClrinfCS.OpenApi` | Roslyn AST worker CLI tool (lint, migrate) and native OpenAPI support |
 
 Add project references to the core and the adapter you need, or package them for
@@ -100,11 +103,38 @@ Registered rules evaluate sequentially in priority order. On the first failure, 
 #### 2. Static Architectural Analyzers
 The `clrinfcs lint` analyzer inspects C# source trees using the Roslyn compiler platform:
 - **`ARCH001` (Domain Layer Purity)**: Forbids direct dependencies on Entity Framework Core, ASP.NET Core, or Infrastructure inside the `Domain` layer.
-- **`ARCH002` (Rule Convention)**: Mandates that rule classes in `Rules/` implement `IBusinessRule<TContext>`.
+- **`ARCH002` (Rule Convention)**: Mandates that rule classes in `Rules/` implement `IBusinessRule<TContext>` or one of the `IBefore{Create|Update|Delete}Rule<TEntity>` hook interfaces.
 - **`ARCH003` (Controller DbContext Leakage)**: Prohibits injecting `DbContext` directly into API controllers or host endpoints; mandates `IDispatcher` or application services.
 - **`ARCH004` (CQRS Request Contract)**: Ensures CQRS Command/Query classes implement `IRequest<TResponse>`.
+- **`ARCH005` (Hook Placement)**: Hook implementations must live under `Rules/`; `*Hook` classes must implement a hook interface.
 
 Run standalone with `clrinfcs lint` or across the multi-language workspace using `clrinf-codegen lint --lang csharp`.
+
+### AOT CRUD generator
+
+Mark an entity with `[GenerateCrudEndpoints]` and the generator emits the
+standard Create/Update/Delete/GetById/GetList handlers, request DTOs, Minimal
+API endpoints and `AddGeneratedCrud()` / `MapGeneratedCrudEndpoints(...)`.
+Only the entity, hook rules and explicitly ejected operations remain on disk.
+
+```csharp
+using ClrinfCS.Core;
+
+[GenerateCrudEndpoints]
+public class Category : ITenantScoped
+{
+    public int Id { get; set; }
+    public string Name { get; set; } = string.Empty;
+    [CrudIgnore] public string TenantId { get; set; } = "default";
+}
+```
+
+- Hooks: `clrinf rule new ActiveProductsCheck --lang csharp --entity Category --on before-delete` creates an `IBeforeDeleteRule<Category>`; `CrudRuleRunner` runs hooks in priority order and maps failures to the canonical `ErrorEnvelope` (HTTP 422).
+- Dispatcher: attribute `Dispatcher` > `ClrinfCrudDispatcher` MSBuild property > Native. `clrinf-codegen` writes the manifest value into `Directory.Build.props`.
+- Eject: `clrinfcs eject Category --operation Update` runs the same generator through `MSBuildWorkspace`, writes `UpdateCategoryHandler.cs` / `UpdateCategoryEndpoint.cs`, and removes the operation from the attribute. Smart Override then skips it.
+- Agent map: `clrinfcs crud-map --json` (or `clrinf-codegen crud-map --json`) lists generated/ejected operations, hook classes, file paths and resolved dispatcher.
+- HTTP mapping: not found → 404, `BusinessRuleViolationException` → 422 `ErrorEnvelope`, `CrudConflictException` → 409.
+- Diagnostics: `CLRCRUD001` missing `Id`, `CLRCRUD002` excluded without manual implementation, `CLRCRUD003` selected Mediator.Net package not resolvable.
 
 ### Durable local transactions
 
