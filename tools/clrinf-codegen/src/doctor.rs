@@ -1,7 +1,8 @@
 //! Environment and guardrails diagnostic checks for `clrinf doctor`.
 
 use crate::agents::{self, Status};
-use crate::rules::{Rules, DEFAULT_SCHEMA_DIR};
+use crate::hook;
+use crate::rules::{Rules, DEFAULT_SCHEMA_DIR, RULES_FILE};
 use crate::topology::IssueSeverity;
 use crate::validator;
 use crate::verify;
@@ -21,11 +22,20 @@ pub struct DoctorCheck {
 pub struct DoctorReport {
     pub ok: bool,
     pub checks: Vec<DoctorCheck>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub fixed: Vec<String>,
 }
 
 impl DoctorReport {
     pub fn format_text(&self) -> String {
         let mut out = String::new();
+        if !self.fixed.is_empty() {
+            out.push_str("Fixed:\n");
+            for item in &self.fixed {
+                out.push_str(&format!("  * {item}\n"));
+            }
+            out.push('\n');
+        }
         for check in &self.checks {
             let tag = match check.status.as_str() {
                 "pass" => "[PASS]",
@@ -49,6 +59,54 @@ impl DoctorReport {
 }
 
 pub fn run(root: &Path) -> DoctorReport {
+    run_with_fix(root, false)
+}
+
+pub fn run_with_fix(root: &Path, fix: bool) -> DoctorReport {
+    let mut fixed = Vec::new();
+    if fix {
+        let rules_pre = Rules::load(root).ok().flatten();
+        if let Ok(dry) = agents::sync(root, rules_pre.as_ref(), true) {
+            if dry.iter().any(|(_, s)| *s != Status::Unchanged) {
+                if let Ok(applied) = agents::sync(root, rules_pre.as_ref(), false) {
+                    for (path, status) in applied {
+                        if status != Status::Unchanged {
+                            fixed.push(format!(
+                                "Synced agent instruction file: {}",
+                                path.strip_prefix(root).unwrap_or(&path).display()
+                            ));
+                        }
+                    }
+                }
+            }
+        }
+        let has_any_hook = [
+            ".claude/settings.json",
+            ".cursor/hooks.json",
+            ".agents/hooks.json",
+            ".git/hooks/pre-commit",
+        ]
+        .iter()
+        .any(|rel| {
+            let p = root.join(rel);
+            p.is_file() && std::fs::read_to_string(&p).is_ok_and(|c| c.contains("clrinf"))
+        });
+        if !has_any_hook && root.join(RULES_FILE).is_file() {
+            if hook::install_claude(root, "clrinf").unwrap_or(false) {
+                fixed.push("Installed hook: .claude/settings.json".into());
+            }
+            if hook::install_cursor(root, "clrinf").unwrap_or(false) {
+                fixed.push("Installed hook: .cursor/hooks.json".into());
+            }
+            if hook::install_antigravity(root, "clrinf").unwrap_or(false) {
+                fixed.push("Installed hook: .agents/hooks.json".into());
+            }
+            if root.join(".git").is_dir() && hook::install_git(root, "clrinf", false).is_ok() {
+                fixed.push("Installed hook: .git/hooks/pre-commit".into());
+            }
+        }
+    }
+
     let mut checks = Vec::new();
 
     // 1. clrinf.rules.toml
@@ -259,7 +317,7 @@ pub fn run(root: &Path) -> DoctorReport {
     }
 
     let ok = !checks.iter().any(|c| c.status == "fail");
-    DoctorReport { ok, checks }
+    DoctorReport { ok, checks, fixed }
 }
 
 #[cfg(test)]
@@ -327,6 +385,38 @@ mod tests {
         assert!(!report.ok);
         let rules_check = report.checks.iter().find(|c| c.name == "rules_file").unwrap();
         assert_eq!(rules_check.status, "fail");
+
+        let _ = std::fs::remove_dir_all(dir);
+    }
+
+    #[test]
+    fn doctor_fix_syncs_agents_and_installs_hooks() {
+        let dir = std::env::temp_dir().join(format!("clrinf-doctor-fix-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::write(dir.join("clrinf.rules.toml"), "[generated]\nprotect = true\n").unwrap();
+
+        let before = run(&dir);
+        assert_eq!(
+            before.checks.iter().find(|c| c.name == "agents_sync").unwrap().status,
+            "warn"
+        );
+        assert_eq!(
+            before.checks.iter().find(|c| c.name == "hooks").unwrap().status,
+            "warn"
+        );
+
+        let after = run_with_fix(&dir, true);
+        assert!(after.ok, "{:?}", after.checks);
+        assert!(!after.fixed.is_empty());
+        assert_eq!(
+            after.checks.iter().find(|c| c.name == "agents_sync").unwrap().status,
+            "pass"
+        );
+        assert_eq!(
+            after.checks.iter().find(|c| c.name == "hooks").unwrap().status,
+            "pass"
+        );
 
         let _ = std::fs::remove_dir_all(dir);
     }

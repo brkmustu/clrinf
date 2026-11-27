@@ -2,6 +2,7 @@ mod ast;
 mod compat;
 mod doctor;
 mod guardrails_init;
+mod lsp;
 mod csharp;
 mod drift;
 mod event_scaffold;
@@ -369,6 +370,15 @@ enum Commands {
         /// Emit machine-readable JSON
         #[arg(long)]
         json: bool,
+        /// Automatically sync stale agent instructions and install missing hooks
+        #[arg(long)]
+        fix: bool,
+    },
+    /// Start a Language Server Protocol (LSP) stdio server for live editor diagnostics
+    Lsp {
+        /// Default workspace root when the editor does not pass rootUri
+        #[arg(long, default_value = ".")]
+        path: PathBuf,
     },
     /// Measure context cost (tokens) with and without clrinf's targeted slice
     #[command(subcommand)]
@@ -1922,8 +1932,8 @@ fn run_cli() -> Result<()> {
                 anyhow::bail!("Verification failed with {} error(s).", report.errors_count());
             }
         }
-        Commands::Doctor { path, json } => {
-            let report = doctor::run(&path);
+        Commands::Doctor { path, json, fix } => {
+            let report = doctor::run_with_fix(&path, fix);
             if json {
                 println!("{}", serde_json::to_string_pretty(&report)?);
             } else {
@@ -1932,6 +1942,9 @@ fn run_cli() -> Result<()> {
             if !report.ok {
                 anyhow::bail!("clrinf doctor found one or more failing checks.");
             }
+        }
+        Commands::Lsp { path } => {
+            lsp::run_stdio(&path)?;
         }
         Commands::Bench(BenchCommands::Context { event, schema_dir, src, path, json }) => {
             let rules = rules::Rules::load(&path)?;

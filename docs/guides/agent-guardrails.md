@@ -5,7 +5,8 @@
 | Capability | CLI / MCP Tool | What it does |
 |---|---|---|
 | Brownfield onboarding | `clrinf init --guardrails [--ci]` | Scans your repo, creates `clrinf.rules.toml`, syncs agent rules, installs hooks, optionally writes CI workflow |
-| Environment diagnostics | `clrinf doctor [--json]` | Audits `clrinf.rules.toml`, agent sync, hooks, schema validity, `verify` status, and worker availability |
+| Environment diagnostics | `clrinf doctor [--fix] [--json]` | Audits `clrinf.rules.toml`, agent sync, hooks, schema validity, `verify` status, and worker availability (`--fix` auto-remediates sync & hooks) |
+| Live IDE diagnostics | `clrinf lsp` | Runs a pure-Rust LSP 3.17 stdio server publishing `verify` diagnostics on file open/save |
 | Incremental verification | `clrinf hook install`, `clrinf verify` / `clrinf_verify` | Runs targeted checks after every agent edit and feeds violations back to the agent |
 | Targeted change plan | `clrinf plan` / `clrinf_plan_change` | Handles mechanical schema/scaffold updates and hands the agent only the files and symbols to fill in |
 | Single-source agent rules | `clrinf agents sync` | Writes the managed rule block into `AGENTS.md`, `CLAUDE.md`, `GEMINI.md`, and `.cursor/rules/clrinf.mdc` |
@@ -51,12 +52,13 @@ Unknown keys fail loudly so typos are never silently ignored.
 
 ```bash
 clrinf init --guardrails --ci         # auto-detect layout + rules + agents sync + hooks + CI workflow
-clrinf doctor                         # check rules, agent sync, hooks, schemas, verify & worker health
+clrinf doctor --fix                   # check rules/sync/hooks/schemas/verify and auto-fix sync/hooks
 # Or configure manually:
 clrinf agents sync                    # generate agent instruction blocks (CI drift check: --check)
 clrinf hook install --agent all       # Claude Code + Cursor + Antigravity + git pre-commit
 clrinf verify                         # full repo check; --changed verifies only modified files
 clrinf verify --format sarif --output clrinf.sarif  # SARIF 2.1.0 output for GitHub Code Scanning
+clrinf lsp                            # start pure-Rust LSP stdio server for VS Code / Neovim / Zed
 ```
 
 ### Agent Hook Behavior
@@ -105,12 +107,17 @@ clrinf plan orders.placed.v1 --service billing --role subscriber --apply
 
 JSON output includes `schema_edit`, `fill_in` (per-language symbols and generated shell paths), `read_these` (hand-written files to inspect), `do_not_edit` (generated files), `constraints`, and `open_issues`.
 
-## MCP Profiles
+## MCP Profiles & Resources
 
 | Profile | Tools | Use case |
 |---|---:|---|
-| `full` (default) | 27 | All ecosystem, scaffold, and governance tools |
-| `events` | 14 | Event-driven contract and topology development |
+| `full` (default) | 28 | All ecosystem, scaffold, and governance tools (`clrinf_doctor`, `clrinf_verify`, …) |
+| `events` | 15 | Event-driven contract, topology, and `clrinf_doctor` tools |
 | `lean` | 10 | Intent-level tools (`clrinf_plan_change`, `clrinf_verify`, `clrinf_crud_map`, `clrinf_crud_eject`, …) for smaller/local models |
 
 Precedence: `--profile` > `CLRINF_MCP_PROFILE` > `clrinf.rules.toml` `[mcp]` > `full`. Calling a tool outside the active profile returns an explicit error.
+
+**Read-only MCP Resources (`resources/list`, `resources/read`):**
+- `clrinf://rules`: Active `clrinf.rules.toml` constraints.
+- `clrinf://health`: Live JSON health report from `clrinf doctor`.
+- `clrinf://topology`: Cross-service event topology ASCII graph and diagnostics.

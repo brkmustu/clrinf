@@ -37,6 +37,7 @@ const EVENTS_EXTRA_TOOLS: &[&str] = &[
     "clrinf_topology_drift",
     "clrinf_topology_report",
     "clrinf_validate_topology",
+    "clrinf_doctor",
 ];
 
 impl McpProfile {
@@ -129,11 +130,99 @@ impl McpServer {
                 "id": id,
                 "result": {
                     "protocolVersion": "2024-11-05",
-                    "capabilities": { "tools": {} },
+                    "capabilities": { "tools": {}, "resources": {} },
                     "serverInfo": { "name": "clrinf-meta-mcp", "version": "0.1.0" },
                     "instructions": "clrinf architectural framework and codegen tool suite for polyglot systems."
                 }
             }))),
+
+            "resources/list" => Ok(Some(json!({
+                "jsonrpc": "2.0",
+                "id": id,
+                "result": {
+                    "resources": [
+                        {
+                            "uri": "clrinf://rules",
+                            "name": "clrinf.rules.toml",
+                            "mimeType": "text/plain",
+                            "description": "Active clrinf architectural rules and constraints"
+                        },
+                        {
+                            "uri": "clrinf://health",
+                            "name": "clrinf doctor report",
+                            "mimeType": "application/json",
+                            "description": "Environment and guardrails health diagnostics"
+                        },
+                        {
+                            "uri": "clrinf://topology",
+                            "name": "Event Topology Summary",
+                            "mimeType": "text/plain",
+                            "description": "Cross-service event topology graph and diagnostics"
+                        }
+                    ]
+                }
+            }))),
+
+            "resources/read" => {
+                let uri = request
+                    .pointer("/params/uri")
+                    .and_then(|u| u.as_str())
+                    .unwrap_or("");
+                let root = self
+                    .workspace_root
+                    .clone()
+                    .or_else(|| self.worker_mgr.workspace_root().map(Path::to_path_buf))
+                    .unwrap_or_else(|| PathBuf::from("."));
+                let (mime, text) = match uri {
+                    "clrinf://rules" => {
+                        let p = root.join(crate::rules::RULES_FILE);
+                        let content = std::fs::read_to_string(&p)
+                            .unwrap_or_else(|_| "# clrinf.rules.toml not found\n".to_string());
+                        ("text/plain", content)
+                    }
+                    "clrinf://health" => {
+                        let report = crate::doctor::run(&root);
+                        ("application/json", serde_json::to_string_pretty(&report)?)
+                    }
+                    "clrinf://topology" => {
+                        let rules = crate::rules::Rules::load(&root)?;
+                        let schema_dir = rules
+                            .as_ref()
+                            .map(crate::rules::Rules::schema_dir)
+                            .unwrap_or_else(|| root.join(crate::rules::DEFAULT_SCHEMA_DIR));
+                        let text = if schema_dir.is_dir() {
+                            let rep = TopologyValidator::validate(&schema_dir, Some(&schema_dir))?;
+                            format!("{}\n{}", rep.format_ascii_graph(), rep.format_diagnostics())
+                        } else {
+                            "No schema directory found.".to_string()
+                        };
+                        ("text/plain", text)
+                    }
+                    _ => {
+                        return Ok(Some(json!({
+                            "jsonrpc": "2.0",
+                            "id": id,
+                            "error": {
+                                "code": -32602,
+                                "message": format!("Unknown resource URI: {uri}")
+                            }
+                        })));
+                    }
+                };
+                Ok(Some(json!({
+                    "jsonrpc": "2.0",
+                    "id": id,
+                    "result": {
+                        "contents": [
+                            {
+                                "uri": uri,
+                                "mimeType": mime,
+                                "text": text
+                            }
+                        ]
+                    }
+                })))
+            }
 
             "ping" => Ok(Some(json!({
                 "jsonrpc": "2.0",
@@ -346,7 +435,19 @@ impl McpServer {
                                 "type": "object",
                                 "properties": {
                                     "files": { "type": "array", "items": { "type": "string" }, "description": "Only verify these files (default: whole project)" },
-                                    "path": { "type": "string", "description": "Project root (default: workspace root)" }
+                                    "path": { "type": "string", "description": "Project root (default: workspace root)" },
+                                    "format": { "type": "string", "description": "Output format: 'json' (default) or 'sarif'" }
+                                }
+                            }
+                        },
+                        {
+                            "name": "clrinf_doctor",
+                            "description": "Diagnoses clrinf.rules.toml, agent instruction sync, installed hooks, schemas, verify status, and federated workers. Pass fix=true to sync stale agent docs and install missing hooks.",
+                            "inputSchema": {
+                                "type": "object",
+                                "properties": {
+                                    "path": { "type": "string", "description": "Project root (default: workspace root)" },
+                                    "fix": { "type": "boolean", "description": "Auto-remediate stale agent instruction blocks and missing hooks" }
                                 }
                             }
                         },
@@ -949,13 +1050,27 @@ impl McpServer {
                     .unwrap_or_default();
                 let only = if files.is_empty() { None } else { Some(files.as_slice()) };
                 let report = crate::verify::run(&root, only)?;
-                Ok(json!({
-                    "isValid": report.is_valid,
-                    "errorsCount": report.errors_count(),
-                    "checks": report.checks,
-                    "issues": report.issues,
-                    "diagnostics": report.format_text(false),
-                }))
+                if args.get("format").and_then(|s| s.as_str()).is_some_and(|f| f.eq_ignore_ascii_case("sarif")) {
+                    Ok(report.to_sarif())
+                } else {
+                    Ok(json!({
+                        "isValid": report.is_valid,
+                        "errorsCount": report.errors_count(),
+                        "checks": report.checks,
+                        "issues": report.issues,
+                        "diagnostics": report.format_text(false),
+                    }))
+                }
+            }
+
+            "clrinf_doctor" => {
+                let root = args.get("path").and_then(|s| s.as_str()).map(PathBuf::from)
+                    .or_else(|| self.workspace_root.clone())
+                    .or_else(|| self.worker_mgr.workspace_root().map(Path::to_path_buf))
+                    .unwrap_or_else(|| PathBuf::from("."));
+                let fix = args.get("fix").and_then(|v| v.as_bool()).unwrap_or(false);
+                let report = crate::doctor::run_with_fix(&root, fix);
+                Ok(serde_json::to_value(report)?)
             }
 
             "clrinf_generate_pubsub" => {

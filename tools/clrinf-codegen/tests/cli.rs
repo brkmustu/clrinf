@@ -466,3 +466,122 @@ fn doctor_json_reports_health_checks() {
         assert_eq!(entry["status"], "pass", "check {expected}: {entry}");
     }
 }
+
+#[test]
+fn doctor_fix_remediates_missing_agent_sync_and_hooks() {
+    let scratch = Scratch::new();
+    std::fs::write(
+        scratch.0.join("clrinf.rules.toml"),
+        "[generated]\nprotect = true\n",
+    )
+    .unwrap();
+
+    let out = run(&["doctor", "--path", ".", "--fix", "--json"], &scratch.0);
+    assert!(
+        out.status.success(),
+        "stdout: {}\nstderr: {}",
+        String::from_utf8_lossy(&out.stdout),
+        String::from_utf8_lossy(&out.stderr)
+    );
+    let report: serde_json::Value = serde_json::from_slice(&out.stdout).unwrap();
+    assert_eq!(report["ok"], true);
+    assert!(!report["fixed"].as_array().unwrap().is_empty());
+    let checks = report["checks"].as_array().unwrap();
+    for expected in ["rules_file", "agents_sync", "hooks", "verify"] {
+        let entry = checks.iter().find(|c| c["name"] == expected).unwrap();
+        assert_eq!(entry["status"], "pass", "check {expected}: {entry}");
+    }
+}
+
+#[test]
+fn lsp_stdio_publishes_forbid_diagnostic_on_did_open() {
+    use std::io::Write;
+    use std::process::Stdio;
+
+    let scratch = Scratch::new();
+    std::fs::create_dir_all(scratch.0.join("src/domain")).unwrap();
+    std::fs::write(
+        scratch.0.join("clrinf.rules.toml"),
+        r#"[[forbid]]
+id = "domain-no-infra"
+scope = "imports"
+paths = ["src/domain"]
+pattern = "Infrastructure"
+reason = "Domain must stay clean"
+"#,
+    )
+    .unwrap();
+    let bad = scratch.0.join("src/domain/bad.cs");
+    std::fs::write(&bad, "using App.Infrastructure.Db;\npublic class Bad {}\n").unwrap();
+
+    let to_uri = |p: &Path| {
+        let s = p.to_string_lossy();
+        let trimmed = s.strip_prefix(r"\\?\").unwrap_or(&s).replace('\\', "/");
+        if trimmed.starts_with('/') {
+            format!("file://{trimmed}")
+        } else {
+            format!("file:///{trimmed}")
+        }
+    };
+    let root_uri = to_uri(&scratch.0);
+    let file_uri = to_uri(&bad);
+
+    let mut child = Command::new(env!("CARGO_BIN_EXE_clrinf-codegen"))
+        .args(["lsp", "--path", "."])
+        .current_dir(&scratch.0)
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .unwrap();
+
+    let mut stdin = child.stdin.take().unwrap();
+    let send = |w: &mut std::process::ChildStdin, val: serde_json::Value| {
+        let body = serde_json::to_vec(&val).unwrap();
+        let header = format!("Content-Length: {}\r\n\r\n", body.len());
+        w.write_all(header.as_bytes()).unwrap();
+        w.write_all(&body).unwrap();
+        w.flush().unwrap();
+    };
+
+    send(
+        &mut stdin,
+        serde_json::json!({
+            "jsonrpc": "2.0",
+            "id": 1,
+            "method": "initialize",
+            "params": { "rootUri": root_uri }
+        }),
+    );
+    send(
+        &mut stdin,
+        serde_json::json!({ "jsonrpc": "2.0", "method": "initialized", "params": {} }),
+    );
+    send(
+        &mut stdin,
+        serde_json::json!({
+            "jsonrpc": "2.0",
+            "method": "textDocument/didOpen",
+            "params": {
+                "textDocument": { "uri": file_uri, "languageId": "csharp", "version": 1, "text": "" }
+            }
+        }),
+    );
+    send(
+        &mut stdin,
+        serde_json::json!({ "jsonrpc": "2.0", "id": 2, "method": "shutdown" }),
+    );
+    send(
+        &mut stdin,
+        serde_json::json!({ "jsonrpc": "2.0", "method": "exit" }),
+    );
+    drop(stdin);
+
+    let out = child.wait_with_output().unwrap();
+    assert!(out.status.success(), "stderr: {}", String::from_utf8_lossy(&out.stderr));
+    let stdout = String::from_utf8_lossy(&out.stdout);
+    assert!(
+        stdout.contains("RULE_FORBIDDEN_DEPENDENCY"),
+        "expected diagnostic in LSP stdout, got:\n{stdout}"
+    );
+}

@@ -8,6 +8,9 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [Unreleased]
 
 ### Added
+- `clrinf lsp`: pure-Rust LSP 3.17 stdio diagnostics server publishing `verify` violations on `textDocument/didOpen` and `textDocument/didSave`
+- `clrinf doctor --fix`: automatic remediation for stale agent instruction blocks (`clrinf agents sync`) and missing hooks
+- MCP server enrichment: `resources/list` & `resources/read` (`clrinf://rules`, `clrinf://health`, `clrinf://topology`), `clrinf_doctor` tool, and `format: "sarif"` option on `clrinf_verify`
 - `clrinf doctor [--json]`: environment & guardrails health check across `clrinf.rules.toml`, agent instruction sync, installed hooks, schemas, `verify`, and federated workers
 - SARIF 2.1.0 output via `clrinf verify --format sarif --output <path>` and `action.yml` `sarif-file` input for GitHub Code Scanning annotations
 - Brownfield `@clrinf:publishes <event>` and `@clrinf:handles <event>` comment annotations integrated into `drift.rs` (including `DRIFT_UNKNOWN_ANNOTATED_EVENT`) and `impact.rs`

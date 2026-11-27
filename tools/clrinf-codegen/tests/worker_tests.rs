@@ -336,4 +336,64 @@ fn test_cli_docs_elixir() {
     assert!(!stdout.contains("ARCH001 (Zero Leakage)"));
 }
 
+#[test]
+fn test_mcp_resources_and_doctor_tool() {
+    let mut child = Command::new(bin_path())
+        .arg("mcp")
+        .current_dir(root_dir())
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .expect("Failed to spawn clrinf-codegen mcp");
+
+    let mut stdin = child.stdin.take().expect("Failed to open stdin");
+
+    for req in [
+        json!({ "jsonrpc": "2.0", "id": 1, "method": "initialize" }),
+        json!({ "jsonrpc": "2.0", "id": 2, "method": "resources/list" }),
+        json!({ "jsonrpc": "2.0", "id": 3, "method": "resources/read", "params": { "uri": "clrinf://health" } }),
+        json!({
+            "jsonrpc": "2.0",
+            "id": 4,
+            "method": "tools/call",
+            "params": {
+                "name": "clrinf_doctor",
+                "arguments": { "path": "." }
+            }
+        }),
+    ] {
+        writeln!(stdin, "{}", serde_json::to_string(&req).unwrap()).unwrap();
+    }
+    drop(stdin);
+
+    let output = child.wait_with_output().expect("Failed to read output");
+    assert!(output.status.success(), "stderr: {}", String::from_utf8_lossy(&output.stderr));
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let lines: Vec<&str> = stdout.lines().filter(|l| !l.trim().is_empty()).collect();
+    assert!(lines.len() >= 4, "Expected 4 responses, got: {stdout}");
+
+    let init: Value = serde_json::from_str(lines[0]).unwrap();
+    assert!(init["result"]["capabilities"].get("resources").is_some());
+
+    let res_list: Value = serde_json::from_str(lines[1]).unwrap();
+    let uris: Vec<&str> = res_list["result"]["resources"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter_map(|r| r["uri"].as_str())
+        .collect();
+    assert_eq!(uris, vec!["clrinf://rules", "clrinf://health", "clrinf://topology"]);
+
+    let health: Value = serde_json::from_str(lines[2]).unwrap();
+    let health_text = health["result"]["contents"][0]["text"].as_str().unwrap();
+    let health_json: Value = serde_json::from_str(health_text).unwrap();
+    assert!(health_json.get("checks").is_some());
+
+    let doc: Value = serde_json::from_str(lines[3]).unwrap();
+    let doc_text = doc["result"]["content"][0]["text"].as_str().unwrap();
+    let doc_json: Value = serde_json::from_str(doc_text).unwrap();
+    assert!(doc_json.get("checks").is_some());
+}
+
 
