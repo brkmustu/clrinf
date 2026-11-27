@@ -121,9 +121,11 @@ pub fn analyze(schema_dir: &Path, target: &str, source_roots: &[PathBuf]) -> Res
     let mut affected = Vec::new();
     for root in source_roots {
         for file in collect_sources(root)? {
-            let mut lines = ident_lines(&file.content, &schema.title);
+            let code = file.code_only();
+            let no_comments = file.without_comments();
+            let mut lines = ident_lines(&code, &schema.title);
             if let Some(et) = &schema.event_type {
-                for (i, line) in file.content.lines().enumerate() {
+                for (i, line) in no_comments.lines().enumerate() {
                     if line.contains(et.as_str()) && !lines.contains(&(i + 1)) {
                         lines.push(i + 1);
                     }
@@ -135,7 +137,7 @@ pub fn analyze(schema_dir: &Path, target: &str, source_roots: &[PathBuf]) -> Res
             }
             affected.push(AffectedFile {
                 path: file.path.display().to_string(),
-                role: classify(schema, &file.content, file.generated).to_string(),
+                role: classify(schema, &code, file.generated).to_string(),
                 generated: file.generated,
                 lines,
             });

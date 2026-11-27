@@ -7,6 +7,8 @@ yetenekleri ve adaptör seçimlerini anlatır; hedef tasarım ile uygulanmış
 
 ## Başlangıç
 
+- [Ajan Korumaları (Agent Guardrails)](guides/agent-guardrails.md)
+- [Benchmark Protokolü ve Sonuçları](benchmarks/README.md)
 - [Rust](getting-started/01-rust-clrinfrs.md)
 - [C#](getting-started/02-csharp-clrinfcs.md)
 - [TypeScript](getting-started/03-typescript-clrinfjs.md)

@@ -28,12 +28,13 @@ jobs:
           - os: macos-latest
             target: aarch64-apple-darwin
             use_cross: false
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            use_cross: false
 
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
-        with:
-          submodules: recursive
 
       - name: Install Rust Toolchain
         uses: dtolnay/rust-toolchain@stable
@@ -52,31 +53,44 @@ jobs:
             cargo build --release --manifest-path tools/clrinf-codegen/Cargo.toml --target ${{ matrix.target }}
           fi
 
-      - name: Package Artifact
+      - name: Package Artifact (Unix)
+        if: runner.os != 'Windows'
         shell: bash
         run: |
           BIN_PATH="tools/clrinf-codegen/target/${{ matrix.target }}/release/clrinf-codegen"
           STAGE_DIR=$(mktemp -d)
           cp "${BIN_PATH}" "${STAGE_DIR}/clrinf-codegen"
           cp "${BIN_PATH}" "${STAGE_DIR}/clrinf"
-          
+
           ARCHIVE_NAME="clrinf-${{ matrix.target }}.tar.gz"
           tar -czf "${ARCHIVE_NAME}" -C "${STAGE_DIR}" clrinf-codegen clrinf
-          
-          # Generate SHA256 checksum
+
           if command -v sha256sum &> /dev/null; then
             sha256sum "${ARCHIVE_NAME}" > "${ARCHIVE_NAME}.sha256"
           else
             shasum -a 256 "${ARCHIVE_NAME}" > "${ARCHIVE_NAME}.sha256"
           fi
-          
-          echo "ARCHIVE_PATH=${ARCHIVE_NAME}" >> $GITHUB_ENV
+
+      - name: Package Artifact (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $binPath = "tools/clrinf-codegen/target/${{ matrix.target }}/release/clrinf-codegen.exe"
+          $stageDir = Join-Path $env:RUNNER_TEMP "clrinf-stage"
+          New-Item -ItemType Directory -Path $stageDir -Force | Out-Null
+          Copy-Item $binPath (Join-Path $stageDir "clrinf-codegen.exe") -Force
+          Copy-Item $binPath (Join-Path $stageDir "clrinf.exe") -Force
+
+          $archiveName = "clrinf-${{ matrix.target }}.zip"
+          Compress-Archive -Path (Join-Path $stageDir "*") -DestinationPath $archiveName -Force
+
+          $hash = (Get-FileHash -Path $archiveName -Algorithm SHA256).Hash.ToLowerInvariant()
+          "$hash  $archiveName" | Out-File -FilePath "${archiveName}.sha256" -Encoding ascii
 
       - name: Upload Release Asset
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            clrinf-${{ matrix.target }}.tar.gz
-            clrinf-${{ matrix.target }}.tar.gz.sha256
+            clrinf-${{ matrix.target }}.*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -5,6 +5,7 @@
     <Nullable>enable</Nullable>
     <IsPackable>true</IsPackable>
     <PackageId>ClrinfCS.Adapters.EfCore</PackageId>
+    <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
     <Description>EF Core adapter for the ClrinfCS ICrudStore port, scoped by RequestContext tenant.</Description>
   </PropertyGroup>
 

@@ -1,266 +1,129 @@
-# clrinf — Yapay Zeka Ajanları için Mimari Koruma, Token Verimliliği ve Kod Üretim Altyapısı
+# clrinf — Architecture & Event Contract Guardrails for AI-Native Teams
 
 [![CI](https://github.com/brkmustu/clrinf/actions/workflows/ci.yml/badge.svg)](https://github.com/brkmustu/clrinf/actions/workflows/ci.yml)
-[![License: BSL 1.1](https://img.shields.io/badge/License-BSL%201.1-purple.svg)](LICENSE)
+[![License: Apache-2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
+[Türkçe](README.tr.md)
 
-> **Modüler Monolith'ten Çok Dilli Dağıtık Sistemlere**: Yapay zeka ajanlarını mimari sınırlar içinde kalmaya zorlayan, hazır şablonlarla token tüketimini düşürmeye yardımcı olan ve karmaşıklaşan projelerde kontrolü korumaya destek sunan açık kaynaklı geliştirme altyapısı.
+**clrinf** is a single-binary Rust CLI and Meta MCP server that keeps AI coding agents (Claude Code, Cursor, Antigravity) and distributed teams inside deterministic architectural boundaries—even when working with smaller or local models (SLMs).
 
-**clrinf**, yapay zeka kodlama ajanlarıyla (Claude Code, Cursor, Antigravity, Copilot vb.) yazılım geliştirirken; **mimari anlamda daha stabil kod üretimine katkı sunmak**, **hazır şablonlarla token tüketimini düşürmeye yardımcı olmak** ve **daha düşük parametreli dil modellerinde (SLM/Local LLM) bile ajanları belirli mimari sınırlar dahilinde tutabilmek** amacıyla geliştirilmektedir.
-
-Geliştiriciye başlangıçta peşinen bir mikroservis ya da dağıtık sistem mimarisi **dayatmaz**. İster tek bir süreçte (in-process) çalışan yalın bir **modüler monolith** ile başlayın, ister projeniz zamanla **çok dilli (Rust, C#, TypeScript, Elixir) dağıtık sistemlere** evrilsin; `clrinf`, yapay zeka ajanlarını önceden tanımlanmış mimari kurallar ve sözleşmeler içinde kalmaya zorlayarak, özellikle karmaşıklaşan projelerde kontrolü kaybetmeden geliştirme yapabilmenize destek olmayı hedefler.
-
----
-
-## Neden clrinf?
-
-Yapay zeka ajanları hızlı kod üretebilir; ancak proje büyüdükçe mimari sınırları ihlal etme, katmanları birbirine karıştırma ve kontrolsüz token tüketme eğilimindedir. Üstelik bu durum, yüksek maliyetli "frontier" modeller yerine daha ekonomik veya yerel modeller kullanıldığında çok daha belirgin hale gelir. `clrinf`, bu zorlukları hafifletmek ve geliştiriciye yardımcı olmak için üç temel hedefe odaklanır:
-
-1. **Daha Düşük Modellerde Bile Mimari Sınırları Koruma Desteği**
-   - Yapay zeka modelleri büyüdükçe yetenekleri artsa da mimari katmanları ihlal etme riski devam eder. `clrinf` bir kalite garantisi sunmaz; ancak ajanı deterministik kurallarla sınırlandırarak, daha düşük parametreli veya yerel modellerde (SLM / Local LLM) bile mimari açıdan daha tutarlı kod üretilmesine katkı sağlamaya çalışır.
-   - Roslyn linter'ları (`ARCH001-ARCH005`), Syn AST denetleyicileri (`RUST_ARCH001`) ve TypeScript AST linter'ları (`ARCH_TS_001`) ile mimari sınırları derleme seviyesinde denetler.
-   - Ajan mimari bir kuralı atladığında IDE ve Git hook'ları (`clrinf hook install`) geri bildirim üreterek ajanın belirlenen sınırlar içinde kalmasını hatırlatır; mimari sapmaların erkenden fark edilmesine yardımcı olur.
-
-2. **Hazır Kod Üretim Şablonlarıyla Token Tüketimini Düşürme**
-   - Ajanların sıfırdan mimari iskelet veya DTO kurgulamaya çalışırken yüksek miktarda token tüketmesinin önüne geçmeye yardımcı olur.
-   - CLI iskeletleyicileri (`clrinf rule new`, `clrinf add module/entity`), yerleşik modül kataloğu (`clrinf catalog` / `clrinf module adopt`) ve boşluk doldurma planları (`clrinf plan`) ile mekanik işlerin şablonlar üzerinden ilerlemesini sağlar.
-   - Ajanın tüm projeyi baştan sona okuması yerine; `clrinf plan` ve Graft bağlam grafiği ile yalnızca doldurması gereken iş mantığına ve dar dosya bağlamına odaklanması hedeflenir. `--profile lean` Meta MCP sunucusu ile oturum başına araç şeması token maliyeti düşürülür.
-
-3. **Karmaşık ve Dağıtık Projelerde Kontrolü Elde Tutma**
-   - Dağıtık sistem bir **önkoşul veya ilk adım değil**, proje karmaşıklaştığında devreye giren bir **ölçeklenme seçeneğidir**.
-   - Proje büyüyüp çok servisli veya dağıtık bir yapıya evrildiğinde; sözleşme öncelikli yapı (JSON Schema, CloudEvents), drift tespiti (`clrinf topology drift`), etki analizi (`clrinf topology impact`) ve Outbox/Idempotency şablonları sayesinde, yapay zeka ajanları ile çalışırken mimari kontrolün kaybedilmemesine destek olur.
+Start with a **Modular Monolith** and local ACID transactions, adopt in **5 minutes** in any existing repository with **zero runtime lock-in**, and scale out to cross-service event topologies only when you need to.
 
 ---
 
-## Temel Mimari Prensipleri
+## Why clrinf?
 
-1. **Ajan Korumaları ve Dar Bağlam (Agent Guardrails & Context Efficiency)**: Tek kural dosyasından (`clrinf.rules.toml`) beslenen otomatik koruma. `clrinf hook install` (Claude Code, Cursor, Antigravity, git pre-commit) ajanın her dosya düzenlemesinden sonra kuralları denetler; `clrinf plan` mekanik işleri yapıp ajana yalnızca doldurulacak iş mantığını ve dar dosya bağlamını bırakır; `clrinf agents sync` aynı kuralları `AGENTS.md` / `CLAUDE.md` / Cursor kurallarına yazar. Ayrıntılar: [Ajan Korumaları](docs/guides/agent-guardrails.md), [Benchmark Protokolü](docs/benchmarks/README.md).
-2. **Dile Özgü İdiomatik İş Kuralları & Derleyici Seviyesinde Denetim**:
-   - **C#**: `IBusinessRule<T>` arayüzü, `RulePipeline` ve Roslyn tabanlı mimari denetleyiciler (`ARCH001` - `ARCH005`).
-   - **Rust**: `BusinessRule<T>` trait'i, `RulePipeline` ve Syn tabanlı AST linter (`RUST_ARCH001`).
-   - **TypeScript**: Saf fonksiyonel `Rule<TCtx>`, `pipeRules` zinciri, `Result<T, E>` monadı ve TS AST linter (`ARCH_TS_001`).
-3. **Sözleşme Öncelikli (Contract-First) Bütünlük**: Tüm veri modelleri ve servisler arası iletişim, dilden bağımsız kanonik JSON Schema (Draft 2020-12) ve CloudEvents 1.0 standartları üzerinden yapılandırılır; modeller otomatik üretilir.
-4. **Karmaşık ve Dağıtık Sistemlerde Olay Topolojisi Koruması**: Sistem büyüdüğünde derleyicinin göremediği servisler arası bağımlılıkları koruma altına alır:
-   - **Drift Tespiti**: `topology drift` ile şemadaki `x-published-by` / `x-subscribed-by` beyanları gerçek servis kodu ile karşılaştırılır; beyan edilmemiş publish/handle ve doğrudan outbox yazımları (`DRIFT_*`) yakalanır.
-   - **Şema Evrimi Analizi**: Sürümler arası alan farkları kırıcı / kırıcı olmayan olarak sınıflandırılır; eksik upcaster (`TOPOLOGY_UPCASTER_MISSING`) tanısı neyin kırıldığını bildirir.
-   - **Etki Analizi**: `topology impact` bir olayı değiştirmeden önce etkilenen servisleri, sürümleri ve yalnızca ilgili kaynak dosyalarını listeler (ajana tüm repo yerine dar bağlam verir).
-   - **Olay Öncelikli İskelet**: `event subscribe|publish` şemayı günceller, CloudEvent publisher ve idempotent subscriber kabuklarını üretir. Kabuk, `IdempotencyStore` (`claim`/`complete`/`release`) ile **etkin-tek-sefer (effectively-once)** işleme sağlar.
-   - **PR Raporu & Topoloji Doğrulama**: `topology report` PR'da topoloji farklarını özetler; ölü olayları (`TOPOLOGY_DEAD_EVENT`) ve yetim aboneleri (`TOPOLOGY_ORPHAN_SUBSCRIBER`) derleme/CI öncesinde saptar.
-5. **Merkezi Orkestratör & Meta MCP Gateway**: Otonom yapay zeka kodlama ajanları (Claude, Cursor, Antigravity) için JSON-RPC 2.0 stdio protokolü üzerinden ekosistem bileşenlerini merkezi araçlarla denetleme, kural üretme ve doğrulama yeteneği. `--profile lean` ile oturum başına sabit araç şeması token maliyeti düşürülür.
+Prompt instructions in `AGENTS.md` or `CLAUDE.md` drift over long coding sessions:
+- Agents silently break cross-service JSON Schema / CloudEvents contracts or emit undocumented events.
+- Infrastructure imports leak into pure domain layers.
+- Direct outbox writes bypass canonical CloudEvent publishers.
+- Agents burn tens of thousands of tokens reading boilerplate CRUD handlers or exploring an entire monorepo for a single event change.
+
+**clrinf** drives everything from one source of truth (`clrinf.rules.toml`): agent instructions, deterministic post-edit hooks, targeted impact slices, compile-time CRUD generation, and CI verification gates.
 
 ---
 
-## Kullanım Biçimleri
+## 5-Minute Adoption (Zero Runtime Lock-In)
 
-| Senaryo | Kullanılan Bileşenler | Gereksinim Dışı Unsurlar |
-|---|---|---|
-| **Modüler Monolith (Önerilen Başlangıç)** | İlgili dilin çekirdeği, süreç-içi dispatch, bellek/SQLite adaptörü, izole iş kuralları | Mikroservis bölünmesi, dağıtık kilit, mesaj brokerı, Docker |
-| **Yapay Zeka ile Güvenli Geliştirme** | `clrinf hook`, `clrinf plan`, `clrinf catalog/adopt`, Meta MCP Gateway | Token israfı, mimari sapmalar, devasa dosya bağlamı yükleme |
-| **Kanonik Veri & DTO Üretimi** | JSON Schema + `clrinf generate` | Çalışma zamanı servisleri, NATS, Docker |
-| **Çok Dilli Dağıtık Sistem (İhtiyaç Halinde Ölçeklenme)** | Kanonik sözleşmeler, Outbox/Inbox adaptörleri, HTTP/mesajlaşma, topoloji denetimi | Tek dil mecburiyeti, tek veri tabanı zorunluluğu, kontrolsüz drift |
-| **Çapraz Servis Olay Doğrulama** | `clrinf topology check` + `generate-pubsub` | Taşıma katmanı bağımlılıkları (Kafka/NATS zorunluluğu yoktur) |
+### 1. Install the binary (no Rust toolchain required)
 
-> [!NOTE]
-> **Mimari Esneklik ve Ölçeklenme:** Varsayılan olarak en yalın başlangıç olan **Modüler Monolith** yaklaşımı ve yerel ACID veritabanı işlemleri desteklenir. Dağıtık sistemler veya mikroservisler bir zorunluluk değil; projeniz büyüyüp servis sınırları aşıldığında Outbox, Inbox, Idempotency ve telafi edici işlemler (compensation) gibi açık kalıplarla güvenle devreye alınabilecek bir yetenektir. `correlation_id` telemetri izleme içindir; tek başına idempotency anahtarı olarak kullanılamaz.
-
----
-
-## Depo Bileşenleri ve Sorumluluk Alanları
-
-| Dizin | Sorumluluk ve Kapsam |
-|---|---|
-| [`tools/clrinf-codegen/`](tools/clrinf-codegen/README.md) | Çok dilli kod üretimi, şablonlar (`templates/`), Federated Language Worker orkestrasyonu, Topoloji Doğrulama ve Meta MCP stdio sunucusu |
-| [`core/csharp/`](core/csharp/README.md) | .NET 10 / C# 13 çekirdeği, C# sözleşmeleri (`contracts/`), Roslyn linterları (`ARCH001-ARCH005`), AOT CRUD source generator ve SQLite/EF Core referans adaptörleri |
-| [`core/rust/`](core/rust/README.md) | Rust çekirdeği, Rust sözleşmeleri (`contracts/`), Syn mimari linterı (`RUST_ARCH001`), Axum/CQRS ve bellek adaptörleri |
-| [`core/typescript/`](core/typescript/README.md) | Bun tabanlı TypeScript çekirdeği, TS sözleşmeleri (`contracts/`), AST linter (`ARCH_TS_001`) ve Event Inspector |
-| [`core/elixir/`](core/elixir/README.md) | Elixir çekirdeği, Elixir sözleşmeleri (`contracts/`) ve canlı olay akış (streaming) köprü adaptörleri |
-| [`templates/`](templates/) | Manifest tabanlı minimal başlangıç şablonları (`minimal-rust`, `minimal-typescript`, `minimal-csharp`) |
-| [`tests/conformance/`](tests/conformance/README.md) | Tüm dillerin paylaştığı kanonik geçerli/geçersiz tel formatı (wire-format) test verileri |
-
-Tüm dil çekirdekleri (`core/`) bu monorepo içinde yönetilir ve her biri kendi sözleşme ve şemalarını (`contracts/`) taşır. `tools/clrinf-codegen`, ekosistemin birleşik orkestrasyon ve kod üretim merkezidir.
-
----
-
-## Kurulum
-
-`clrinf` CLI ve Meta MCP sunucusu, açık kaynak dağıtım standartlarına uygun olarak GitHub Releases üzerinde önceden derlenmiş ikili (pre-built binary) paketler halinde yayınlanır. Sisteminizde **Rust veya Cargo kurulu olması gerekmez**.
-
-### Hızlı Kurulum (Linux & macOS)
-
-Tek satırlık kurulum betiği ile en güncel sürümü doğrudan kullanıcı dizininize (`~/.local/bin`) kurabilirsiniz:
-
+**Linux & macOS:**
 ```bash
 curl -fsSL https://raw.githubusercontent.com/brkmustu/clrinf/master/install.sh | bash
 ```
 
-*(Kaynak koddan derlemek isterseniz: depoyu klonlayıp `./install.sh --build` komutunu çalıştırabilirsiniz.)*
-
-### Hızlı Kurulum (Windows - PowerShell)
-
-PowerShell üzerinden en güncel sürümü doğrudan kullanıcı dizininize (`%LOCALAPPDATA%\clrinf\bin`) kurabilirsiniz:
-
+**Windows (PowerShell):**
 ```powershell
 irm https://raw.githubusercontent.com/brkmustu/clrinf/master/install.ps1 | iex
 ```
 
-*(Kaynak koddan derlemek isterseniz: depoyu klonlayıp `.\install.ps1 -Build` komutunu çalıştırabilirsiniz.)*
+*(Or build from source: `cargo build --release --manifest-path tools/clrinf-codegen/Cargo.toml`)*
+
+### 2. Declare your rules (`clrinf.rules.toml`)
+
+```toml
+[events]
+schema_dir = "contracts/schemas"
+
+[events.services]
+orders  = "services/orders"
+billing = "services/billing"
+
+[[forbid]]
+id      = "domain-no-infra"
+scope   = "imports"
+paths   = ["services/orders/src/domain", "services/billing/src/domain"]
+pattern = "Infrastructure"
+reason  = "Domain layer must stay free of infrastructure dependencies"
+
+[mcp]
+profile = "lean"
+```
+
+### 3. Wire your AI agents & CI
+
+```bash
+clrinf agents sync                 # Generates AGENTS.md / CLAUDE.md / GEMINI.md / Cursor rules
+clrinf hook install --agent all    # Installs Claude Code, Cursor, Antigravity & git pre-commit hooks
+clrinf verify                      # Runs topology + code<->contract drift + import rules + outbox check
+```
+
+**GitHub Actions:**
+```yaml
+- uses: brkmustu/clrinf@v0.1.0
+  with:
+    report-base-ref: origin/main
+```
 
 ---
 
-## Hızlı Başlangıç
+## Core Capabilities
 
-`clrinf` kurulduktan sonra tüm mimari denetim, kod üretimi ve modül yönetim komutları doğrudan terminalden çalıştırılabilir:
+### 1. Deterministic AI Agent Guardrails
+- **Language-aware `[[forbid]]` dependency rules:** `scope = "imports"` parses real `use` (Rust), `using` (C#), `import`/`require`/`export from` (TypeScript), and `alias`/`import`/`use` (Elixir) statements — eliminating comment and string-literal false positives.
+- **Post-edit feedback loops (`clrinf hook install`):** Runs incremental checks (`clrinf verify --changed`) on every file the agent touches and feeds actionable diagnostics back to Claude Code, Cursor, or Antigravity so the agent self-corrects immediately.
+- **Targeted change planning (`clrinf plan`):** Performs mechanical schema updates and scaffolds first, returning a narrow JSON slice (`fill_in`, `read_these`, `do_not_edit`, `constraints`) so small/local or frontier models only load what they need.
+- **Token-lean Meta MCP server (`clrinf mcp --profile lean`):** Cuts per-session fixed tool-schema overhead (`lean`: 10 tools including `clrinf_crud_map` & `clrinf_crud_eject`, `events`: 14 tools, `full`: 27 tools).
+- See [Agent Guardrails Guide](docs/guides/agent-guardrails.md) and [Benchmark Protocol](docs/benchmarks/README.md).
 
-### 1. Sözleşme ve Model Üretimi
-Çalışma zamanı bağımlılığı olmaksızın modelleri üretin:
+### 2. Zero-Boilerplate Compile-Time Native AOT CRUD (.NET 10)
+Keep only entities and lifecycle hooks on disk so agents never wade through 6 boilerplate files per entity:
+- Annotate entities with `[GenerateCrudEndpoints]` (`ClrinfCS.Generators` source generator emits DTOs, per-operation handlers, Minimal API `RequestDelegate` endpoints, zero-reflection `Utf8JsonWriter`/`JsonDocument` JSON support, and AOT-compatible Minimal API `ClrinfCS.OpenApi` metadata at compile time — **0 trim/AOT warnings** under `PublishAot=true`).
+- Add business rules without touching generated handlers: `clrinf rule new ActiveProductsCheck --lang csharp --entity Category --on before-delete` scaffolds `IBefore{Create|Update|Delete}Rule<T>` executed by `CrudRuleRunner`.
+- Inspect or eject a single operation via Smart Override: `clrinf crud-map --json` and `clrinf eject Category --operation Update`.
+- Enforced by Roslyn analyzers `ARCH001–ARCH005`, backed by `ClrinfCS.Adapters.EfCore` (`EfCrudStore`) and `ClrinfCS.Adapters.Sqlite`. See [`core/csharp/examples/AotCrud/`](core/csharp/examples/AotCrud/README.md).
 
-```bash
-# Şemaları doğrula
-clrinf check --schema-dir tools/clrinf-codegen/schemas
+### 3. Polyglot Event Contract & Topology Governance (Optional Scale-Up)
+When your modular monolith crosses service boundaries, think **`buf` for JSON Schema + CloudEvents** across Rust, C#, TypeScript, and Elixir:
+- **Code ↔ Contract Drift (`clrinf topology drift`):** Compares schema `x-published-by` / `x-subscribed-by` declarations against real service source code and flags raw outbox bypasses (`DRIFT_RAW_OUTBOX_WRITE`).
+- **Breaking Change & Upcaster Checks (`clrinf topology check` / `report`):** Detects dead events (`TOPOLOGY_DEAD_EVENT`), orphan subscribers (`TOPOLOGY_ORPHAN_SUBSCRIBER`), and missing schema upcasters (`TOPOLOGY_UPCASTER_MISSING`), plus PR diff summaries with `--fail-on-breaking`.
+- **Event Impact Slicing (`clrinf topology impact <event>`):** Lists affected services, sibling versions, and exact hand-written files before an edit begins.
+- **Schema-Driven Codegen (`generate`, `generate-pubsub`, `generate-upcasters`, `event subscribe|publish`):** Generates CloudEvents 1.0 publishers, idempotent subscriber shells (`IdempotencyStore` `claim`/`complete`/`release`), and multi-language DTOs.
 
-# Çok dilli (Rust, C#, TypeScript) sözleşme modellerini üret
-clrinf generate \
-  --schema-dir tools/clrinf-codegen/schemas \
-  --templates-dir tools/clrinf-codegen/templates \
-  --output ./generated
-```
+### 4. Zero-Dependency Backend Scaffolds (`clrinf catalog` / `clrinf module adopt`)
+Copy ready-made domain & infrastructure modules (CRM Deals, Contacts, Activities, Authz/Cedar, Caching, Outbox, Idempotency) into any `.csproj`, `Cargo.toml`, or `package.json`:
+- `--mode raw`: Pure, self-contained source files with zero `@clrinf/*` or `clrinf_*` dependency.
+- `--mode wired`: Automatically wired into native DI/module trees (`IServiceCollection`, Rust `pub mod`, TS barrel exports) with multi-tenant Amazon Cedar policies.
 
-### 2. Çapraz Servis Olay Topolojisini Denetleme & Kod Üretimi
-Dağıtık olay topolojisindeki ölü olayları, yetim tüketicileri ve versiyon geçişlerini doğrulayın:
-
-```bash
-# Topoloji grafiğini ve tanı raporunu çıkart
-clrinf topology check \
-  --schema-dir tools/clrinf-codegen/schemas \
-  --upcasters-dir tools/clrinf-codegen/schemas
-
-# Güvenli CloudEvent Publisher ve Idempotent Subscriber kabuklarını üret
-clrinf generate-pubsub \
-  --schema-dir tools/clrinf-codegen/schemas \
-  --templates-dir tools/clrinf-codegen/templates \
-  --lang all \
-  --output ./generated-pubsub
-```
-
-**Kod ↔ sözleşme drift'i, etki analizi, PR raporu ve olay öncelikli iskelet:**
-
-```bash
-# Beyan edilen topoloji gerçek kodla uyuşuyor mu? (CI'da hata ile çıkar)
-clrinf topology drift \
-  --schema-dir tools/clrinf-codegen/schemas \
-  --service billing=./services/billing --service orders=./services/orders
-
-# Bir olayı değiştirmeden önce: kim etkilenir, hangi dosyalar?
-clrinf topology impact orders.placed.v1 --src ./services
-
-# PR için topoloji değişiklik özeti (taban: git ref veya dizin)
-clrinf topology report --base-ref origin/main --fail-on-breaking
-
-# Servisi aboneliğe kaydet + kabukları üret; geriye yalnızca handler gövdesi kalır
-clrinf event subscribe orders.placed.v1 --service billing
-```
-
-### 3. Federated Language Workers & Mimari Denetim
-Kurulu sistem araçlarını (`dotnet`, `cargo`, `bun`) denetleyin ve mimari kuralları çalıştırın:
-
-```bash
-# Dil işçilerinin (workers) durumunu görüntüle
-clrinf worker check
-
-# Tüm dillerde statik mimari linterları çalıştır (Roslyn, Syn, TS AST)
-clrinf lint --lang all
-
-# İzole ve test edilebilir yeni bir iş kuralı iskeleti oluştur
-clrinf rule new CheckMaxDiscount --lang all --entity Order
-```
-
-### 4. Modüler Uygulama Yaşam Döngüsü & Çok Kiracılı Cedar Yetkilendirme
-Mevcut bir projede veya yeşil alanda modül, entity ve Cedar kuralları yönetin:
-
-```bash
-# Projeyi profil ve dispatcher seçimiyle başlat
-# Profiller: minimal (saf alan mantığı), standard (log + tx), full (tüm 7 modül)
-# Dispatcher: native (FrozenDictionary), mediatr, mediatornet
-clrinf init \
-  --profile standard \
-  --dispatcher native
-
-# Proje ve aktif modül durumunu sorgula
-clrinf status
-
-# Caching/logging gibi cross-cutting modülleri ekle, kaldır, senkronize et
-clrinf module add caching --provider memory
-clrinf module remove caching
-clrinf module sync
-
-# Domain modülü (handlers, models, kurallar ve çok kiracılı Cedar policy) ekle
-clrinf add module Orders
-
-# İlgili modüle CRUD entity'si, repository portu ve tenant koruması ekle
-clrinf add entity OrderItem -m Orders --prop name:string --prop price:f64
-
-# AOT CRUD: yalnızca entity dosyası yaz; handler/endpoint'ler derleme anında üretilir
-clrinf add entity OrderItem -m Orders --pattern aot --prop name:string --prop price:f64
-
-# Hook kuralı (generated handler'a dokunmadan iş kuralı ekle)
-clrinf rule new ActiveProductsCheck --lang csharp --entity Category --on before-delete
-
-# Etkin/ejected CRUD haritası (ajan bağlamı)
-clrinf crud-map --json
-
-# Bir operasyonu fiziksel dosyaya çıkar (Smart Override devreye girer)
-clrinf eject Category --operation Update
-```
-
-### 5. Modül Kataloğu ve Adaptasyon Motoru (`clrinf catalog` / `clrinf module adopt`)
-`clrinf`, geliştiricilerin sıfırdan yazmak zorunda kalmaması için **yerleşik modüller** (CRM Deals, Contacts, Activities, birleşik CRM Suite) ve **altyapı modülleri** (Cedar Authz, Caching, Logging, Transaction, Idempotency, Outbox) sunar.
-
-Geliştirici bu hazır modülleri dilediği projeye (.csproj, Cargo.toml, package.json) **iki farklı felsefede** aktarabilir:
-- **Ham (raw / zero-dependency)**: Sıfır harici paket veya kütüphane bağımlılığıyla, tamamen saf ve izole modeller, komutlar, repository portları ve Cedar güvenlik kurallarıyla yerleştirilir.
-- **Kablolanmış (wired / batteries-included)**: `clrinf` ekosisteminin tüm kabiliyetlerini barındıracak şekilde; hedef dilin doğal DI ve modül yapısına (C# `IServiceCollection`, Rust `pub mod`, TS barrel export) ve Cedar yetkilendirme hattına bağlanarak aktarılır.
-
-```bash
-# 1. Yerleşik modül kataloğunu listele
-clrinf catalog
-
-# 2. C# projesine yerleşik tam teşekküllü CRM Paketini (Deals+Contacts+Activities) ham (raw) olarak aktar
-clrinf module adopt crm \
-  --to-project ./apps/BillingService/BillingService.csproj \
-  --mode raw
-
-# 3. Rust crate'ine CRM Paketini modül ağacına bağlı (wired) ve Cedar politikasıyla aktar
-clrinf module adopt crm \
-  --to-project ./crates/crm-service/Cargo.toml \
-  --mode wired
-
-# 4. Tekil CRM Deals modülünü 'Sales' takma adıyla ham olarak aktar
-clrinf module adopt deals \
-  --to-project ./apps/BillingService/BillingService.csproj \
-  --target-dir src/Features/Sales \
-  --as Sales \
-  --mode raw
-
-# 5. Rust crate'ine Cedar yetkilendirme altyapısını ham haliyle aktar
-clrinf module adopt authz \
-  --to-project ./crates/identity-worker/Cargo.toml \
-  --mode raw
-```
-
-> Ayrıntılı mimari tasarım, diller arası idiomatik bağlama kuralları ve Cedar çok kiracılı izolasyon detayları için: [Modüler Uygulama ve Cedar Kılavuzu](docs/architecture/modular-application-and-cedar-guide.md).
-
-### 6. Otonom Yapay Zeka Geliştiricileri İçin Meta MCP Sunucusu
-Model Context Protocol (JSON-RPC 2.0 stdio) sunucusunu başlatın:
-
-```bash
-clrinf mcp
-```
-*(MCP Araçları: `clrinf_list_catalog`, `clrinf_adopt_module`, `clrinf_module_manage`, `clrinf_add_domain_module`, `clrinf_add_entity`, `clrinf_lint_architecture`, `clrinf_scaffold_rule`, `clrinf_generate_pubsub`, `clrinf_validate_topology`, `clrinf_topology_drift`, `clrinf_event_impact`, `clrinf_topology_report`, `clrinf_event_register`, `clrinf_plan_change`, `clrinf_verify`. Profiller: `full`, `events`, `lean` — `clrinf mcp --profile lean`)*
-
-> [!TIP]
-> **Geliştiriciler İçin Kaynak Koddan Çalıştırma:** İkili dosyayı kurmadan doğrudan yerel kaynak kod üzerinden denemek isterseniz, komutları `cargo run --manifest-path tools/clrinf-codegen/Cargo.toml -- <komut>` şeklinde de yürütebilirsiniz.
-
+### 5. Optional Reference Runtimes & Language Linters
+The `core/` packages are optional reference implementations, never required to use the guardrail or contract CLI:
+- **Tier-1:** [`core/rust/`](core/rust/README.md) (Syn `RUST_ARCH001`, Axum/CQRS), [`core/csharp/`](core/csharp/README.md) (.NET 10, Roslyn `ARCH001–ARCH005`, `ClrinfCS.Generators` AOT CRUD, Native `FrozenDictionary` dispatcher, `EfCrudStore` / SQLite adapters), [`core/typescript/`](core/typescript/README.md) (Bun, TS AST `ARCH_TS_001`, Event Inspector).
+- **Experimental / Streaming Bridge:** [`core/elixir/`](core/elixir/README.md) (OTP core, AST `ARCH_EX_001-004`, NATS live streaming bridge).
 
 ---
 
-## Lisans
+## Repository Layout
 
-Bu proje [BSL 1.1](LICENSE) lisansı altındadır. Lisans dönüşüm tarihi (Change Date) **2030-09-08** olarak belirlenmiş olup, bu tarihte otomatik olarak Apache-2.0 lisansına dönüşecektir.
+| Directory | Responsibility |
+|---|---|
+| [`tools/clrinf-codegen/`](tools/clrinf-codegen/README.md) | Single-binary Rust CLI, language-aware import/code analyzer, topology & drift engine, module adopter, and Meta MCP server |
+| [`core/`](docs/architecture/core-and-adapters.md) | Optional Rust, C#, TypeScript, and Elixir reference cores, AOT CRUD generator & adapters |
+| [`templates/`](templates/) | Minimal starter templates (`minimal-rust`, `minimal-typescript`, `minimal-csharp`, `minimal-elixir`) and `eticaret-showcase` |
+| [`examples/guardrails-benchmark/`](examples/guardrails-benchmark/) | Reproducible polyglot fixture for verifying guardrails & deterministic context-cost reductions |
+| [`tests/conformance/`](tests/conformance/README.md) | Canonical wire-format fixtures shared across all four languages |
+| [`docs/`](docs/README.md) | Architecture boundaries, capability parity matrix, constitution, and benchmark methodology |
+
+---
+
+## License
+
+Licensed under the [Apache License, Version 2.0](LICENSE).

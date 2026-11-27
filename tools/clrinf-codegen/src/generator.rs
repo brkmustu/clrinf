@@ -185,7 +185,7 @@ impl Generator {
 
         if schema_files.is_empty() {
             anyhow::bail!(
-                "Belirtilen konumda geçerli JSON schema bulunamadı: {}",
+                "No valid JSON schema found at: {}",
                 schema_input.display()
             );
         }
@@ -207,7 +207,7 @@ impl Generator {
             let domain_snake = schema.domain.to_snake_case();
 
             println!(
-                "\n🧩 CQRS Dikey Dilimi Üretiliyor: \x1b[1;36m{}\x1b[0m (Etki Alanı: {})",
+                "\n🧩 Generating CQRS Vertical Slice: \x1b[1;36m{}\x1b[0m (Domain: {})",
                 schema.title, domain_pascal
             );
 
@@ -249,7 +249,7 @@ impl Generator {
                 let rendered_obek = self.tera.render("csharp/obek.tera", &context)?;
                 let obek_file = cs_domain_dir.join(format!("{}Obegi.cs", schema.title));
                 std::fs::write(&obek_file, rendered_obek)?;
-                println!("  ├── [C# Kök Öbek]      {}", obek_file.display());
+                println!("  ├── [C# Aggregate]     {}", obek_file.display());
                 total_files += 1;
             }
 

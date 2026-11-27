@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.clrinf.com/billing/InvoiceIssued.v1.schema.json",
+  "title": "InvoiceIssuedV1",
+  "description": "Emitted after billing issues an invoice for an order.",
+  "type": "object",
+  "x-domain": "billing",
+  "x-event-type": "billing.invoice.issued.v1",
+  "x-published-by": ["billing"],
+  "x-subscribed-by": ["orders"],
+  "required": ["invoice_id", "order_id", "amount"],
+  "properties": {
+    "invoice_id": { "type": "string", "description": "Unique invoice identifier" },
+    "order_id": { "type": "string", "description": "Associated order identifier" },
+    "amount": { "type": "number", "minimum": 0, "description": "Invoiced amount" }
+  }
+}

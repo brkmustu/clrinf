@@ -28,19 +28,19 @@ DO_UNINSTALL=false
 
 show_help() {
     cat << EOF
-${BOLD}clrinf CLI & MCP Linux Kurulum Aracı${NC}
-CachyOS, Arch Linux ve tüm modern Linux dağıtımlarıyla tam uyumludur.
+${BOLD}clrinf CLI & MCP Linux/macOS Installer${NC}
+Supports modern Linux distributions and macOS.
 
-${BOLD}KULLANIM:${NC}
-    ./install.sh [SEÇENEKLER]
+${BOLD}USAGE:${NC}
+    ./install.sh [OPTIONS]
 
-${BOLD}SEÇENEKLER:${NC}
-    --user               Kullanıcı dizinine kur (~/.local/bin) [Varsayılan, root gerektirmez]
-    --system             Sistem geneline kur (/usr/local/bin) [sudo gerektirir]
-    --dir <PATH>         Özel bir hedef kurulum dizini belirle
-    --build              Kaynak koddan yeniden derlemeyi zorunlu kıl (cargo build --release)
-    --uninstall          Yüklü ikili dosyaları ve sembolik bağları kaldır
-    -h, --help           Bu yardım mesajını göster
+${BOLD}OPTIONS:${NC}
+    --user               Install to user bin (~/.local/bin) [Default, no root required]
+    --system             Install system-wide (/usr/local/bin) [Requires sudo]
+    --dir <PATH>         Custom installation directory
+    --build              Force build from source (cargo build --release)
+    --uninstall          Remove installed binaries and symlinks
+    -h, --help           Show this help message
 
 EOF
 }
@@ -75,7 +75,7 @@ while [[ $# -gt 0 ]]; do
             exit 0
             ;;
         *)
-            echo -e "${RED}Bilinmeyen seçenek: $1${NC}"
+            echo -e "${RED}Unknown option: $1${NC}"
             show_help
             exit 1
             ;;
@@ -100,7 +100,7 @@ detect_distro
 # UNINSTALL FLOW
 # ==============================================================================
 if [ "${DO_UNINSTALL}" = true ]; then
-    echo -e "${YELLOW}🧹 clrinf CLI ve araçları kaldırılıyor...${NC}"
+    echo -e "${YELLOW}🧹 Removing clrinf CLI and tools...${NC}"
     
     if [ "${IS_SYSTEM}" = true ] && [ "$EUID" -ne 0 ]; then
         SUDO="sudo"
@@ -117,14 +117,14 @@ if [ "${DO_UNINSTALL}" = true ]; then
         rm -f "${HOME}/.cargo/bin/clrinf"
     fi
 
-    echo -e "${GREEN}✅ clrinf başarıyla kaldırıldı.${NC}"
+    echo -e "${GREEN}✅ clrinf has been uninstalled.${NC}"
     exit 0
 fi
 
 # ==============================================================================
 # INSTALL FLOW
 # ==============================================================================
-echo -e "${CYAN}${BOLD}🚀 clrinf Kurulum Motoru başlatılıyor (${DISTRO_NAME} / ${DISTRO_ID})${NC}"
+echo -e "${CYAN}${BOLD}🚀 Starting clrinf Installer (${DISTRO_NAME} / ${DISTRO_ID})${NC}"
 
 GITHUB_REPO="brkmustu/clrinf"
 CLRINF_VERSION="${CLRINF_VERSION:-latest}"
@@ -144,7 +144,7 @@ detect_platform() {
             arch="aarch64"
             ;;
         *)
-            echo -e "${YELLOW}⚠️  Desteklenmeyen mimari: ${arch}${NC}"
+            echo -e "${YELLOW}⚠️  Unsupported architecture: ${arch}${NC}"
             return 1
             ;;
     esac
@@ -158,7 +158,7 @@ detect_platform() {
             echo "${arch}-apple-darwin"
             ;;
         *)
-            echo -e "${YELLOW}⚠️  Desteklenmeyen işletim sistemi: ${os}${NC}"
+            echo -e "${YELLOW}⚠️  Unsupported OS: ${os}${NC}"
             return 1
             ;;
     esac
@@ -174,7 +174,7 @@ if [ "${FORCE_BUILD}" = false ]; then
     for bin in "${POSSIBLE_BINS[@]}"; do
         if [ -f "${bin}" ] && [ -x "${bin}" ]; then
             TARGET_BIN="${bin}"
-            echo -e "${GREEN}✓ Yerel olarak derlenmiş ikili dosya bulundu: ${TARGET_BIN}${NC}"
+            echo -e "${GREEN}✓ Found locally built binary: ${TARGET_BIN}${NC}"
             break
         fi
     done
@@ -183,7 +183,7 @@ if [ "${FORCE_BUILD}" = false ]; then
     if [ -z "${TARGET_BIN}" ]; then
         PLATFORM_TARGET="$(detect_platform || true)"
         if [ -n "${PLATFORM_TARGET}" ]; then
-            echo -e "${BLUE}🌐 GitHub Releases üzerinden önceden derlenmiş paket aranıyor (${PLATFORM_TARGET})...${NC}"
+            echo -e "${BLUE}🌐 Checking GitHub Releases for pre-built binary (${PLATFORM_TARGET})...${NC}"
             
             if [ "${CLRINF_VERSION}" = "latest" ]; then
                 RELEASE_URL="https://github.com/${GITHUB_REPO}/releases/latest/download/clrinf-${PLATFORM_TARGET}.tar.gz"
@@ -206,7 +206,7 @@ if [ "${FORCE_BUILD}" = false ]; then
             fi
 
             if [ "${DOWNLOADED}" = true ] && [ -f "${TAR_FILE}" ] && [ -s "${TAR_FILE}" ]; then
-                echo -e "${GREEN}✓ Önceden derlenmiş paket indirildi. Arşiv açılıyor...${NC}"
+                echo -e "${GREEN}✓ Downloaded pre-built archive. Extracting...${NC}"
                 tar -xzf "${TAR_FILE}" -C "${TMP_DIR}"
                 
                 # Check for extracted binary
@@ -216,7 +216,7 @@ if [ "${FORCE_BUILD}" = false ]; then
                     TARGET_BIN="${TMP_DIR}/clrinf"
                 fi
             else
-                echo -e "${YELLOW}ℹ️  GitHub Release paketi bulunamadı (henüz yayınlanmamış veya ağ erişilemiyor).${NC}"
+                echo -e "${YELLOW}ℹ️  Pre-built GitHub Release package not found (not published yet or offline).${NC}"
             fi
         fi
     fi
@@ -225,14 +225,14 @@ fi
 # Fallback: Build from source if binary is still not found or --build is explicitly requested
 if [ -z "${TARGET_BIN}" ] || [ "${FORCE_BUILD}" = true ]; then
     if [ -d "${CODEGEN_DIR}" ] && [ -f "${CODEGEN_DIR}/Cargo.toml" ]; then
-        echo -e "${BLUE}📦 clrinf-codegen yerel kaynak koddan derleniyor (cargo build --release)...${NC}"
+        echo -e "${BLUE}📦 Building clrinf-codegen from local source (cargo build --release)...${NC}"
         
         if ! command -v cargo &> /dev/null; then
-            echo -e "${RED}❌ 'cargo' bulunamadı! Önceden derlenmiş ikili paket bulunamadığı için derleme için Rust gereklidir.${NC}"
+            echo -e "${RED}❌ 'cargo' not found! Rust is required to build from source.${NC}"
             if [[ "${DISTRO_ID}" == "cachyos" || "${DISTRO_ID}" == "arch" ]]; then
-                echo -e "${YELLOW}👉 CachyOS/Arch üzerinde yüklemek için:${NC} sudo pacman -S rust"
+                echo -e "${YELLOW}👉 Install on Arch/CachyOS:${NC} sudo pacman -S rust"
             else
-                echo -e "${YELLOW}👉 https://rustup.rs üzerinden Rust kurabilirsiniz.${NC}"
+                echo -e "${YELLOW}👉 Install Rust via https://rustup.rs${NC}"
             fi
             exit 1
         fi
@@ -241,20 +241,20 @@ if [ -z "${TARGET_BIN}" ] || [ "${FORCE_BUILD}" = true ]; then
         cargo build --release
         TARGET_BIN="${CODEGEN_DIR}/target/release/clrinf-codegen"
     else
-        echo -e "${RED}❌ Kurulum için uygun bir ikili dosya bulunamadı ve yerel kaynak kod dizini mevcut değil.${NC}"
-        echo -e "👉 Depoyu kaynak koddan klonlayarak kurmak için:"
-        echo -e "   git clone --recurse-submodules https://github.com/${GITHUB_REPO}.git"
+        echo -e "${RED}❌ No pre-built binary found and local source directory is unavailable.${NC}"
+        echo -e "👉 Clone the repository and build from source:"
+        echo -e "   git clone https://github.com/${GITHUB_REPO}.git"
         echo -e "   cd clrinf && ./install.sh --build"
         exit 1
     fi
 fi
 
 if [ ! -f "${TARGET_BIN}" ]; then
-    echo -e "${RED}❌ İkili dosya doğrulanamadı: ${TARGET_BIN}${NC}"
+    echo -e "${RED}❌ Could not verify binary: ${TARGET_BIN}${NC}"
     exit 1
 fi
 
-echo -e "${BLUE}📁 Hedef dizin hazırlanıyor: ${INSTALL_DIR}${NC}"
+echo -e "${BLUE}📁 Preparing install directory: ${INSTALL_DIR}${NC}"
 if [ "${IS_SYSTEM}" = true ]; then
     if [ "$EUID" -ne 0 ]; then
         SUDO="sudo"
@@ -262,12 +262,12 @@ if [ "${IS_SYSTEM}" = true ]; then
         SUDO=""
     fi
     ${SUDO} mkdir -p "${INSTALL_DIR}"
-    echo -e "${BLUE}⬇️  Sistem geneline kopyalanıyor (${INSTALL_DIR})...${NC}"
+    echo -e "${BLUE}⬇️  Installing system-wide (${INSTALL_DIR})...${NC}"
     ${SUDO} install -m 755 "${TARGET_BIN}" "${INSTALL_DIR}/clrinf-codegen"
     ${SUDO} ln -sf "clrinf-codegen" "${INSTALL_DIR}/clrinf"
 else
     mkdir -p "${INSTALL_DIR}"
-    echo -e "${BLUE}⬇️  Kullanıcı dizinine kopyalanıyor (${INSTALL_DIR})...${NC}"
+    echo -e "${BLUE}⬇️  Installing to user bin (${INSTALL_DIR})...${NC}"
     install -m 755 "${TARGET_BIN}" "${INSTALL_DIR}/clrinf-codegen"
     ln -sf "clrinf-codegen" "${INSTALL_DIR}/clrinf"
 
@@ -286,25 +286,25 @@ fi
 
 
 echo ""
-echo -e "${GREEN}${BOLD}🎉 clrinf CLI ve MCP Sunucusu başarıyla kuruldu!${NC}"
-echo -e "  📍 Binary:     ${BOLD}${INSTALL_DIR}/clrinf-codegen${NC}"
-echo -e "  🔗 Kısayol:    ${BOLD}${INSTALL_DIR}/clrinf${NC}"
+echo -e "${GREEN}${BOLD}🎉 clrinf CLI & MCP Server installed successfully!${NC}"
+echo -e "  📍 Binary:  ${BOLD}${INSTALL_DIR}/clrinf-codegen${NC}"
+echo -e "  🔗 Alias:   ${BOLD}${INSTALL_DIR}/clrinf${NC}"
 echo ""
 
 if [ "${PATH_CHECK}" = true ]; then
-    echo -e "${GREEN}✅ '${INSTALL_DIR}' dizini PATH ortam değişkeninizde mevcut.${NC}"
+    echo -e "${GREEN}✅ '${INSTALL_DIR}' is already in your PATH.${NC}"
 else
-    echo -e "${YELLOW}⚠️  Dikkat: '${INSTALL_DIR}' dizini şu anda PATH ortam değişkeninizde görünmüyor.${NC}"
-    echo -e "Kabuğunuza göre aşağıdaki satırı profil dosyanıza ekleyin:"
+    echo -e "${YELLOW}⚠️  Note: '${INSTALL_DIR}' is not currently in your PATH.${NC}"
+    echo -e "Add the following line to your shell profile:"
     echo -e "  • Bash: ${BOLD}echo 'export PATH=\"${INSTALL_DIR}:\$PATH\"' >> ~/.bashrc${NC}"
     echo -e "  • Zsh:  ${BOLD}echo 'export PATH=\"${INSTALL_DIR}:\$PATH\"' >> ~/.zshrc${NC}"
     echo -e "  • Fish: ${BOLD}fish_add_path ${INSTALL_DIR}${NC}"
 fi
 
 echo ""
-echo -e "${BOLD}Hızlı Doğrulama Komutları:${NC}"
+echo -e "${BOLD}Quick Verification Commands:${NC}"
 echo -e "  ${CYAN}clrinf --version${NC}"
+echo -e "  ${CYAN}clrinf verify --help${NC}"
 echo -e "  ${CYAN}clrinf catalog${NC}"
-echo -e "  ${CYAN}clrinf docs --lang csharp${NC}"
-echo -e "  ${CYAN}clrinf mcp${NC}"
+echo -e "  ${CYAN}clrinf mcp --profile lean${NC}"
 echo ""

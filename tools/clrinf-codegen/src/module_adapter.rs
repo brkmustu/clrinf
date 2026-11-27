@@ -43,7 +43,7 @@ impl TargetProject {
         };
 
         if !path.exists() {
-            bail!("Hedef proje yolu bulunamadı: {}", path.display());
+            bail!("Target project path not found: {}", path.display());
         }
 
         // Case A: target_path is a file
@@ -104,7 +104,7 @@ impl TargetProject {
             }
 
             bail!(
-                "Belirtilen dosya bilinen bir proje dosyası değil (.csproj, Cargo.toml, package.json): {}",
+                "Specified file is not a recognized project manifest (.csproj, Cargo.toml, package.json): {}",
                 path.display()
             );
         }
@@ -196,7 +196,7 @@ impl TargetProject {
         }
 
         bail!(
-            "Hedef dizinde proje türü otomatik tespit edilemedi (.csproj, Cargo.toml, package.json bulunamadı): {}",
+            "Could not auto-detect project type in target directory (.csproj, Cargo.toml, package.json not found): {}",
             path.display()
         );
     }
@@ -261,7 +261,7 @@ impl FromStr for AdoptMode {
             "raw" | "pure" | "ham" => Ok(AdoptMode::Raw),
             "wired" | "integrated" | "hooked" => Ok(AdoptMode::Wired),
             _ => bail!(
-                "Bilinmeyen adopt modu: '{}'. (Desteklenen modlar: 'raw', 'wired')",
+                "Unknown adopt mode: '{}'. (Supported modes: 'raw', 'wired')",
                 s
             ),
         }
@@ -286,7 +286,7 @@ pub fn get_built_in_catalog() -> Vec<CatalogModule> {
             id: "deals".to_string(),
             name: "CRM Deals / Sales Pipeline".to_string(),
             category: "Domain Feature".to_string(),
-            description: "Satış fırsatları hunisi (Prospect, Qualified, Proposal, Won, Lost), aşama geçiş kuralları ve Cedar politikası.".to_string(),
+            description: "Sales pipeline (Prospect, Qualified, Proposal, Won, Lost), stage transition rules, and Cedar policy.".to_string(),
             default_target_dir: "src/Features/Sales".to_string(),
             supports_raw: true,
             supports_wired: true,
@@ -296,7 +296,7 @@ pub fn get_built_in_catalog() -> Vec<CatalogModule> {
             id: "contacts".to_string(),
             name: "CRM Contacts / Customers".to_string(),
             category: "Domain Feature".to_string(),
-            description: "Müşteri ve aday yönetimi, RFC e-posta doğrulaması, kiracı-içi mükerrerlik kontrolü ve Cedar politikası.".to_string(),
+            description: "Customer & lead management, RFC email validation, per-tenant deduplication, and Cedar policy.".to_string(),
             default_target_dir: "src/Features/Contacts".to_string(),
             supports_raw: true,
             supports_wired: true,
@@ -306,7 +306,7 @@ pub fn get_built_in_catalog() -> Vec<CatalogModule> {
             id: "activities".to_string(),
             name: "CRM Activities / Interactions".to_string(),
             category: "Domain Feature".to_string(),
-            description: "İletişim, görüşme ve görev takibi, kayıp anlaşma koruma kuralı ve Cedar politikası.".to_string(),
+            description: "Calls, meetings, and task tracking, closed-deal guard rule, and Cedar policy.".to_string(),
             default_target_dir: "src/Features/Activities".to_string(),
             supports_raw: true,
             supports_wired: true,
@@ -316,7 +316,7 @@ pub fn get_built_in_catalog() -> Vec<CatalogModule> {
             id: "crm".to_string(),
             name: "CRM Full Suite".to_string(),
             category: "Domain Suite".to_string(),
-            description: "Tam teşekküllü B2B CRM paketi (Deals + Contacts + Activities + birleşik Cedar güvenlik muhafızı).".to_string(),
+            description: "Full B2B CRM suite (Deals + Contacts + Activities + unified multi-tenant Cedar policy).".to_string(),
             default_target_dir: "src/Features/Crm".to_string(),
             supports_raw: true,
             supports_wired: true,
@@ -326,7 +326,7 @@ pub fn get_built_in_catalog() -> Vec<CatalogModule> {
             id: "caching".to_string(),
             name: "Caching / In-Memory & Redis".to_string(),
             category: "Cross-Cutting Concern".to_string(),
-            description: "Yüksek başarımlı önbellekleme soyutlaması (ICacheService, MemoryCache).".to_string(),
+            description: "High-throughput caching abstraction (ICacheService, MemoryCache).".to_string(),
             default_target_dir: "src/Common/Caching".to_string(),
             supports_raw: true,
             supports_wired: true,
@@ -336,7 +336,7 @@ pub fn get_built_in_catalog() -> Vec<CatalogModule> {
             id: "logging".to_string(),
             name: "Structured Logging".to_string(),
             category: "Cross-Cutting Concern".to_string(),
-            description: "Yapılandırılmış loglama ve işlem yürütme zamanı ölçüm hattı.".to_string(),
+            description: "Structured logging and execution timing pipeline.".to_string(),
             default_target_dir: "src/Common/Logging".to_string(),
             supports_raw: true,
             supports_wired: true,
@@ -346,7 +346,7 @@ pub fn get_built_in_catalog() -> Vec<CatalogModule> {
             id: "transaction".to_string(),
             name: "Transaction & Unit of Work".to_string(),
             category: "Cross-Cutting Concern".to_string(),
-            description: "İşlem sınırları ve atomik Unit of Work yönetimi.".to_string(),
+            description: "Transaction boundaries and atomic Unit of Work orchestration.".to_string(),
             default_target_dir: "src/Common/Transaction".to_string(),
             supports_raw: true,
             supports_wired: true,
@@ -356,7 +356,7 @@ pub fn get_built_in_catalog() -> Vec<CatalogModule> {
             id: "auth".to_string(),
             name: "Authentication / JWT".to_string(),
             category: "Cross-Cutting Concern".to_string(),
-            description: "JWT kimlik doğrulama, token üretimi ve talepler (claims) denetimi.".to_string(),
+            description: "JWT authentication, token issuance, and claims verification.".to_string(),
             default_target_dir: "src/Common/Auth".to_string(),
             supports_raw: true,
             supports_wired: true,
@@ -366,7 +366,7 @@ pub fn get_built_in_catalog() -> Vec<CatalogModule> {
             id: "authz".to_string(),
             name: "Multi-Tenant Cedar Authorization".to_string(),
             category: "Cross-Cutting Concern".to_string(),
-            description: "Amazon Cedar tabanlı, varsayılan çok kiracılı (multi-tenant by default) yetkilendirme motoru.".to_string(),
+            description: "Amazon Cedar multi-tenant-by-default authorization engine.".to_string(),
             default_target_dir: "src/Common/Authz".to_string(),
             supports_raw: true,
             supports_wired: true,
@@ -376,7 +376,7 @@ pub fn get_built_in_catalog() -> Vec<CatalogModule> {
             id: "idempotency".to_string(),
             name: "Idempotency Store".to_string(),
             category: "Cross-Cutting Concern".to_string(),
-            description: "Kiracı-yalıtımlı mükerrer işlem engelleme portu (claim/complete/release).".to_string(),
+            description: "Tenant-scoped deduplication port (claim/complete/release).".to_string(),
             default_target_dir: "src/Common/Idempotency".to_string(),
             supports_raw: true,
             supports_wired: true,
@@ -386,7 +386,7 @@ pub fn get_built_in_catalog() -> Vec<CatalogModule> {
             id: "outbox".to_string(),
             name: "Transactional Outbox".to_string(),
             category: "Cross-Cutting Concern".to_string(),
-            description: "Güvenilir, kayıpsız olay dağıtımı için transactional outbox kuyruğu.".to_string(),
+            description: "Transactional outbox queue for reliable event delivery.".to_string(),
             default_target_dir: "src/Common/Outbox".to_string(),
             supports_raw: true,
             supports_wired: true,
@@ -396,28 +396,28 @@ pub fn get_built_in_catalog() -> Vec<CatalogModule> {
 }
 
 pub fn print_catalog() {
-    println!("📦 clrinf Yerleşik Modül Kataloğu (Built-In Module Catalog)\n");
-    println!("Kullanım:");
-    println!("  clrinf module adopt <MODÜL> --to-project <PROJE> [--mode raw|wired] [--as <TAKMA_AD>]\n");
+    println!("📦 clrinf Built-in Module Catalog\n");
+    println!("Usage:");
+    println!("  clrinf module adopt <MODULE> --to-project <PROJECT> [--mode raw|wired] [--as <ALIAS>]\n");
 
     let modules = get_built_in_catalog();
 
-    println!("🏢 Domain Modülleri & Paketler (Domain Features & Suites):");
+    println!("🏢 Domain Modules & Suites:");
     for m in modules.iter().filter(|m| m.category.starts_with("Domain")) {
         println!("  • {:12} — {:32} [raw ✅ | wired ✅]", m.id, m.name);
-        println!("    Tanım: {}", m.description);
-        println!("    Varsayılan Dizin: {}", m.default_target_dir);
+        println!("    Description: {}", m.description);
+        println!("    Default Dir: {}", m.default_target_dir);
         if !m.entities.is_empty() {
-            println!("    Varlıklar: {}", m.entities.join(", "));
+            println!("    Entities: {}", m.entities.join(", "));
         }
         println!();
     }
 
-    println!("⚙️  Altyapı Modülleri (Cross-Cutting Concerns):");
+    println!("⚙️  Infrastructure Modules (Cross-Cutting Concerns):");
     for m in modules.iter().filter(|m| m.category.starts_with("Cross")) {
         println!("  • {:12} — {:32} [raw ✅ | wired ✅]", m.id, m.name);
-        println!("    Tanım: {}", m.description);
-        println!("    Varsayılan Dizin: {}", m.default_target_dir);
+        println!("    Description: {}", m.description);
+        println!("    Default Dir: {}", m.default_target_dir);
         println!();
     }
 }
@@ -472,7 +472,7 @@ impl ModuleAdapter {
         };
 
         fs::create_dir_all(&destination_dir).with_context(|| {
-            format!("Hedef dizin oluşturulamadı: {}", destination_dir.display())
+            format!("Failed to create target directory: {}", destination_dir.display())
         })?;
 
         let mut files_modified = Vec::new();
@@ -489,7 +489,7 @@ impl ModuleAdapter {
                 options.mode,
             )?;
             notes.push(format!(
-                "Modül dış projeden aktarıldı: {}",
+                "Transplanted module from external project: {}",
                 src_proj.display()
             ));
             (created, policy)
@@ -531,7 +531,7 @@ impl ModuleAdapter {
                     if let Ok(p) = di_res {
                         files_modified.push(p);
                         notes.push(format!(
-                            "C# ServiceRegistration DI kaydı yapıldı: 'services.Add{}Module();'",
+                            "Registered C# ServiceRegistration DI: 'services.Add{}Module();'",
                             effective_name.to_upper_camel_case()
                         ));
                     }
@@ -549,7 +549,7 @@ impl ModuleAdapter {
                                 files_modified.push(main_rs);
                             }
                         }
-                        notes.push(format!("Rust modül ağacına bağlandı: 'pub mod {};'", rust_mod));
+                        notes.push(format!("Wired into Rust module tree: 'pub mod {};'", rust_mod));
                     }
                 }
                 Lang::TypeScript => {
@@ -560,7 +560,7 @@ impl ModuleAdapter {
                     if let Ok(p) = wire_res {
                         files_modified.push(p);
                         notes.push(format!(
-                            "TypeScript barrel export bağlandı: 'export * as {} from ...'",
+                            "Wired TypeScript barrel export: 'export * as {} from ...'",
                             ts_mod
                         ));
                     }
@@ -568,7 +568,7 @@ impl ModuleAdapter {
                 Lang::Elixir => {}
             }
         } else {
-            notes.push("Raw modu devrede: Sıfır harici paket bağımlılığıyla izole olarak yerleştirildi.".to_string());
+            notes.push("Raw mode active: placed in isolation with zero external package dependencies.".to_string());
         }
 
         Ok(AdoptResult {
@@ -644,7 +644,7 @@ impl ModuleAdapter {
         }
     }
 
-    // ─── C# Kod Adaptörü ──────────────────────────────────────────────────────
+    // ─── C# Code Adapter ───────────────────────────────────────────────────────
 
     fn adopt_csharp(
         target: &TargetProject,
@@ -1162,7 +1162,7 @@ public sealed class InMemory{singular_cap}Repository : I{singular_cap}Repository
         Ok((created, Some(policy_path)))
     }
 
-    // ─── Rust Kod Adaptörü ───────────────────────────────────────────────────
+    // ─── Rust Code Adapter ────────────────────────────────────────────────────
 
     fn adopt_rust(
         target: &TargetProject,
@@ -1476,7 +1476,7 @@ impl InMemory{singular_cap}Repository {{
         Ok((created, Some(policy_path)))
     }
 
-    // ─── TypeScript Kod Adaptörü ─────────────────────────────────────────────
+    // ─── TypeScript Code Adapter ──────────────────────────────────────────────
 
     fn adopt_typescript(
         target: &TargetProject,
@@ -1923,7 +1923,7 @@ forbid (
             created.push(target_file);
         } else {
             bail!(
-                "Kaynak projede '{}' modülü veya dosyası bulunamadı: {}",
+                "Module or file '{}' not found in source project: {}",
                 raw_name,
                 source_root.display()
             );

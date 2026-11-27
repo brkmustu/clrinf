@@ -441,6 +441,30 @@ mod tests {
     }
 
     #[test]
+    fn hook_run_flags_forbidden_import_with_exit_code_2() {
+        let root = tmp("forbid");
+        let domain = root.join("services/billing/src/domain");
+        std::fs::create_dir_all(&domain).unwrap();
+        std::fs::write(
+            root.join("clrinf.rules.toml"),
+            "[[forbid]]\nid=\"domain-no-infra\"\nscope=\"imports\"\npaths=[\"services/billing/src/domain\"]\npattern=\"Infrastructure\"\nreason=\"no infra\"\n",
+        )
+        .unwrap();
+        std::fs::write(
+            domain.join("invoice.ts"),
+            "import { Bad } from '../Infrastructure/db';\n",
+        )
+        .unwrap();
+        let (code, stderr) = run(
+            &root,
+            r#"{"tool_input":{"file_path":"services/billing/src/domain/invoice.ts"}}"#,
+        );
+        assert_eq!(code, 2, "stderr: {stderr}");
+        assert!(stderr.contains("RULE_FORBIDDEN_DEPENDENCY"), "stderr: {stderr}");
+        let _ = std::fs::remove_dir_all(root);
+    }
+
+    #[test]
     fn git_hook_refuses_to_overwrite_foreign_hook() {
         let root = tmp("git");
         std::fs::create_dir_all(root.join(".git/hooks")).unwrap();

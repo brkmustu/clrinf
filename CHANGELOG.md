@@ -7,7 +7,13 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-11-27
+
 ### Added
+- Migrated repository and language package manifests (`Cargo.toml`, `package.json`, `mix.exs`, `.csproj`) from BSL 1.1 to Apache License 2.0
+- Language-aware pure-Rust AST lexer & structural import analyzer (`ast.rs`) with `ForbidScope` (`raw`, `code`, `imports`) and Elixir scanning support
+- English-first CLI output and documentation (`README.md` + `README.tr.md`), Windows `x86_64-pc-windows-msvc` release packaging, and reusable GitHub Action (`action.yml`)
+- Reproducible polyglot guardrails & AOT CRUD context-cost benchmark fixture (`examples/guardrails-benchmark/`, `scripts/bench-guardrails.{ps1,sh}`)
 - AOT CRUD source generator (`ClrinfCS.Generators`): `[GenerateCrudEndpoints]`, per-operation handlers/endpoints, Native & Mediator.Net dispatchers, Smart Override, `CLRCRUD001-003`
 - CRUD runtime contracts (`ClrinfCS.Core`): `CrudOperations`, `CrudQuery`/`PagedResult<T>`, `ICrudStore`, `IBefore{Create|Update|Delete}Rule<T>`, `CrudRuleRunner`
 - EF Core CRUD adapter (`ClrinfCS.Adapters.EfCore`) with tenant-scoped reads/writes and 409 conflict mapping

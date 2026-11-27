@@ -99,12 +99,13 @@ fn subscribe_idents(s: &ParsedSchema) -> Vec<String> {
     ]
 }
 
-/// First non-generated file/line that references any of `idents`.
+/// First non-generated file/line that references any of `idents` in actual code.
 fn first_usage<'a>(sources: &'a [SourceFile], idents: &[String]) -> Option<(&'a SourceFile, usize)> {
     for file in sources.iter().filter(|f| !f.generated) {
+        let code = file.code_only();
         for ident in idents {
-            if contains_ident(&file.content, ident) {
-                let line = ident_lines(&file.content, ident).first().copied().unwrap_or(1);
+            if contains_ident(&code, ident) {
+                let line = ident_lines(&code, ident).first().copied().unwrap_or(1);
                 return Some((file, line));
             }
         }
@@ -113,15 +114,11 @@ fn first_usage<'a>(sources: &'a [SourceFile], idents: &[String]) -> Option<(&'a 
 }
 
 pub fn raw_outbox_writes(file: &SourceFile) -> Vec<usize> {
-    file.content
-        .lines()
+    let code = file.code_only();
+    code.lines()
         .enumerate()
         .filter(|(_, line)| {
             let lower = line.to_ascii_lowercase();
-            let trimmed = lower.trim_start();
-            if trimmed.starts_with("//") || trimmed.starts_with('*') || trimmed.starts_with("///") {
-                return false;
-            }
             lower.contains("outbox")
                 && (lower.contains(".enqueue(")
                     || lower.contains(".enqueueasync(")
@@ -249,5 +246,21 @@ mod tests {
         assert_eq!(s.name, "billing");
         assert!(ServiceSource::parse("nope").is_err());
         assert!(ServiceSource::parse("=x").is_err());
+    }
+
+    #[test]
+    fn ignores_comments_and_strings_in_outbox_and_usage_scans() {
+        use crate::ast::SourceLang;
+
+        let file = SourceFile {
+            path: PathBuf::from("svc/handler.rs"),
+            lang: SourceLang::Rust,
+            generated: false,
+            content: "/* outbox.enqueue(x); publishOrderPlaced(); */\nlet msg = \"outbox.enqueue(y)\";\noutbox.enqueue(ev);\n".into(),
+        };
+        assert_eq!(raw_outbox_writes(&file), vec![3]);
+        let files = [file];
+        let usage = first_usage(&files, &["publishOrderPlaced".into()]);
+        assert!(usage.is_none());
     }
 }

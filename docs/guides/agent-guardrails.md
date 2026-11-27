@@ -19,12 +19,13 @@ schema_dir = "contracts/schemas"      # varsayılan: tools/clrinf-codegen/schema
 billing = "services/billing"
 orders  = "services/orders"
 
-[[forbid]]                            # bağımlılık kuralı: dizin + yasaklı metin
+[[forbid]]                            # bağımlılık kuralı: dizin + yasaklı desen
 id      = "domain-no-infra"
+scope   = "imports"                   # raw (varsayılan) | code | imports
 paths   = ["services/orders/src/domain"]
 pattern = "Infrastructure"
 reason  = "Alan katmanı altyapıya bağımlı olamaz"
-extensions = ["cs", "ts", "rs"]       # isteğe bağlı
+extensions = ["cs", "ts", "rs", "ex"] # isteğe bağlı
 
 [agents]
 extra = ["Handler gövdelerinde yalnızca iş mantığı yaz."]
@@ -64,8 +65,8 @@ clrinf plan orders.placed.v1 --service billing --role subscriber --apply
 
 | Profil | Araç sayısı | Kullanım |
 |---|---|---|
-| `full` (varsayılan) | 25 | Tüm araçlar |
-| `events` | 12 | Olay odaklı geliştirme |
-| `lean` | 8 | Niyet düzeyi araçlar (`clrinf_plan_change`, `clrinf_verify`, …); küçük/yerel modeller için |
+| `full` (varsayılan) | 27 | Tüm araçlar |
+| `events` | 14 | Olay odaklı geliştirme |
+| `lean` | 10 | Niyet düzeyi araçlar (`clrinf_plan_change`, `clrinf_verify`, `clrinf_crud_map`, `clrinf_crud_eject`, …); küçük/yerel modeller için |
 
 Seçim önceliği: `--profile` > `CLRINF_MCP_PROFILE` > `clrinf.rules.toml` `[mcp]` > `full`. Profil dışı bir aracı çağırmak hata döndürür.

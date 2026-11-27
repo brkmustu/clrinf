@@ -1,0 +1,26 @@
+[events]
+schema_dir = "contracts/schemas"
+
+[events.services]
+orders    = "services/orders"
+billing   = "services/billing"
+inventory = "services/inventory"
+
+[[forbid]]
+id      = "domain-no-infra"
+scope   = "imports"
+paths   = [
+  "services/orders/src/domain",
+  "services/billing/src/domain",
+  "services/inventory/Domain",
+]
+pattern = "Infrastructure"
+reason  = "Domain layers must remain free of infrastructure dependencies"
+
+[agents]
+extra = [
+  "Implement only business logic inside handlers; publish events via generated publishers.",
+]
+
+[mcp]
+profile = "lean"

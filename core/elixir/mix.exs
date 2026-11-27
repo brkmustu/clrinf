@@ -8,7 +8,14 @@ defmodule Clrinfex.MixProject do
       elixirc_paths: elixirc_paths(Mix.env()),
       test_paths: ["test", "examples/ecommerce_monolith/test"],
       start_permanent: Mix.env() == :prod,
+      package: package(),
       deps: deps()
+    ]
+  end
+
+  defp package do
+    [
+      licenses: ["Apache-2.0"]
     ]
   end
 

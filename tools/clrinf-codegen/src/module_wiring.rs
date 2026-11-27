@@ -1,10 +1,10 @@
 // @clrinf:generated — Language-Idiomatic Project Module Wiring
 //
-// Dil Felsefesi:
-// • C#: .NET ekosisteminin doğal standardı olan IServiceCollection DI uzantıları (IoC).
-// • Rust: Derleme zamanı modül ağacı (`pub mod ...;`) ve açık struct/trait kompozisyonu.
-//         Rust'ta çalışma zamanı DI konteyneri YOKTUR; bileşenler derleme zamanında bağlanır.
-// • TypeScript: ESM barrel export'ları (`export * as ...`) ve fonksiyonel middleware composition.
+// Language Idioms:
+// • C#: .NET IServiceCollection DI extensions (IoC).
+// • Rust: Compile-time module tree (`pub mod ...;`) and explicit struct/trait composition.
+//         Rust has no runtime DI container; components are wired at compile time.
+// • TypeScript: ESM barrel exports (`export * as ...`) and functional middleware composition.
 
 use anyhow::{Context, Result};
 use heck::{ToSnakeCase, ToUpperCamelCase};
@@ -14,7 +14,7 @@ use std::path::{Path, PathBuf};
 pub struct ModuleWiring;
 
 impl ModuleWiring {
-    /// Projeye yeni bir modül eklendiğinde, ilgili dilin kendi doğal yapısına uygun olarak bağlar.
+    /// Wires a newly added module into the target language's idiomatic entry point.
     pub fn wire(project_dir: &Path, lang: &str, module_name: &str) -> Result<()> {
         match lang.to_lowercase().as_str() {
             "csharp" | "cs" | "dotnet" => Self::wire_csharp_service_registration(project_dir, module_name),
@@ -24,7 +24,7 @@ impl ModuleWiring {
         }
     }
 
-    /// Projeden bir modül çıkarıldığında, ilgili dilin kendi doğal yapısından bağlantısını kaldırır.
+    /// Unwires a removed module from the target language's idiomatic entry point.
     pub fn unwire(project_dir: &Path, lang: &str, module_name: &str) -> Result<()> {
         match lang.to_lowercase().as_str() {
             "csharp" | "cs" | "dotnet" => Self::unwire_csharp_service_registration(project_dir, module_name),
@@ -34,7 +34,7 @@ impl ModuleWiring {
         }
     }
 
-    // ─── C# Doğası: IServiceCollection Service Registration ────────────────────
+    // ─── C# Idiom: IServiceCollection Service Registration ────────────────────
 
     fn wire_csharp_service_registration(project_dir: &Path, module_name: &str) -> Result<()> {
         let reg_file = Self::find_or_create_csharp_registration_file(project_dir)?;
@@ -146,7 +146,7 @@ public static class ServiceRegistration
         Ok(di_file)
     }
 
-    // ─── Rust Doğası: Modül Ağacı (pub mod ...) Deklarasyonu ────────────────────
+    // ─── Rust Idiom: Module Tree (pub mod ...) Declaration ─────────────────────
 
     fn wire_rust_module_tree(project_dir: &Path, module_name: &str) -> Result<()> {
         let entry_file = Self::find_or_create_rust_entry_file(project_dir)?;
@@ -225,7 +225,7 @@ public static class ServiceRegistration
         Ok(lib_rs)
     }
 
-    // ─── TypeScript Doğası: ESM Barrel Export'ları ────────────────────────────
+    // ─── TypeScript Idiom: ESM Barrel Exports ─────────────────────────────────
 
     fn wire_typescript_barrel_export(project_dir: &Path, module_name: &str) -> Result<()> {
         let index_file = Self::find_or_create_typescript_entry_file(project_dir)?;

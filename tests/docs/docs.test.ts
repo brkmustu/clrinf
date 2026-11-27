@@ -12,7 +12,7 @@ function markdownFiles(directory: string): string[] {
 }
 
 describe("public documentation", () => {
-  const files = [join(root, "README.md"), ...markdownFiles(join(root, "docs"))];
+  const files = [join(root, "README.md"), join(root, "README.tr.md"), ...markdownFiles(join(root, "docs"))];
 
   for (const file of files) {
     test(`${file.slice(root.length + 1)} has resolvable local links`, () => {
@@ -44,5 +44,14 @@ describe("public documentation", () => {
       expect(existsSync(join(root, "docs/blueprints", name))).toBe(false);
       expect(existsSync(join(root, "templates/eticaret-showcase/docs", name))).toBe(true);
     }
+  });
+
+  test("repository metadata reflects Apache-2.0, action.yml, and clean docs", () => {
+    const license = readFileSync(join(root, "LICENSE"), "utf8");
+    expect(license).toContain("Apache License");
+    expect(license).toContain("Version 2.0, January 2004");
+    expect(license).not.toContain("Business Source License");
+    expect(existsSync(join(root, "action.yml"))).toBe(true);
+    expect(existsSync(join(root, "docs/guides/lmstudio-setup.md"))).toBe(false);
   });
 });

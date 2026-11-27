@@ -29,17 +29,17 @@ $ErrorActionPreference = "Stop"
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 
 if ($Help) {
-    Write-Host "clrinf CLI & MCP Windows Kurulum Aracı" -ForegroundColor Cyan
-    Write-Host "Windows 10, 11 ve tüm modern Windows ortamlarıyla tam uyumludur.`n"
-    Write-Host "KULLANIM:" -ForegroundColor Yellow
-    Write-Host "    .\install.ps1 [SEÇENEKLER]`n"
-    Write-Host "SEÇENEKLER:" -ForegroundColor Yellow
-    Write-Host "    -User                Kullanıcı dizinine kur (%LOCALAPPDATA%\clrinf\bin) [Varsayılan]"
-    Write-Host "    -System              Sistem geneline kur (%ProgramFiles%\clrinf\bin) [Yönetici yetkisi gerektirir]"
-    Write-Host "    -Dir <PATH>          Özel bir hedef kurulum dizini belirle"
-    Write-Host "    -Build               Kaynak koddan yeniden derlemeyi zorunlu kıl (cargo build --release)"
-    Write-Host "    -Uninstall           Yüklü ikili dosyaları kaldır ve PATH ayarlarını temizle"
-    Write-Host "    -Help, -h            Bu yardım mesajını göster`n"
+    Write-Host "clrinf CLI & MCP Windows Installer" -ForegroundColor Cyan
+    Write-Host "Compatible with Windows 10, 11, and Windows Server.`n"
+    Write-Host "USAGE:" -ForegroundColor Yellow
+    Write-Host "    .\install.ps1 [OPTIONS]`n"
+    Write-Host "OPTIONS:" -ForegroundColor Yellow
+    Write-Host "    -User                Install to user bin (%LOCALAPPDATA%\clrinf\bin) [Default]"
+    Write-Host "    -System              Install system-wide (%ProgramFiles%\clrinf\bin) [Requires Administrator]"
+    Write-Host "    -Dir <PATH>          Custom installation directory"
+    Write-Host "    -Build               Force build from source (cargo build --release)"
+    Write-Host "    -Uninstall           Remove installed binaries and clean PATH"
+    Write-Host "    -Help, -h            Show this help message`n"
     exit 0
 }
 
@@ -107,21 +107,21 @@ function Add-PathEntry {
             $parts += $TargetDirectory
             $newPath = ($parts | Where-Object { -not [string]::IsNullOrWhiteSpace($_) }) -join ';'
             [Environment]::SetEnvironmentVariable("Path", $newPath, $Scope)
-            Write-Host "✅ '$TargetDirectory' dizini [$Scope] PATH ortam değişkenine eklendi." -ForegroundColor Green
+            Write-Host "✅ Added '$TargetDirectory' to [$Scope] PATH." -ForegroundColor Green
         }
     } catch {
-        Write-Warning "PATH ortam değişkeni güncellenemedi: $_"
+        Write-Warning "Failed to update PATH environment variable: $_"
     }
 }
 
 # ==============================================================================
-# UNINSTALL AKIŞI
+# UNINSTALL FLOW
 # ==============================================================================
 if ($Uninstall) {
-    Write-Host "🧹 clrinf CLI ve araçları kaldırılıyor..." -ForegroundColor Yellow
+    Write-Host "🧹 Removing clrinf CLI and tools..." -ForegroundColor Yellow
 
     if ($System -and -not (Test-IsAdmin)) {
-        Write-Host "❌ Sistem geneli kaldırma işlemi için PowerShell Yönetici (Administrator) olarak çalıştırılmalıdır." -ForegroundColor Red
+        Write-Host "❌ System-wide uninstall requires running PowerShell as Administrator." -ForegroundColor Red
         exit 1
     }
 
@@ -133,11 +133,11 @@ if ($Uninstall) {
     foreach ($file in $filesToRemove) {
         if (Test-Path $file) {
             Remove-Item -Path $file -Force -ErrorAction SilentlyContinue
-            Write-Host "✓ Silindi: $file" -ForegroundColor Gray
+            Write-Host "✓ Removed: $file" -ForegroundColor Gray
         }
     }
 
-    # ~/.cargo/bin kontrolü
+    # Check ~/.cargo/bin
     $cargoBin = Join-Path $env:USERPROFILE ".cargo\bin"
     if (Test-Path $cargoBin) {
         $cargoFiles = @(
@@ -147,31 +147,31 @@ if ($Uninstall) {
         foreach ($file in $cargoFiles) {
             if (Test-Path $file) {
                 Remove-Item -Path $file -Force -ErrorAction SilentlyContinue
-                Write-Host "✓ Silindi: $file" -ForegroundColor Gray
+                Write-Host "✓ Removed: $file" -ForegroundColor Gray
             }
         }
     }
 
-    # PATH temizliği
+    # Clean PATH
     $scope = if ($System) { "Machine" } else { "User" }
     Remove-PathEntry -TargetDirectory $InstallDir -Scope $scope
 
-    # Boş kalan dizini temizle
+    # Remove empty directory
     if ((Test-Path $InstallDir) -and ((Get-ChildItem -Path $InstallDir -Force | Measure-Object).Count -eq 0)) {
         Remove-Item -Path $InstallDir -Force -Recurse -ErrorAction SilentlyContinue
     }
 
-    Write-Host "✅ clrinf başarıyla kaldırıldı." -ForegroundColor Green
+    Write-Host "✅ clrinf has been uninstalled." -ForegroundColor Green
     exit 0
 }
 
 # ==============================================================================
-# KURULUM AKIŞI
+# INSTALL FLOW
 # ==============================================================================
-Write-Host "🚀 clrinf Windows Kurulum Motoru başlatılıyor..." -ForegroundColor Cyan
+Write-Host "🚀 Starting clrinf Windows Installer..." -ForegroundColor Cyan
 
 if ($System -and -not (Test-IsAdmin)) {
-    Write-Host "❌ Sistem geneline kurulum (-System) için PowerShell Yönetici (Administrator) olarak çalıştırılmalıdır." -ForegroundColor Red
+    Write-Host "❌ System-wide install (-System) requires running PowerShell as Administrator." -ForegroundColor Red
     exit 1
 }
 
@@ -197,15 +197,15 @@ if (-not $Build) {
     foreach ($bin in $possibleBins) {
         if (Test-Path $bin) {
             $TargetBin = $bin
-            Write-Host "✓ Yerel olarak derlenmiş ikili dosya bulundu: $TargetBin" -ForegroundColor Green
+            Write-Host "✓ Found locally built binary: $TargetBin" -ForegroundColor Green
             break
         }
     }
 
-    # Yerel binary yoksa, GitHub Releases üzerinden indirmeyi dene
+    # If no local binary, try downloading pre-built binary from GitHub Releases
     if (-not $TargetBin) {
         $platform = Get-PlatformTriple
-        Write-Host "🌐 GitHub Releases üzerinden önceden derlenmiş paket aranıyor ($platform)..." -ForegroundColor Blue
+        Write-Host "🌐 Checking GitHub Releases for pre-built binary ($platform)..." -ForegroundColor Blue
 
         $urls = @(
             "https://github.com/$GithubRepo/releases/$(if ($ClrinfVersion -eq 'latest') { 'latest/download' } else { "download/$ClrinfVersion" })/clrinf-$platform.zip",
@@ -222,7 +222,7 @@ if (-not $Build) {
             try {
                 Invoke-WebRequest -Uri $url -OutFile $archiveFile -UseBasicParsing -ErrorAction Stop
                 if ((Test-Path $archiveFile) -and ((Get-Item $archiveFile).Length -gt 0)) {
-                    Write-Host "✓ Önceden derlenmiş paket indirildi. Arşiv açılıyor..." -ForegroundColor Green
+                    Write-Host "✓ Downloaded pre-built archive. Extracting..." -ForegroundColor Green
                     if ($isZip) {
                         Expand-Archive -Path $archiveFile -DestinationPath $tempFolder -Force
                     } else {
@@ -242,25 +242,25 @@ if (-not $Build) {
                     }
                 }
             } catch {
-                # Diğer URL veya kaynak koddan derleme fallback'ine geç
+                # Fall through to next URL or source build fallback
             }
         }
 
         if (-not $TargetBin) {
-            Write-Host "ℹ️  GitHub Release paketi bulunamadı (henüz yayınlanmamış veya ağ erişilemiyor)." -ForegroundColor Yellow
+            Write-Host "ℹ️  Pre-built GitHub Release package not found (not published yet or offline)." -ForegroundColor Yellow
         }
     }
 }
 
-# Fallback: İkili dosya bulunamadıysa veya -Build parametresi verildiyse kaynak koddan derle
+# Fallback: Build from source if binary is still not found or -Build was passed
 if (-not $TargetBin -or $Build) {
     $cargoToml = Join-Path $CodegenDir "Cargo.toml"
     if ((Test-Path $CodegenDir) -and (Test-Path $cargoToml)) {
-        Write-Host "📦 clrinf-codegen yerel kaynak koddan derleniyor (cargo build --release)..." -ForegroundColor Blue
+        Write-Host "📦 Building clrinf-codegen from local source (cargo build --release)..." -ForegroundColor Blue
 
         if (-not (Get-Command cargo -ErrorAction SilentlyContinue)) {
-            Write-Host "❌ 'cargo' bulunamadı! İkili paket bulunamadığı için derleme adına Rust gereklidir." -ForegroundColor Red
-            Write-Host "👉 https://rustup.rs adresinden veya 'winget install Rustlang.Rustup' komutuyla Rust kurabilirsiniz." -ForegroundColor Yellow
+            Write-Host "❌ 'cargo' not found! Rust is required to build from source." -ForegroundColor Red
+            Write-Host "👉 Install Rust via https://rustup.rs or 'winget install Rustlang.Rustup'." -ForegroundColor Yellow
             exit 1
         }
 
@@ -268,7 +268,7 @@ if (-not $TargetBin -or $Build) {
         try {
             cargo build --release
             if ($LASTEXITCODE -ne 0) {
-                Write-Host "❌ Derleme sırasında bir hata oluştu." -ForegroundColor Red
+                Write-Host "❌ Build failed." -ForegroundColor Red
                 exit $LASTEXITCODE
             }
         } finally {
@@ -280,21 +280,21 @@ if (-not $TargetBin -or $Build) {
             $TargetBin = $builtBin
         }
     } else {
-        Write-Host "❌ Kurulum için uygun bir ikili dosya bulunamadı ve yerel kaynak kod dizini mevcut değil." -ForegroundColor Red
-        Write-Host "👉 Depoyu kaynak koddan klonlayarak kurmak için:" -ForegroundColor Yellow
-        Write-Host "   git clone --recurse-submodules https://github.com/$GithubRepo.git"
+        Write-Host "❌ No pre-built binary found and local source directory is unavailable." -ForegroundColor Red
+        Write-Host "👉 Clone the repository and build from source:" -ForegroundColor Yellow
+        Write-Host "   git clone https://github.com/$GithubRepo.git"
         Write-Host "   cd clrinf; .\install.ps1 -Build"
         exit 1
     }
 }
 
 if (-not $TargetBin -or -not (Test-Path $TargetBin)) {
-    Write-Host "❌ İkili dosya doğrulanamadı: $TargetBin" -ForegroundColor Red
+    Write-Host "❌ Could not verify binary: $TargetBin" -ForegroundColor Red
     exit 1
 }
 
-# 2. Hedef dizini hazırla ve kopyala
-Write-Host "📁 Hedef dizin hazırlanıyor: $InstallDir" -ForegroundColor Blue
+# 2. Prepare destination directory and copy binaries
+Write-Host "📁 Preparing install directory: $InstallDir" -ForegroundColor Blue
 if (-not (Test-Path $InstallDir)) {
     New-Item -ItemType Directory -Path $InstallDir -Force | Out-Null
 }
@@ -304,27 +304,27 @@ $destClrinf = Join-Path $InstallDir "clrinf.exe"
 
 Copy-Item -Path $TargetBin -Destination $destCodegen -Force
 Copy-Item -Path $TargetBin -Destination $destClrinf -Force
-Write-Host "✓ İkili dosyalar kopyalandı:" -ForegroundColor Green
+Write-Host "✓ Installed binaries:" -ForegroundColor Green
 Write-Host "    $destCodegen" -ForegroundColor Gray
 Write-Host "    $destClrinf" -ForegroundColor Gray
 
-# ~/.cargo/bin mevcutsa oraya da kopyala (kolay erişim için)
+# Mirror into ~/.cargo/bin if available
 $cargoBin = Join-Path $env:USERPROFILE ".cargo\bin"
 if ((Test-Path $cargoBin) -and ($InstallDir.TrimEnd('\') -ne $cargoBin.TrimEnd('\'))) {
     try {
         Copy-Item -Path $TargetBin -Destination (Join-Path $cargoBin "clrinf-codegen.exe") -Force -ErrorAction SilentlyContinue
         Copy-Item -Path $TargetBin -Destination (Join-Path $cargoBin "clrinf.exe") -Force -ErrorAction SilentlyContinue
-        Write-Host "✓ Cargo ortamı için eşlendi: $cargoBin" -ForegroundColor Gray
+        Write-Host "✓ Linked into Cargo bin: $cargoBin" -ForegroundColor Gray
     } catch {
-        # Cargo dizinine kopyalama başarısız olursa devam et
+        # Ignore if Cargo bin copy fails
     }
 }
 
-# 3. PATH Kontrolü ve Yapılandırması
+# 3. Verify and update PATH
 $scope = if ($System) { "Machine" } else { "User" }
 Add-PathEntry -TargetDirectory $InstallDir -Scope $scope
 
-# Mevcut PowerShell oturumunun PATH değişkenini güncelle
+# Update PATH for current PowerShell session
 $envPathParts = $env:Path -split ';'
 $normalizedInstallDir = $InstallDir.TrimEnd('\')
 $foundInCurrentPath = $false
@@ -339,13 +339,13 @@ if (-not $foundInCurrentPath) {
 }
 
 Write-Host ""
-Write-Host "🎉 clrinf CLI ve araçları başarıyla kuruldu!" -ForegroundColor Green
-Write-Host "  📍 İkili Dosya: $destCodegen"
-Write-Host "  🔗 Kısayol:     $destClrinf"
+Write-Host "🎉 clrinf CLI & MCP Server installed successfully!" -ForegroundColor Green
+Write-Host "  📍 Binary:   $destCodegen"
+Write-Host "  🔗 Alias:    $destClrinf"
 Write-Host ""
-Write-Host "Hızlı Doğrulama Komutları:" -ForegroundColor Cyan
+Write-Host "Quick Verification Commands:" -ForegroundColor Cyan
 Write-Host "  clrinf --version"
+Write-Host "  clrinf verify --help"
 Write-Host "  clrinf catalog"
-Write-Host "  clrinf docs --lang csharp"
-Write-Host "  clrinf mcp"
+Write-Host "  clrinf mcp --profile lean"
 Write-Host ""

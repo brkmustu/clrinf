@@ -2,6 +2,7 @@
 name = "clrinf-adapters"
 version = "0.1.0"
 edition = "2021"
+license = "Apache-2.0"
 description = "Axum transport and process-local persistence adapters for clrinf-core"
 
 [dependencies]

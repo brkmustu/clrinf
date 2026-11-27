@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.clrinf.com/orders/OrderPlaced.v1.schema.json",
+  "title": "OrderPlacedV1",
+  "description": "Emitted when a customer places a validated order.",
+  "type": "object",
+  "x-domain": "orders",
+  "x-event-type": "orders.placed.v1",
+  "x-published-by": ["orders"],
+  "x-subscribed-by": ["billing", "inventory"],
+  "required": ["order_id", "customer_id", "total_amount", "currency"],
+  "properties": {
+    "order_id": { "type": "string", "description": "Unique order identifier" },
+    "customer_id": { "type": "string", "description": "Tenant-scoped customer identifier" },
+    "total_amount": { "type": "number", "minimum": 0, "description": "Total order amount" },
+    "currency": { "type": "string", "description": "ISO-4217 currency code" }
+  }
+}

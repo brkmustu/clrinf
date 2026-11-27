@@ -1,0 +1,154 @@
+name: clrinf Architecture & Event Contract Guardrails
+description: Verify architecture dependency rules, code-to-contract drift, raw outbox writes, and event topology changes in CI.
+branding:
+  icon: shield
+  color: blue
+
+inputs:
+  version:
+    description: Release tag (e.g. v0.1.0) or 'latest'
+    required: false
+    default: latest
+  working-directory:
+    description: Project root containing clrinf.rules.toml
+    required: false
+    default: .
+  changed-only:
+    description: Verify only files changed against HEAD (clrinf verify --changed)
+    required: false
+    default: 'false'
+  report-base-ref:
+    description: Optional git ref (e.g. origin/main) to run clrinf topology report
+    required: false
+    default: ''
+  fail-on-breaking:
+    description: Pass --fail-on-breaking when report-base-ref is set
+    required: false
+    default: 'true'
+
+runs:
+  using: composite
+  steps:
+    - name: Resolve clrinf binary (Unix)
+      if: runner.os != 'Windows'
+      shell: bash
+      run: |
+        set -euo pipefail
+        BIN_DIR="${RUNNER_TEMP}/clrinf-bin"
+        mkdir -p "${BIN_DIR}"
+        OS="$(uname -s | tr '[:upper:]' '[:lower:]')"
+        ARCH="$(uname -m)"
+        case "${ARCH}" in
+          x86_64|amd64) ARCH="x86_64" ;;
+          aarch64|arm64) ARCH="aarch64" ;;
+          *) echo "::error::Unsupported architecture: ${ARCH}"; exit 1 ;;
+        esac
+        case "${OS}" in
+          linux) TARGET="${ARCH}-unknown-linux-gnu" ;;
+          darwin) TARGET="${ARCH}-apple-darwin" ;;
+          *) echo "::error::Unsupported OS: ${OS}"; exit 1 ;;
+        esac
+
+        if [ "${{ inputs.version }}" = "latest" ]; then
+          URL="https://github.com/brkmustu/clrinf/releases/latest/download/clrinf-${TARGET}.tar.gz"
+        else
+          URL="https://github.com/brkmustu/clrinf/releases/download/${{ inputs.version }}/clrinf-${TARGET}.tar.gz"
+        fi
+
+        if curl -fsSL "${URL}" -o "${BIN_DIR}/clrinf.tar.gz" 2>/dev/null; then
+          tar -xzf "${BIN_DIR}/clrinf.tar.gz" -C "${BIN_DIR}"
+          chmod +x "${BIN_DIR}/clrinf" "${BIN_DIR}/clrinf-codegen" || true
+        elif [ -f "${GITHUB_ACTION_PATH}/tools/clrinf-codegen/Cargo.toml" ]; then
+          cargo build --release --manifest-path "${GITHUB_ACTION_PATH}/tools/clrinf-codegen/Cargo.toml"
+          cp "${GITHUB_ACTION_PATH}/tools/clrinf-codegen/target/release/clrinf-codegen" "${BIN_DIR}/clrinf"
+          cp "${BIN_DIR}/clrinf" "${BIN_DIR}/clrinf-codegen"
+        else
+          echo "::error::Failed to download ${URL} and no local source fallback is available."
+          exit 1
+        fi
+        echo "${BIN_DIR}" >> "${GITHUB_PATH}"
+
+    - name: Resolve clrinf binary (Windows)
+      if: runner.os == 'Windows'
+      shell: pwsh
+      run: |
+        $ErrorActionPreference = 'Stop'
+        $binDir = Join-Path $env:RUNNER_TEMP 'clrinf-bin'
+        New-Item -ItemType Directory -Path $binDir -Force | Out-Null
+        $arch = if ($env:PROCESSOR_ARCHITECTURE -match 'ARM64') { 'aarch64' } else { 'x86_64' }
+        $target = "$arch-pc-windows-msvc"
+        $ver = '${{ inputs.version }}'
+        $url = if ($ver -eq 'latest') {
+          "https://github.com/brkmustu/clrinf/releases/latest/download/clrinf-$target.zip"
+        } else {
+          "https://github.com/brkmustu/clrinf/releases/download/$ver/clrinf-$target.zip"
+        }
+
+        $downloaded = $false
+        try {
+          $zipPath = Join-Path $binDir 'clrinf.zip'
+          Invoke-WebRequest -Uri $url -OutFile $zipPath -UseBasicParsing
+          Expand-Archive -Path $zipPath -DestinationPath $binDir -Force
+          $downloaded = Test-Path (Join-Path $binDir 'clrinf.exe')
+        } catch {
+          $downloaded = $false
+        }
+
+        if (-not $downloaded) {
+          $cargoToml = Join-Path $env:GITHUB_ACTION_PATH 'tools/clrinf-codegen/Cargo.toml'
+          if (Test-Path $cargoToml) {
+            cargo build --release --manifest-path $cargoToml
+            $built = Join-Path $env:GITHUB_ACTION_PATH 'tools/clrinf-codegen/target/release/clrinf-codegen.exe'
+            Copy-Item $built (Join-Path $binDir 'clrinf.exe') -Force
+            Copy-Item $built (Join-Path $binDir 'clrinf-codegen.exe') -Force
+          } else {
+            Write-Error "Failed to download $url and no local source fallback is available."
+            exit 1
+          }
+        }
+        $binDir | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+
+    - name: Run clrinf verify
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: |
+        set -euo pipefail
+        ARGS=(verify)
+        if [ "${{ inputs.changed-only }}" = "true" ]; then
+          ARGS+=(--changed)
+        fi
+        set +e
+        OUTPUT="$(clrinf "${ARGS[@]}" 2>&1)"
+        CODE=$?
+        set -e
+        printf '%s\n' "${OUTPUT}"
+        {
+          echo "### clrinf verify"
+          echo '```text'
+          printf '%s\n' "${OUTPUT}"
+          echo '```'
+        } >> "${GITHUB_STEP_SUMMARY}"
+        exit "${CODE}"
+
+    - name: Run clrinf topology report
+      if: inputs.report-base-ref != ''
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: |
+        set -euo pipefail
+        ARGS=(topology report --base-ref "${{ inputs.report-base-ref }}")
+        if [ "${{ inputs.fail-on-breaking }}" = "true" ]; then
+          ARGS+=(--fail-on-breaking)
+        fi
+        set +e
+        OUTPUT="$(clrinf "${ARGS[@]}" 2>&1)"
+        CODE=$?
+        set -e
+        printf '%s\n' "${OUTPUT}"
+        {
+          echo "### clrinf topology report"
+          echo '```text'
+          printf '%s\n' "${OUTPUT}"
+          echo '```'
+        } >> "${GITHUB_STEP_SUMMARY}"
+        exit "${CODE}"

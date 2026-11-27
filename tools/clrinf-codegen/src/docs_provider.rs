@@ -90,17 +90,17 @@ pub fn get_language_docs(lang: Option<&str>, project_path: Option<&Path>) -> Res
 const CSHARP_DOCS: &str = r#"# clrinf C# (.NET) Development & Architecture Guide
 
 ## 1. Architectural Guardrails (Roslyn Enforced)
-- **ARCH001 (Zero Leakage):** Domain katmanında EF Core, ASP.NET Core, Web veya JSON kütüphaneleri YASAKTIR. Saf C# olmalıdır.
-- **ARCH002 (Business Rules):** İş kuralları `IBusinessRule<T>`, `IBeforeCreateRule<T>`, `IBeforeUpdateRule<T>` veya `IBeforeDeleteRule<T>` uygulamalı; `RuleResult.Success()` veya `RuleResult.Failed(code, message)` dön. Asla çıplak `throw new Exception()` fırlatma.
-- **ARCH003 (Controller Isolation):** Web API Controller'larına `DbContext` doğrudan enjekte edilemez; CQRS Handler zorunludur.
-- **ARCH004 (CQRS Contract):** Komut ve sorgular `IRequest<T>` veya `IRequireOperationClaim` sözleşmelerine uymalıdır.
-- **ARCH005 (Hook Placement):** `IBefore*Rule<TEntity>` hook'ları `Rules/` klasöründe olmalı; `*Hook` sınıfları hook arayüzünü uygulamalıdır.
+- **ARCH001 (Zero Leakage):** Domain layers MUST NOT import EF Core, ASP.NET Core, Web, or JSON libraries. Keep domain logic pure C#.
+- **ARCH002 (Business Rules):** Implement `IBusinessRule<T>`, `IBeforeCreateRule<T>`, `IBeforeUpdateRule<T>`, or `IBeforeDeleteRule<T>`, returning `RuleResult.Success()` or `RuleResult.Failure(code, message)`. Never throw raw `new Exception()` for business errors.
+- **ARCH003 (Controller Isolation):** Never inject `DbContext` directly into Web API controllers; use CQRS handlers.
+- **ARCH004 (CQRS Contract):** Commands and queries must implement `IRequest<T>` or `IRequireOperationClaim`.
+- **ARCH005 (Hook Placement):** Place `IBefore*Rule<TEntity>` hooks under `Rules/`; `*Hook` classes must implement the corresponding hook interface.
 
 ## 2. AOT CRUD Pattern
-- Entity'ye `[GenerateCrudEndpoints]` ekleyin; standart CRUD handler ve Minimal API endpoint'leri derleme anında üretilir. `obj/` altındaki üretilmiş dosyaları okumayın.
-- İş kuralı için `clrinf rule new ActiveProductsCheck --lang csharp --entity Category --on before-delete` kullanın; kural `IBeforeDeleteRule<Category>` üretir ve `CrudRuleRunner` tarafından sıralı/çalıştırılır.
-- Operasyonu fiziksel dosyaya çıkarmak için `clrinfcs eject Category --operation Update`; generator Smart Override ile o operasyonu artık üretmez.
-- Entity'de tenant alanını `[CrudIgnore]` ile işaretleyin; `Id` ve tenant istemci DTO'sundan alınmaz.
+- Annotate entities with `[GenerateCrudEndpoints]` so standard CRUD handlers and Minimal API endpoints are source-generated at compile time. Do not read generated files under `obj/`.
+- Scaffold lifecycle rules with `clrinf rule new ActiveProductsCheck --lang csharp --entity Category --on before-delete` (generates `IBeforeDeleteRule<Category>` executed by `CrudRuleRunner`).
+- Eject a single operation to a physical file via `clrinfcs eject Category --operation Update`; the source generator skips that operation via Smart Override.
+- Mark tenant fields with `[CrudIgnore]` on the entity; `Id` and tenant ID are never bound from client DTOs.
 ```csharp
 // Business Rule
 public sealed class OrderMinimumAmountRule : IBusinessRule<Order>
@@ -130,8 +130,8 @@ public sealed class CreateOrderHandler : IRequestHandler<CreateOrderCommand, Res
 ```
 
 ## 3. Cedar Authorization & Multi-Tenancy
-- Her komutta tenant izolasyonu: `[CedarAuthorize("orders.create", "Orders")]`.
-- Cross-tenant veri erişimi `forbid` kuralıyla derhal engellenir.
+- Enforce tenant isolation on every command: `[CedarAuthorize("orders.create", "Orders")]`.
+- Cross-tenant data access is unconditionally denied via `forbid` rules.
 
 ## 4. Modular Layout Strategies (Containerized vs Direct Root Slices)
 `clrinf` supports two first-class module directory layout patterns:
@@ -154,8 +154,8 @@ public sealed class CreateOrderHandler : IRequestHandler<CreateOrderCommand, Res
 const RUST_DOCS: &str = r#"# clrinf Rust Development & Architecture Guide
 
 ## 1. Architectural Guardrails (Syn Linter Enforced)
-- **RUST_ARCH001 (Zero-Panic Policy):** Domain modelleri ve iş kuralı fonksiyonlarında `.unwrap()`, `.expect()`, `panic!()` kullanımı KESİNLİKLE YASAKTIR. Derleme hatası verir.
-- Tüm operasyonlar `Result<T, DomainError>` monadı ile dönmelidir.
+- **RUST_ARCH001 (Zero-Panic Policy):** `.unwrap()`, `.expect()`, and `panic!()` are FORBIDDEN in domain models and business rule functions.
+- All domain operations must return `Result<T, DomainError>`.
 
 ## 2. Idiomatic Code Patterns
 ```rust
@@ -182,8 +182,8 @@ pipeline.validate(&order)?;
 ```
 
 ## 3. Module Tree & Wiring
-- Ham modda (`--mode raw`): Modül bağımsız kural ve struct'ları içerir, harici crate bağımlılığı eklemez.
-- Kablolanmış modda (`--mode wired`): `src/lib.rs` veya `src/main.rs` içine otomatik `pub mod <modul>;` eklenir.
+- Raw mode (`--mode raw`): Generates standalone rules and structs with zero external crate dependencies.
+- Wired mode (`--mode wired`): Automatically registers `pub mod <module>;` in `src/lib.rs` or `src/main.rs`.
 
 ## 4. Useful clrinf Commands
 - `clrinf module adopt <crm|deals|authz|caching> --to-project ./Cargo.toml --mode raw|wired`
@@ -193,8 +193,8 @@ pipeline.validate(&order)?;
 const TYPESCRIPT_DOCS: &str = r#"# clrinf TypeScript Development & Architecture Guide
 
 ## 1. Architectural Guardrails (TS Compiler API Enforced)
-- **ARCH_TS_001 (No Naked Throws):** İş kurallarında çıplak `throw new Error()` yasaktır. Fonksiyonel `Result.err()` ve `ruleFailed()` kullanılmalıdır.
-- **ARCH_TS_003 (Functional Domain):** C# MediatR taklidi hantal sınıf hiyerarşileri yerine saf fonksiyonlar ve kompozisyon boru hatları (`pipeRules`) tercih edilmelidir.
+- **ARCH_TS_001 (No Naked Throws):** Bare `throw new Error()` is forbidden in business rules. Return functional `Result.err()` / `ruleFailed()`.
+- **ARCH_TS_003 (Functional Domain):** Prefer pure functions and composition pipelines (`pipeRules`) over heavy class hierarchies.
 
 ## 2. Idiomatic Code Patterns
 ```typescript
@@ -216,8 +216,8 @@ export const validateOrder = pipeRules(
 ```
 
 ## 3. Module Tree & Wiring
-- Ham modda (`--mode raw`): Bağımsız saf TypeScript fonksiyonları ve Result monadı.
-- Kablolanmış modda (`--mode wired`): `src/index.ts` dosyasına `export * as <module> from './<module>';` barrel export eklenir.
+- Raw mode (`--mode raw`): Standalone pure TypeScript functions and `Result` monad.
+- Wired mode (`--mode wired`): Adds `export * as <module> from './<module>';` barrel export in `src/index.ts`.
 
 ## 4. Useful clrinf Commands
 - `clrinf module adopt <crm|deals|authz|caching> --to-project ./package.json --mode raw|wired`
@@ -227,10 +227,10 @@ export const validateOrder = pipeRules(
 const ELIXIR_DOCS: &str = r#"# clrinf Elixir (OTP) Development & Architecture Guide
 
 ## 1. Architectural Guardrails (AST Linter Enforced: ARCH_EX_*)
-- **ARCH_EX_001 (Explicit OTP Callbacks):** `GenServer` callback fonksiyonlarında (`init/1`, `handle_call/3`, `handle_cast/2`, `handle_info/2`, `terminate/2`) `@impl true` zorunludur.
-- **ARCH_EX_002 (Pure Domain Result Monad):** Domain ve Handler fonksiyonları `{:ok, term()}` veya `{:error, term()}` dönmelidir. Pure domain içinde `raise` veya `throw` yasaktır.
-- **ARCH_EX_003 (Supervised Concurrency):** Domain mantığı içinde ad-hoc `spawn/1`, `spawn_link/1` veya `Task.start/1` yasaktır. Eşzamanlılık bir Supervisor veya GenServer ile yönetilmelidir.
-- **ARCH_EX_004 (Side-Effect Isolation):** Pure domain/handler modüllerinde `IO.puts`, `Process.sleep`, `:timer.sleep`, `System.cmd` yasaktır; yan etkiler adaptörlerde veya GenServer sınırında olmalıdır.
+- **ARCH_EX_001 (Explicit OTP Callbacks):** `@impl true` is required on `GenServer` callbacks (`init/1`, `handle_call/3`, `handle_cast/2`, `handle_info/2`, `terminate/2`).
+- **ARCH_EX_002 (Pure Domain Result Monad):** Domain and handler functions must return `{:ok, term()}` or `{:error, term()}`. `raise` and `throw` are forbidden in pure domain modules.
+- **ARCH_EX_003 (Supervised Concurrency):** Ad-hoc `spawn/1`, `spawn_link/1`, or `Task.start/1` are forbidden in domain logic; use a `Supervisor` or `GenServer`.
+- **ARCH_EX_004 (Side-Effect Isolation):** `IO.puts`, `Process.sleep`, `:timer.sleep`, and `System.cmd` are forbidden in pure domain/handler modules; keep side effects in adapters or `GenServer` boundaries.
 
 ## 2. Idiomatic Code Patterns
 ```elixir
@@ -270,10 +270,10 @@ end
 
 const CEDAR_DOCS: &str = r#"# Amazon Cedar Multi-Tenant Authorization Guide
 
-clrinf ekosisteminde yetkilendirme kod içine `if (user.TenantId == res.TenantId)` şeklinde gömülmez; bağımsız `policies/<module>.cedar` dosyalarında yönetilir.
+In clrinf, authorization is never hardcoded inline as `if (user.TenantId == res.TenantId)`; it is declared in standalone `policies/<module>.cedar` files.
 
-## 3 Altın Kural:
-1. **Varsayılan Olarak Çok Kiracılı (Multi-Tenant by Default):**
+## 3 Golden Rules:
+1. **Multi-Tenant by Default:**
 ```cedar
 permit (
     principal in Role::"TenantAdmin",
@@ -284,8 +284,8 @@ permit (
 };
 ```
 
-2. **Forbid Kuralının Mutlak Önceliği (Overriding Forbid Guard):**
-Cedar'da `forbid` tüm `permit` kurallarını ezer. Başka bir kiracının verisine erişim koşulsuz reddedilir:
+2. **Overriding Forbid Guard:**
+In Cedar, `forbid` overrides every `permit`. Cross-tenant access is unconditionally denied:
 ```cedar
 forbid (
     principal,
@@ -296,7 +296,7 @@ forbid (
 };
 ```
 
-3. **PlatformAdmin (Süper Kullanıcı) İstisnası:**
+3. **PlatformAdmin Exception:**
 ```cedar
 permit (
     principal in Role::"PlatformAdmin",
@@ -309,24 +309,27 @@ permit (
 const CLI_DOCS: &str = r#"# clrinf CLI & MCP Tools Summary
 
 ## Key Commands
-- `clrinf catalog`: Yerleşik modül kataloğunu listeler (crm, deals, contacts, activities, authz, caching, logging, transaction, idempotency, outbox).
-- `clrinf module adopt <MODUL> --to-project <PROJE> [--mode raw|wired] [--as <ALIAS>]`: Modülü hedef projeye sıfır sürtünmeyle aktarır.
-- `clrinf init --profile <minimal|standard|full> --dispatcher <native|mediatr>`: Yeni projede clrinf.toml manifesti oluşturur.
-- `clrinf scaffold otp <MODULE> [--app <APP>]`: Elixir OTP Worker, Supervisor ve Handler üçlüsünü üretir.
-- `clrinf rule new <RULE> --lang <csharp|rust|typescript|elixir>`: İzole saf iş kuralı üretir.
-- `clrinf lint --lang <csharp|rust|typescript|elixir|all>`: AST mimari denetleyicilerini çalıştırır.
-- `clrinf mcp`: Yapay zeka ajanları için JSON-RPC 2.0 MCP sunucusunu başlatır.
+- `clrinf verify`: Runs event topology, code<->contract drift, `[[forbid]]` import rules, and raw outbox write checks.
+- `clrinf plan <event> --service <svc> --role publisher|subscriber`: Previews/applies mechanical edits and outputs a tight agent slice.
+- `clrinf hook install --agent <claude|cursor|antigravity|git|all>`: Installs incremental post-edit guardrails.
+- `clrinf catalog`: Lists built-in modules (`crm`, `deals`, `contacts`, `activities`, `authz`, `caching`, `logging`, `transaction`, `idempotency`, `outbox`).
+- `clrinf module adopt <MODULE> --to-project <PROJECT> [--mode raw|wired] [--as <ALIAS>]`: Adopts a module into a target project with zero lock-in.
+- `clrinf init --profile <minimal|standard|full> --dispatcher <native|mediatr>`: Initializes a `clrinf.toml` manifest.
+- `clrinf scaffold otp <MODULE> [--app <APP>]`: Generates Elixir OTP Worker, Supervisor, and Handler modules.
+- `clrinf rule new <RULE> --lang <csharp|rust|typescript|elixir>`: Scaffolds an isolated business rule and test.
+- `clrinf lint --lang <csharp|rust|typescript|elixir|all>`: Runs language-specific architectural AST linters.
+- `clrinf mcp [--profile full|events|lean]`: Starts the JSON-RPC 2.0 MCP stdio server for AI coding agents.
 "#;
 
 const ALL_DOCS: &str = r#"# clrinf Multi-Language Architecture & Guidelines
 
-clrinf; C#, Rust, TypeScript ve Elixir dillerinde Clean Architecture, CQRS / OTP, monadik Result hata yönetimi ve Amazon Cedar çok kiracılı yetkilendirme sağlayan sözleşme-öncelikli bir framework'tür.
+clrinf provides deterministic architecture & event-contract guardrails plus optional reference cores and zero-dependency scaffolds across C#, Rust, TypeScript, and Elixir.
 
-Dile özel kurallar için `lang` parametresiyle çağırın:
+Call with `lang` for language-specific rules:
 - `csharp`: Roslyn ARCH001-ARCH005, IBusinessRule / IBefore*Rule, Native Dispatcher, AOT CRUD generator
 - `rust`: Syn RUST_ARCH001 zero-panic, Result<T, DomainError>
 - `typescript`: TS AST ARCH_TS_001, pipeRules, Result.err
 - `elixir`: AST ARCH_EX_001-004, OTP GenServer/Supervisor, Result monad
-- `cedar`: Çok kiracılı Amazon Cedar politikaları
-- `cli`: clrinf-codegen komutları ve modül adaptasyonu
+- `cedar`: Multi-tenant Amazon Cedar policies
+- `cli`: clrinf-codegen commands, verify/hooks, and module adoption
 "#;

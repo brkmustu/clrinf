@@ -141,7 +141,7 @@ impl WorkerManager {
     }
 
     fn resolve_csharp_worker(&self) -> WorkerInfo {
-        let install_hint = "C# worker (.NET) bulunamadı. Kurmak için: 'dotnet tool install -g clrinfcs' veya monorepo altındaki 'core/csharp' projesini kullanın.".to_string();
+        let install_hint = "C# worker (.NET) not found. Install via 'dotnet tool install -g clrinfcs' or use 'core/csharp' in this monorepo.".to_string();
 
         // 1. Check if 'clrinfcs' is on PATH
         if let Ok(output) = Command::new("clrinfcs").arg("--version").output() {
@@ -200,7 +200,7 @@ impl WorkerManager {
     }
 
     fn resolve_rust_worker(&self) -> WorkerInfo {
-        let install_hint = "Rust worker bulunamadı. Kurmak için: 'cargo install --path core/rust/crates/clrinf-cli' veya monorepo altındaki 'core/rust' projesini kullanın.".to_string();
+        let install_hint = "Rust worker not found. Install via 'cargo install --path core/rust/crates/clrinf-cli' or use 'core/rust' in this monorepo.".to_string();
 
         // 1. Check if 'clrinfrs' is on PATH
         if let Ok(output) = Command::new("clrinfrs").arg("--version").output() {
@@ -260,7 +260,7 @@ impl WorkerManager {
     }
 
     fn resolve_typescript_worker(&self) -> WorkerInfo {
-        let install_hint = "TypeScript worker bulunamadı. Bun kurulu olmalı ('curl -fsSL https://bun.sh/install | bash') ve core/typescript dizininde 'bun install' çalıştırılmalıdır.".to_string();
+        let install_hint = "TypeScript worker not found. Install Bun ('curl -fsSL https://bun.sh/install | bash') and run 'bun install' in core/typescript.".to_string();
 
         // 1. Check if Bun is available
         let bun_available = Command::new("bun")
@@ -314,7 +314,7 @@ impl WorkerManager {
     }
 
     fn resolve_elixir_worker(&self) -> WorkerInfo {
-        let install_hint = "Elixir/Mix bulunamadı. Elixir'i kurmak için: https://elixir-lang.org/install.html".to_string();
+        let install_hint = "Elixir/Mix not found. Install Elixir from https://elixir-lang.org/install.html".to_string();
 
         let mix_available = Command::new("mix")
             .arg("--version")
@@ -701,7 +701,7 @@ impl WorkerManager {
                     success: true,
                     exit_code: Some(0),
                     stdout: format!(
-                        "✅ {} dosya oluşturuldu, {} dosya güncellendi.",
+                        "✅ Created {} file(s), updated {} file(s).",
                         res.files_created.len(),
                         res.files_modified.len()
                     ),

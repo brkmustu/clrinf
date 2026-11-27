@@ -5,6 +5,7 @@
     <Nullable>enable</Nullable>
     <IsPackable>true</IsPackable>
     <PackageId>ClrinfCS.Core</PackageId>
+    <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
     <Description>Transport-independent clrinf context, contracts, dispatch and persistence ports.</Description>
   </PropertyGroup>
 </Project>

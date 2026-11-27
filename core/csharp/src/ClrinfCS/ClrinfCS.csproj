@@ -8,6 +8,7 @@
     <PackAsTool>true</PackAsTool>
     <ToolCommandName>clrinfcs</ToolCommandName>
     <PackageId>ClrinfCS</PackageId>
+    <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
     <Version>0.1.9</Version>
     <Authors>dsi</Authors>
     <Description>Clean Architecture Roslyn AST Linter, Migration &amp; AOT CRUD Worker CLI Tool</Description>

@@ -9,6 +9,7 @@
     <NoWarn>$(NoWarn);RS2008</NoWarn>
     <IsPackable>true</IsPackable>
     <PackageId>ClrinfCS.Generators</PackageId>
+    <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
     <Description>Compile-time AOT CRUD handlers and Minimal API endpoints for ClrinfCS entities.</Description>
     <IncludeBuildOutput>false</IncludeBuildOutput>
     <SuppressDependenciesWhenPacking>true</SuppressDependenciesWhenPacking>

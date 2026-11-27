@@ -25,18 +25,31 @@ pub struct EventsConfig {
     pub services: BTreeMap<String, String>,
 }
 
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(rename_all = "lowercase")]
+pub enum ForbidScope {
+    #[default]
+    #[serde(alias = "any")]
+    Raw,
+    Code,
+    Imports,
+}
+
 #[derive(Debug, Clone, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct ForbidRule {
     pub id: String,
     /// Path prefixes (relative to the project root) the rule applies to.
     pub paths: Vec<String>,
-    /// Literal text that must not appear in files under `paths`.
+    /// Text pattern that must not appear in the selected scope under `paths`.
     pub pattern: String,
     pub reason: String,
     /// Optional extension filter (e.g. ["cs", "ts"]); empty means all supported.
     #[serde(default)]
     pub extensions: Vec<String>,
+    /// Matching scope: "raw" (default, strips comments only), "code" (strips comments & strings), or "imports".
+    #[serde(default)]
+    pub scope: ForbidScope,
 }
 
 #[derive(Debug, Clone, Default, Deserialize)]
@@ -112,11 +125,6 @@ pub struct RuleIssue {
     pub line: usize,
 }
 
-fn is_comment(line: &str) -> bool {
-    let t = line.trim_start();
-    t.starts_with("//") || t.starts_with("/*") || t.starts_with('*')
-}
-
 fn same_file(a: &Path, b: &Path) -> bool {
     match (a.canonicalize(), b.canonicalize()) {
         (Ok(a), Ok(b)) => a == b,
@@ -134,16 +142,57 @@ fn check_file(rule: &ForbidRule, root: &Path, file: &SourceFile, out: &mut Vec<R
             return;
         }
     }
-    for (i, line) in file.content.lines().enumerate() {
-        if !is_comment(line) && line.contains(&rule.pattern) {
-            out.push(RuleIssue {
-                severity: IssueSeverity::Error,
-                code: "RULE_FORBIDDEN_DEPENDENCY".into(),
-                rule_id: rule.id.clone(),
-                message: format!("[{}] {}", rule.id, rule.reason),
-                file: file.path.strip_prefix(root).unwrap_or(&file.path).display().to_string(),
-                line: i + 1,
-            });
+    let rel_file = file
+        .path
+        .strip_prefix(root)
+        .unwrap_or(&file.path)
+        .display()
+        .to_string();
+
+    match rule.scope {
+        ForbidScope::Imports => {
+            for stmt in file.imports() {
+                if stmt.target.contains(&rule.pattern) || stmt.raw.contains(&rule.pattern) {
+                    out.push(RuleIssue {
+                        severity: IssueSeverity::Error,
+                        code: "RULE_FORBIDDEN_DEPENDENCY".into(),
+                        rule_id: rule.id.clone(),
+                        message: format!("[{}] {}", rule.id, rule.reason),
+                        file: rel_file.clone(),
+                        line: stmt.line,
+                    });
+                }
+            }
+        }
+        ForbidScope::Code => {
+            let code = file.code_only();
+            for (i, line) in code.lines().enumerate() {
+                if line.contains(&rule.pattern) {
+                    out.push(RuleIssue {
+                        severity: IssueSeverity::Error,
+                        code: "RULE_FORBIDDEN_DEPENDENCY".into(),
+                        rule_id: rule.id.clone(),
+                        message: format!("[{}] {}", rule.id, rule.reason),
+                        file: rel_file.clone(),
+                        line: i + 1,
+                    });
+                }
+            }
+        }
+        ForbidScope::Raw => {
+            let no_comments = file.without_comments();
+            for (i, line) in no_comments.lines().enumerate() {
+                if line.contains(&rule.pattern) {
+                    out.push(RuleIssue {
+                        severity: IssueSeverity::Error,
+                        code: "RULE_FORBIDDEN_DEPENDENCY".into(),
+                        rule_id: rule.id.clone(),
+                        message: format!("[{}] {}", rule.id, rule.reason),
+                        file: rel_file.clone(),
+                        line: i + 1,
+                    });
+                }
+            }
         }
     }
 }
@@ -177,11 +226,17 @@ pub fn constraint_lines(rules: Option<&Rules>) -> Vec<String> {
     ];
     if let Some(r) = rules {
         for f in &r.file.forbid {
+            let scope_note = match f.scope {
+                ForbidScope::Imports => " (imports only)",
+                ForbidScope::Code => " (code only, strings excluded)",
+                ForbidScope::Raw => "",
+            };
             lines.push(format!(
-                "[{}] `{}` must not contain `{}`: {}",
+                "[{}] `{}` must not contain `{}`{}: {}",
                 f.id,
                 f.paths.join("`, `"),
                 f.pattern,
+                scope_note,
                 f.reason
             ));
         }
@@ -261,6 +316,60 @@ mod tests {
         assert_eq!(issues[0].line, 1);
         let block = render_agent_block(Some(&rules));
         assert!(block.contains("domain-no-infra") && block.starts_with(BLOCK_START));
+        let _ = std::fs::remove_dir_all(dir);
+    }
+
+    #[test]
+    fn forbid_imports_scope_ignores_non_import_mentions_and_strings() {
+        let dir = std::env::temp_dir().join(format!("clrinf-rules-imports-{}", std::process::id()));
+        let domain = dir.join("src/domain");
+        std::fs::create_dir_all(&domain).unwrap();
+        std::fs::write(
+            domain.join("order.rs"),
+            "/* /* Infrastructure */ */\nuse crate::Infrastructure::Repo;\npub fn label() -> &'static str { \"Infrastructure\" }\npub struct InfrastructureDoc;\n",
+        )
+        .unwrap();
+        std::fs::write(
+            domain.join("item.cs"),
+            "using System;\nusing var conn = OpenInfrastructure();\nusing App.Infrastructure.Db;\n",
+        )
+        .unwrap();
+        let rules = rules_with(
+            "[[forbid]]\nid=\"domain-no-infra\"\nscope=\"imports\"\npaths=[\"src/domain\"]\npattern=\"Infrastructure\"\nreason=\"no infra imports\"\n",
+            &dir,
+        );
+        let issues = check_forbid(&rules, None).unwrap();
+        assert_eq!(issues.len(), 2);
+        assert_eq!(issues[0].file.replace('\\', "/"), "src/domain/item.cs");
+        assert_eq!(issues[0].line, 3);
+        assert_eq!(issues[1].file.replace('\\', "/"), "src/domain/order.rs");
+        assert_eq!(issues[1].line, 2);
+        let _ = std::fs::remove_dir_all(dir);
+    }
+
+    #[test]
+    fn forbid_code_scope_ignores_string_literals_while_raw_keeps_them() {
+        let dir = std::env::temp_dir().join(format!("clrinf-rules-scope-{}", std::process::id()));
+        let domain = dir.join("src/domain");
+        std::fs::create_dir_all(&domain).unwrap();
+        std::fs::write(
+            domain.join("msg.cs"),
+            "var a = @\"Infrastructure\";\n// Infrastructure\n",
+        )
+        .unwrap();
+        let code_rules = rules_with(
+            "[[forbid]]\nid=\"no-infra-code\"\nscope=\"code\"\npaths=[\"src/domain\"]\npattern=\"Infrastructure\"\nreason=\"no infra\"\n",
+            &dir,
+        );
+        assert!(check_forbid(&code_rules, None).unwrap().is_empty());
+
+        let raw_rules = rules_with(
+            "[[forbid]]\nid=\"no-infra-raw\"\npaths=[\"src/domain\"]\npattern=\"Infrastructure\"\nreason=\"no infra\"\n",
+            &dir,
+        );
+        let issues = check_forbid(&raw_rules, None).unwrap();
+        assert_eq!(issues.len(), 1);
+        assert_eq!(issues[0].line, 1);
         let _ = std::fs::remove_dir_all(dir);
     }
 }

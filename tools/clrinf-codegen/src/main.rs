@@ -1,3 +1,4 @@
+mod ast;
 mod compat;
 mod csharp;
 mod drift;
@@ -761,13 +762,13 @@ fn main() -> Result<()> {
             output,
         } => {
             println!(
-                "🔄 Event Upcaster (Schema Evolution) üretiliyor (Hedef Dil: {})...",
+                "🔄 Generating event upcasters (schema evolution) for {} ...",
                 lang
             );
             let gen = Generator::new(&templates_dir)?;
             let count = gen.generate_upcasters(&schema_dir, &lang, &output)?;
             println!(
-                "✅ Başarıyla {} upcaster üretildi. Çıktı: {}",
+                "✅ Generated {} upcaster(s) at {}",
                 count,
                 output.display()
             );
@@ -954,7 +955,7 @@ fn main() -> Result<()> {
             };
 
             println!(
-                "🚀 Proje için toplu kod üretimi başlatılıyor: '{}' ({})\n",
+                "🚀 Starting project batch code generation: '{}' ({})\n",
                 manifest.project.name,
                 manifest_path.display()
             );
@@ -963,7 +964,7 @@ fn main() -> Result<()> {
 
             // 1. Security generation if enabled
             if manifest.project.secured {
-                println!("🔐 Güvenlik modülü üretiliyor...");
+                println!("🔐 Generating security module...");
                 let sec_opts = csharp::security::AddSecurityOptions {
                     project_path: &abs_path,
                     manifest: &manifest,
@@ -973,14 +974,14 @@ fn main() -> Result<()> {
                 match csharp::security::add_security(&sec_opts) {
                     Ok(res) => {
                         println!(
-                            "  ✅ Güvenlik modülü oluşturuldu ({} dosya eklendi, {} güncellendi).",
+                            "  ✅ Security module created ({} file(s) created, {} updated).",
                             res.files_created.len(),
                             res.files_modified.len()
                         );
                         total_created += res.files_created.len();
                         total_modified += res.files_modified.len();
                     }
-                    Err(e) => eprintln!("  ⚠️ Güvenlik modülü üretilirken hata: {}", e),
+                    Err(e) => eprintln!("  ⚠️ Failed to generate security module: {}", e),
                 }
             }
 
@@ -990,7 +991,7 @@ fn main() -> Result<()> {
 
             // 2. Iterate declared modules
             for module in &manifest.declared_modules {
-                println!("\n📦 Modül üretiliyor: '{}' ...", module.name);
+                println!("\n📦 Generating module: '{}' ...", module.name);
                 let props: Vec<(&str, &str)> = module
                     .properties
                     .iter()
@@ -1037,7 +1038,7 @@ fn main() -> Result<()> {
             }
 
             println!(
-                "\n🎉 Toplu kod üretimi başarıyla tamamlandı: {} dosya oluşturuldu, {} dosya güncellendi.",
+                "\n🎉 Batch code generation complete: {} file(s) created, {} file(s) updated.",
                 total_created, total_modified
             );
         }
@@ -1082,16 +1083,16 @@ fn main() -> Result<()> {
             let gen = Generator::new(&templates_dir)?;
             let count = gen.generate_slice(&schema, &lang, &output)?;
             println!("Generated {} review-required adapter sketch files.", count);
-            println!("📂 Çıktı konumu: {}\n", output.display());
+            println!("📂 Output directory: {}\n", output.display());
         }
         Commands::Template(TemplateCommands::List { templates_dir }) => {
             let mgr = TemplateManager::new(&templates_dir);
             let templates = mgr.list_templates()?;
-            println!("📦 Mevcut clrinf Şablonları:\n");
+            println!("📦 Available clrinf Templates:\n");
             for (name, desc, path) in templates {
                 println!("  • \x1b[1;32m{}\x1b[0m", name);
                 println!(
-                    "    {}\n    \x1b[2mKonum: {}\x1b[0m\n",
+                    "    {}\n    \x1b[2mLocation: {}\x1b[0m\n",
                     desc,
                     path.display()
                 );
@@ -1163,7 +1164,7 @@ fn main() -> Result<()> {
                         println!("  ✅ {}", f.display());
                     }
                 } else {
-                    anyhow::bail!("Desteklenmeyen dil: '{}'. Şablon kullanmak için '--template <ad>' belirtin.", target_lang);
+                    anyhow::bail!("Unsupported language: '{}'. Pass '--template <name>' to scaffold from a template.", target_lang);
                 }
             }
         }
@@ -1176,11 +1177,11 @@ fn main() -> Result<()> {
                 println!("{} \x1b[1m{}\x1b[0m ({})", status_icon, w.name, w.kind.as_str());
                 if w.is_available {
                     if let Some(ref ver) = w.version {
-                        println!("   Sürüm: {}", ver);
+                        println!("   Version: {}", ver);
                     }
-                    println!("   Komut: {} {:?}", w.executable, w.args_prefix);
+                    println!("   Command: {} {:?}", w.executable, w.args_prefix);
                 } else {
-                    println!("   \x1b[33mKurulum Rehberi:\x1b[0m {}", w.install_hint);
+                    println!("   \x1b[33mInstall Hint:\x1b[0m {}", w.install_hint);
                 }
                 println!();
             }
@@ -1239,20 +1240,20 @@ fn main() -> Result<()> {
                         }
                         if !res.success {
                             all_passed = false;
-                            println!("❌ [{}] Mimari denetim ihlal tespit etti veya başarısız oldu.\n", kind.as_str());
+                            println!("❌ [{}] Architectural lint reported violations or failed.\n", kind.as_str());
                         } else {
-                            println!("✅ [{}] Mimari denetim başarılı.\n", kind.as_str());
+                            println!("✅ [{}] Architectural lint passed.\n", kind.as_str());
                         }
                     }
                     Err(e) => {
                         all_passed = false;
-                        eprintln!("❌ [{}] Linter çalıştırılamadı: {}\n", kind.as_str(), e);
+                        eprintln!("❌ [{}] Failed to run linter: {}\n", kind.as_str(), e);
                     }
                 }
             }
 
             if !all_passed {
-                anyhow::bail!("Bir veya daha fazla dilde mimari ihlal tespit edildi.");
+                anyhow::bail!("Architectural violations detected in one or more languages.");
             }
         }
         Commands::Rule(RuleCommands::New {
@@ -1269,7 +1270,7 @@ fn main() -> Result<()> {
             } else if let Some(k) = WorkerKind::from_str_loose(&lang) {
                 vec![k]
             } else {
-                anyhow::bail!("Desteklenmeyen dil: {}. (csharp, rust, typescript, elixir, all)", lang);
+                anyhow::bail!("Unsupported language: {}. (csharp, rust, typescript, elixir, all)", lang);
             };
 
             for kind in kinds {
@@ -1283,13 +1284,13 @@ fn main() -> Result<()> {
                             eprintln!("{}", res.stderr.trim());
                         }
                         if res.success {
-                            println!("✅ [{}] Kural ve test başarıyla üretildi.\n", kind.as_str());
+                            println!("✅ [{}] Rule and test scaffolded.\n", kind.as_str());
                         } else {
-                            eprintln!("❌ [{}] Kural üretimi başarısız oldu.\n", kind.as_str());
+                            eprintln!("❌ [{}] Rule scaffolding failed.\n", kind.as_str());
                         }
                     }
                     Err(e) => {
-                        eprintln!("❌ [{}] Kural üretilemedi: {}\n", kind.as_str(), e);
+                        eprintln!("❌ [{}] Failed to scaffold rule: {}\n", kind.as_str(), e);
                     }
                 }
             }
@@ -1314,7 +1315,7 @@ fn main() -> Result<()> {
             );
             let gen = generator::Generator::new(&templates_dir)?;
             let created = gen.scaffold_otp(&module, &app_name, &path)?;
-            println!("✅ Başarıyla {} OTP dosyası üretildi:", created.len());
+            println!("✅ Generated {} OTP file(s):", created.len());
             for f in created {
                 println!("   • {}", f.display());
             }
@@ -1332,7 +1333,7 @@ fn main() -> Result<()> {
             let detected = manifest::detect_project(&abs_path);
             if let Some(ref d) = detected {
                 println!(
-                    "🔍 Mevcut proje algılandı ({}): Dil = {}, Ad = {:?}",
+                    "🔍 Detected existing project ({}): Language = {}, Name = {:?}",
                     d.source_file,
                     d.lang.as_str(),
                     d.name
@@ -1345,7 +1346,7 @@ fn main() -> Result<()> {
                     "rust" | "rs" => manifest::Lang::Rust,
                     "typescript" | "ts" | "js" => manifest::Lang::TypeScript,
                     "elixir" | "ex" => manifest::Lang::Elixir,
-                    _ => anyhow::bail!("Desteklenmeyen dil: {}. (csharp, rust, typescript, elixir)", l),
+                    _ => anyhow::bail!("Unsupported language: {}. (csharp, rust, typescript, elixir)", l),
                 }
             } else if let Some(ref d) = detected {
                 d.lang
@@ -1367,7 +1368,7 @@ fn main() -> Result<()> {
                 "flat" => manifest::ArchStyle::Flat,
                 "layered" => manifest::ArchStyle::Layered,
                 "clean-cqrs" | "cleancqrs" => manifest::ArchStyle::CleanCqrs,
-                _ => anyhow::bail!("Desteklenmeyen mimari: {}. (flat, layered, clean-cqrs)", arch),
+                _ => anyhow::bail!("Unsupported architecture: {}. (flat, layered, clean-cqrs)", arch),
             };
 
             let dispatcher_enum = match dispatcher.to_lowercase().as_str() {
@@ -1426,7 +1427,7 @@ fn main() -> Result<()> {
             }
 
             println!(
-                "✅ clrinf.toml başarıyla oluşturuldu: {}\n   Proje: {}\n   Dil: {}\n   Mimari: {:?}\n   Profil: {}",
+                "✅ Created clrinf.toml at {}\n   Project: {}\n   Language: {}\n   Architecture: {:?}\n   Profile: {}",
                 manifest_path.display(),
                 project_name,
                 lang_enum.as_str(),
@@ -1437,17 +1438,17 @@ fn main() -> Result<()> {
         Commands::Status { path } => {
             let abs_path = std::fs::canonicalize(&path).unwrap_or_else(|_| path.clone());
             let (m, manifest_path) = ProjectManifest::discover(&abs_path)?;
-            println!("📋 clrinf Proje Durumu\n");
+            println!("📋 clrinf Project Status\n");
             println!("   Manifest: {}", manifest_path.display());
-            println!("   Proje: {}", m.project.name);
-            println!("   Dil: {}", m.project.lang.as_str());
-            println!("   Mimari: {:?}", m.project.arch);
-            println!("   Dağıtım: {:?}", m.project.deployment);
+            println!("   Project: {}", m.project.name);
+            println!("   Language: {}", m.project.lang.as_str());
+            println!("   Architecture: {:?}", m.project.arch);
+            println!("   Deployment: {:?}", m.project.deployment);
             println!("   Host: {:?}", m.project.host_type);
-            println!("\n   Etkin Modüller:");
+            println!("\n   Enabled Modules:");
             let enabled = m.enabled_modules();
             if enabled.is_empty() {
-                println!("   (hiçbir opsiyonel modül etkin değil)");
+                println!("   (no optional modules enabled)");
             } else {
                 for name in &enabled {
                     println!("   ✅ {}", name);
@@ -1458,16 +1459,16 @@ fn main() -> Result<()> {
         Commands::Module(ModuleCommands::List { path }) => {
             let abs_path = std::fs::canonicalize(&path).unwrap_or_else(|_| path.clone());
             let (m, _) = ProjectManifest::discover(&abs_path)?;
-            println!("📦 Modül Durumu:\n");
+            println!("📦 Module Status:\n");
 
             let modules: Vec<(&str, bool, &str)> = vec![
-                ("caching", m.modules.caching.enabled, "Önbellekleme"),
-                ("logging", m.modules.logging.enabled, "Yapılandırılmış Loglama"),
-                ("transaction", m.modules.transaction.enabled, "Transaction Yönetimi"),
-                ("authentication", m.modules.authentication.enabled, "Kimlik Doğrulama"),
-                ("authorization", m.modules.authorization.enabled, "Yetkilendirme"),
-                ("error_handling", m.modules.error_handling.enabled, "Hata Yönetimi"),
-                ("validation", m.modules.validation.enabled, "Girdi Doğrulama"),
+                ("caching", m.modules.caching.enabled, "Caching"),
+                ("logging", m.modules.logging.enabled, "Structured Logging"),
+                ("transaction", m.modules.transaction.enabled, "Transaction Management"),
+                ("authentication", m.modules.authentication.enabled, "Authentication"),
+                ("authorization", m.modules.authorization.enabled, "Authorization"),
+                ("error_handling", m.modules.error_handling.enabled, "Error Handling"),
+                ("validation", m.modules.validation.enabled, "Input Validation"),
                 ("idempotency", m.modules.idempotency.enabled, "Idempotency"),
                 ("outbox", m.modules.outbox.enabled, "Transactional Outbox"),
             ];
@@ -1487,7 +1488,7 @@ fn main() -> Result<()> {
             let (mut m, manifest_path) = ProjectManifest::discover(&abs_path)?;
             let manager = ModuleManager::new(None)?;
             let created = manager.add_module(&mut m, &manifest_path, &module, provider.as_deref())?;
-            println!("✅ '{}' modülü başarıyla eklendi ve bağlandı ({} dosya oluşturuldu).", module, created.len());
+            println!("✅ Module '{}' added and wired ({} file(s) created).", module, created.len());
             for f in created {
                 println!("   • {}", f.display());
             }
@@ -1497,7 +1498,7 @@ fn main() -> Result<()> {
             let (mut m, manifest_path) = ProjectManifest::discover(&abs_path)?;
             let manager = ModuleManager::new(None)?;
             let removed = manager.remove_module(&mut m, &manifest_path, &module)?;
-            println!("✅ '{}' modülü devre dışı bırakıldı ve temizlendi ({} dosya silindi).", module, removed.len());
+            println!("✅ Module '{}' disabled and cleaned ({} file(s) removed).", module, removed.len());
             for f in removed {
                 println!("   • {}", f.display());
             }
@@ -1507,10 +1508,10 @@ fn main() -> Result<()> {
             let (m, _) = ProjectManifest::discover(&abs_path)?;
             let manager = ModuleManager::new(None)?;
             let report = manager.sync_modules(&m, &abs_path)?;
-            println!("🔄 Modül senkronizasyonu tamamlandı:");
-            println!("   Etkin ve bağlanan modüller: {:?}", report.synced);
+            println!("🔄 Module sync complete:");
+            println!("   Enabled and wired modules: {:?}", report.synced);
             if !report.cleaned.is_empty() {
-                println!("   Temizlenen modüller: {:?}", report.cleaned);
+                println!("   Cleaned modules: {:?}", report.cleaned);
             }
         }
         Commands::Module(ModuleCommands::Adopt {
@@ -1541,7 +1542,7 @@ fn main() -> Result<()> {
             let (m, _) = ProjectManifest::discover(&abs_path)?;
             match m.project.lang {
                 manifest::Lang::CSharp => {
-                    println!("🚀 Modül ekleniyor (C#): '{}' (Desen: {}) ...", name, pattern);
+                    println!("🚀 Adding C# module: '{}' (Pattern: {}) ...", name, pattern);
                     let pattern_style = match pattern.to_lowercase().as_str() {
                         "basic" => manifest::PatternStyle::Basic,
                         "separated" => manifest::PatternStyle::Separated,
@@ -1556,7 +1557,7 @@ fn main() -> Result<()> {
                     };
                     let result = csharp::module::add_module(&opts)?;
                     println!(
-                        "\n✅ {} dosya oluşturuldu, {} dosya güncellendi.",
+                        "\n✅ Created {} file(s), updated {} file(s).",
                         result.files_created.len(),
                         result.files_modified.len()
                     );
@@ -1569,7 +1570,7 @@ fn main() -> Result<()> {
                         manifest::Lang::TypeScript => WorkerKind::TypeScript,
                         manifest::Lang::Elixir => WorkerKind::Elixir,
                     };
-                    println!("🚀 Modül ekleniyor: '{}' (Dil: {}) ...", name, m.project.lang.as_str());
+                    println!("🚀 Adding module: '{}' (Language: {}) ...", name, m.project.lang.as_str());
                     let res = worker_mgr.add_module(worker_kind, &name, Some(&abs_path))?;
                     if res.success {
                         println!("{}", res.stdout.trim());
@@ -1620,7 +1621,7 @@ fn main() -> Result<()> {
                     });
                     if effective_pattern.eq_ignore_ascii_case("aot") {
                         println!(
-                            "🚀 Entity ekleniyor (AOT CRUD): '{}' -> Modül: '{}' ...",
+                            "🚀 Adding entity (AOT CRUD): '{}' -> Module: '{}' ...",
                             name, module
                         );
                         let opts = csharp::entity::AddAotEntityOptions {
@@ -1632,12 +1633,12 @@ fn main() -> Result<()> {
                             manifest: &m,
                         };
                         let result = csharp::entity::add_aot_entity(&opts)?;
-                        println!("\n✅ {} dosya oluşturuldu; MSBuild dispatcher ayarları eşitlendi.",
+                        println!("\n✅ Created {} file(s); synced MSBuild dispatcher settings.",
                             result.files_created.len()
                         );
                     } else if effective_pattern.eq_ignore_ascii_case("vertical-slice") || effective_pattern.eq_ignore_ascii_case("flat") {
                         println!(
-                            "🚀 Entity ekleniyor (vertical-slice): '{}' -> Modül: '{}' ...",
+                            "🚀 Adding entity (vertical-slice): '{}' -> Module: '{}' ...",
                             name, module
                         );
                         let opts = csharp::entity::AddEntityOptions {
@@ -1650,14 +1651,14 @@ fn main() -> Result<()> {
                             templates_dir: &tpl_dir,
                         };
                         let result = csharp::entity::add_entity(&opts)?;
-                        println!("\n✅ {} dosya oluşturuldu, {} dosya güncellendi.",
+                        println!("\n✅ Created {} file(s), updated {} file(s).",
                             result.files_created.len(),
                             result.files_modified.len()
                         );
                     } else {
                         // Fallback to legacy worker-based generation
                         println!(
-                            "🚀 Entity ekleniyor (separated): '{}' -> Modül: '{}' ...",
+                            "🚀 Adding entity (separated): '{}' -> Module: '{}' ...",
                             name, module
                         );
                         let worker_mgr = WorkerManager::new();
@@ -1680,7 +1681,7 @@ fn main() -> Result<()> {
                         manifest::Lang::Elixir => WorkerKind::Elixir,
                     };
                     println!(
-                        "🚀 Entity ekleniyor: '{}' -> Modül: '{}' (Dil: {}) ...",
+                        "🚀 Adding entity: '{}' -> Module: '{}' (Language: {}) ...",
                         name, module, m.project.lang.as_str()
                     );
                     let res = worker_mgr.add_entity(worker_kind, &name, &module, &parsed_props, Some(&abs_path))?;
@@ -1709,7 +1710,7 @@ fn main() -> Result<()> {
             };
 
             let sec_mode = csharp::security::SecurityMode::from_str(&mode);
-            println!("🔐 Güvenlik modülü ekleniyor (Mod: {:?}) ...", sec_mode);
+            println!("🔐 Adding security module (Mode: {:?}) ...", sec_mode);
             let opts = csharp::security::AddSecurityOptions {
                 project_path: &abs_path,
                 manifest: &m,
@@ -1718,7 +1719,7 @@ fn main() -> Result<()> {
             };
             let res = csharp::security::add_security(&opts)?;
             println!(
-                "\n✅ {} dosya oluşturuldu, {} dosya güncellendi.",
+                "\n✅ Created {} file(s), updated {} file(s).",
                 res.files_created.len(),
                 res.files_modified.len()
             );
@@ -1897,26 +1898,26 @@ fn execute_module_adopt(
         source_project,
     };
     let result = ModuleAdapter::adopt(&opts)?;
-    println!("🌿 Modül başarıyla nakledildi: '{}' ({})", result.module_name, result.mode.to_uppercase());
-    println!("   Hedef Dil: {}", result.lang);
-    println!("   Hedef Dizin: {}", result.target_dir.display());
+    println!("🌿 Adopted module '{}' ({})", result.module_name, result.mode.to_uppercase());
+    println!("   Target Language: {}", result.lang);
+    println!("   Target Directory: {}", result.target_dir.display());
     if let Some(ref a) = result.alias {
-        println!("   Takma Ad (Alias): {}", a);
+        println!("   Alias: {}", a);
     }
     if !result.files_created.is_empty() {
-        println!("   Oluşturulan Dosyalar ({}):", result.files_created.len());
+        println!("   Created Files ({}):", result.files_created.len());
         for f in &result.files_created {
             println!("     • {}", f.display());
         }
     }
     if !result.files_modified.is_empty() {
-        println!("   Güncellenen/Bağlanan Dosyalar ({}):", result.files_modified.len());
+        println!("   Modified/Wired Files ({}):", result.files_modified.len());
         for f in &result.files_modified {
             println!("     • {}", f.display());
         }
     }
     if let Some(ref p) = result.policy_created {
-        println!("   🛡️  Multi-Tenant Cedar Yetkilendirme Politikası:");
+        println!("   🛡️  Multi-Tenant Cedar Policy:");
         println!("     • {}", p.display());
     }
     for note in &result.notes {

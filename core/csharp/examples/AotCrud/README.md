@@ -56,16 +56,10 @@ services.AddScoped<ICrudStore<Category, int>>(
 
 ## AOT
 
-The default build is runnable (reflection-based JSON enabled). To try the Native
-AOT publish path:
+The default build is runnable (reflection-based JSON enabled). Native AOT publish builds with **zero errors and zero trim/AOT warnings**:
 
 ```bash
 dotnet publish -r linux-x64 -p:EnableAotCrudPublish=true
 ```
 
-The generator output has zero trim warnings on its own, but ASP.NET Core's
-`RequestDelegateGenerator` cannot see delegates emitted by another source
-generator, so `MapX(Delegate)` still reports `IL2026/IL3050` during AOT publish.
-JSON serialization of generated DTOs has the same cross-generator visibility
-limitation. See the open items in
-`.context/aot_source_generator_core_implementation_plan.md` (Phase 4).
+`ClrinfCS.Generators` emits `(RequestDelegate)` Minimal API endpoints with `IParsable<T>` binding and `Utf8JsonWriter`/`JsonDocument`-based JSON helpers (`ToJsonBytes` / `ReadJsonAsync`), and `ClrinfCS.OpenApi` reads Minimal API `RouteEndpoint` metadata using `Utf8JsonWriter`. Ejected operations use the same reflection-free `RequestDelegate` + manual binding path, so `PublishAot=true` stays warning-free after `clrinf eject`. See `.context/aot_source_generator_core_implementation_plan.md`.

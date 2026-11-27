@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.clrinf.com/inventory/StockReserved.v1.schema.json",
+  "title": "StockReservedV1",
+  "description": "Emitted when inventory reserves items for an order.",
+  "type": "object",
+  "x-domain": "inventory",
+  "x-event-type": "inventory.stock.reserved.v1",
+  "x-published-by": ["inventory"],
+  "x-subscribed-by": ["orders"],
+  "required": ["reservation_id", "order_id", "warehouse"],
+  "properties": {
+    "reservation_id": { "type": "string", "description": "Reservation identifier" },
+    "order_id": { "type": "string", "description": "Associated order identifier" },
+    "warehouse": { "type": "string", "description": "Fulfillment warehouse code" }
+  }
+}

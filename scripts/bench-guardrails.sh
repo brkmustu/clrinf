@@ -1,0 +1,105 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+BENCH_DIR="${REPO_ROOT}/examples/guardrails-benchmark"
+TEMPLATES_DIR="${REPO_ROOT}/tools/clrinf-codegen/templates"
+
+REL_BIN="${REPO_ROOT}/tools/clrinf-codegen/target/release/clrinf-codegen"
+DBG_BIN="${REPO_ROOT}/tools/clrinf-codegen/target/debug/clrinf-codegen"
+
+if [ -x "${REL_BIN}" ] && [ -x "${DBG_BIN}" ]; then
+  if [ "${DBG_BIN}" -nt "${REL_BIN}" ]; then
+    BIN="${DBG_BIN}"
+  else
+    BIN="${REL_BIN}"
+  fi
+elif [ -x "${REL_BIN}" ]; then
+  BIN="${REL_BIN}"
+elif [ -x "${DBG_BIN}" ]; then
+  BIN="${DBG_BIN}"
+else
+  echo "Building clrinf-codegen..."
+  cargo build --manifest-path "${REPO_ROOT}/tools/clrinf-codegen/Cargo.toml"
+  BIN="${DBG_BIN}"
+fi
+
+echo "=== Suite 1: Polyglot Guardrails & Event Context Slicing ==="
+(cd "${BENCH_DIR}" && "${BIN}" verify --json >/dev/null)
+echo "[PASS] Clean baseline passed clrinf verify (0 errors)"
+
+(cd "${BENCH_DIR}" && "${BIN}" bench context orders.placed.v1 \
+  --schema-dir "contracts/schemas" \
+  --src "services")
+
+TMP_ROOT="$(mktemp -d)"
+trap 'rm -rf "${TMP_ROOT}"' EXIT
+
+# Case 1: forbidden domain import + Claude hook exit code 2
+cp -R "${BENCH_DIR}" "${TMP_ROOT}/case1"
+printf '\nimport { Bad } from '\''../Infrastructure/db'\'';\n' >> "${TMP_ROOT}/case1/services/billing/src/domain/invoice.ts"
+OUT1="$(cd "${TMP_ROOT}/case1" && "${BIN}" verify --json || true)"
+echo "${OUT1}" | grep -q "RULE_FORBIDDEN_DEPENDENCY"
+echo "[PASS] Case 1 caught forbidden domain import (RULE_FORBIDDEN_DEPENDENCY)"
+
+set +e
+HOOK_ERR="$(printf '{"tool_input":{"file_path":"services/billing/src/domain/invoice.ts"}}' | (cd "${TMP_ROOT}/case1" && "${BIN}" hook run --format claude) 2>&1 >/dev/null)"
+HOOK_CODE=$?
+set -e
+test "${HOOK_CODE}" -eq 2
+echo "${HOOK_ERR}" | grep -q "RULE_FORBIDDEN_DEPENDENCY"
+echo "[PASS] Claude Code post-edit hook returned exit code 2 with actionable diagnostic"
+
+# Case 2: direct outbox bypass
+cp -R "${BENCH_DIR}" "${TMP_ROOT}/case2"
+printf '\npub fn bypass(outbox: &mut Vec<String>) { outbox.enqueue("raw".into()); }\n' >> "${TMP_ROOT}/case2/services/orders/src/application/place_order.rs"
+OUT2="$(cd "${TMP_ROOT}/case2" && "${BIN}" verify --json || true)"
+echo "${OUT2}" | grep -q "DRIFT_RAW_OUTBOX_WRITE"
+echo "[PASS] Case 2 caught direct outbox bypass (DRIFT_RAW_OUTBOX_WRITE)"
+
+# Case 3: breaking v2 schema without upcaster
+cp -R "${BENCH_DIR}" "${TMP_ROOT}/case3"
+cat <<'EOF' > "${TMP_ROOT}/case3/contracts/schemas/orders/OrderPlaced.v2.schema.json"
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.clrinf.com/orders/OrderPlaced.v2.schema.json",
+  "title": "OrderPlacedV2",
+  "type": "object",
+  "x-domain": "orders",
+  "x-event-type": "orders.placed.v2",
+  "x-published-by": ["orders"],
+  "x-subscribed-by": ["billing"],
+  "required": ["order_id", "customer_id", "total_amount", "currency", "tax_amount"],
+  "properties": {
+    "order_id": { "type": "string" },
+    "customer_id": { "type": "string" },
+    "total_amount": { "type": "number" },
+    "currency": { "type": "string" },
+    "tax_amount": { "type": "number" }
+  }
+}
+EOF
+OUT3="$(cd "${TMP_ROOT}/case3" && "${BIN}" verify --json || true)"
+echo "${OUT3}" | grep -q "TOPOLOGY_UPCASTER_MISSING"
+echo "[PASS] Case 3 caught breaking v2 evolution without upcaster (TOPOLOGY_UPCASTER_MISSING)"
+
+echo ""
+echo "=== Suite 2: Compile-Time AOT CRUD vs Disk-Generated CRUD Context Cost ==="
+AOT_CHARS=$(cat "${REPO_ROOT}"/core/csharp/examples/AotCrud/Domain/*.cs | wc -c)
+AOT_FILES=$(ls -1 "${REPO_ROOT}"/core/csharp/examples/AotCrud/Domain/*.cs | wc -l)
+AOT_TOKENS=$(( (AOT_CHARS + 3) / 4 ))
+
+DISK_DIR="${TMP_ROOT}/disk_crud"
+mkdir -p "${DISK_DIR}"
+printf '<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><TargetFramework>net10.0</TargetFramework></PropertyGroup></Project>\n' > "${DISK_DIR}/BenchApp.csproj"
+"${BIN}" init --lang csharp --pattern flat --path "${DISK_DIR}" >/dev/null
+"${BIN}" add module Catalog --path "${DISK_DIR}" >/dev/null
+"${BIN}" add entity Category -m Catalog --pattern vertical-slice --prop name:string --prop slug:string --templates-dir "${TEMPLATES_DIR}" --path "${DISK_DIR}" >/dev/null
+"${BIN}" add entity Brand -m Catalog --pattern vertical-slice --prop name:string --templates-dir "${TEMPLATES_DIR}" --path "${DISK_DIR}" >/dev/null
+
+DISK_CHARS=$(find "${DISK_DIR}" -path '*/bin/*' -prune -o -path '*/obj/*' -prune -o -name '*.cs' -type f -exec cat {} + | wc -c)
+DISK_FILES=$(find "${DISK_DIR}" -path '*/bin/*' -prune -o -path '*/obj/*' -prune -o -name '*.cs' -type f | wc -l)
+DISK_TOKENS=$(( (DISK_CHARS + 3) / 4 ))
+
+echo "  Disk CRUD (vertical-slice, 2 entities): ${DISK_TOKENS} tokens across ${DISK_FILES} .cs files"
+echo "  AOT CRUD on-disk (Domain/*, 2 entities): ${AOT_TOKENS} tokens across ${AOT_FILES} .cs files"

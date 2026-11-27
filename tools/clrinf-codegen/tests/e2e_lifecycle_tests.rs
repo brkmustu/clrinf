@@ -35,7 +35,7 @@ fn test_e2e_rust_lifecycle() {
         .expect("Failed to run clrinf init");
     assert!(init_out.status.success());
     let init_stdout = String::from_utf8_lossy(&init_out.stdout);
-    assert!(init_stdout.contains("Mevcut proje algılandı (Cargo.toml): Dil = rust, Ad = Some(\"store_backend\")"));
+    assert!(init_stdout.contains("Detected existing project (Cargo.toml): Language = rust, Name = Some(\"store_backend\")"));
     assert!(project_dir.join("clrinf.toml").is_file());
 
     // 3. clrinf module add caching
@@ -162,7 +162,7 @@ fn test_e2e_typescript_lifecycle() {
         .expect("Failed to run clrinf init");
     assert!(init_out.status.success());
     let init_stdout = String::from_utf8_lossy(&init_out.stdout);
-    assert!(init_stdout.contains("Mevcut proje algılandı (package.json): Dil = typescript, Ad = Some(\"mycorp-cart-service\")"));
+    assert!(init_stdout.contains("Detected existing project (package.json): Language = typescript, Name = Some(\"mycorp-cart-service\")"));
     assert!(project_dir.join("clrinf.toml").is_file());
 
     // 3. clrinf module add logging
@@ -287,7 +287,7 @@ fn test_e2e_csharp_lifecycle() {
         .expect("Failed to run clrinf init");
     assert!(init_out.status.success());
     let init_stdout = String::from_utf8_lossy(&init_out.stdout);
-    assert!(init_stdout.contains("Mevcut proje algılandı (PaymentService.csproj): Dil = csharp, Ad = Some(\"PaymentService\")"));
+    assert!(init_stdout.contains("Detected existing project (PaymentService.csproj): Language = csharp, Name = Some(\"PaymentService\")"));
     assert!(project_dir.join("clrinf.toml").is_file());
 
     // 3. clrinf module add caching
@@ -718,7 +718,7 @@ fn test_catalog_command() {
         .expect("Failed to run clrinf catalog");
     assert!(out1.status.success());
     let stdout1 = String::from_utf8_lossy(&out1.stdout);
-    assert!(stdout1.contains("clrinf Yerleşik Modül Kataloğu"));
+    assert!(stdout1.contains("clrinf Built-in Module Catalog"));
     assert!(stdout1.contains("crm"));
     assert!(stdout1.contains("deals"));
     assert!(stdout1.contains("contacts"));
@@ -734,8 +734,8 @@ fn test_catalog_command() {
         .expect("Failed to run clrinf module catalog");
     assert!(out2.status.success());
     let stdout2 = String::from_utf8_lossy(&out2.stdout);
-    assert!(stdout2.contains("Domain Modülleri"));
-    assert!(stdout2.contains("Altyapı Modülleri"));
+    assert!(stdout2.contains("Domain Modules"));
+    assert!(stdout2.contains("Infrastructure Modules"));
 }
 
 #[test]
