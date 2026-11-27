@@ -25,6 +25,10 @@ inputs:
     description: Pass --fail-on-breaking when report-base-ref is set
     required: false
     default: 'true'
+  sarif-file:
+    description: Optional file path to write a SARIF 2.1.0 report from clrinf verify (e.g. clrinf.sarif)
+    required: false
+    default: ''
 
 runs:
   using: composite
@@ -128,6 +132,9 @@ runs:
           printf '%s\n' "${OUTPUT}"
           echo '```'
         } >> "${GITHUB_STEP_SUMMARY}"
+        if [ -n "${{ inputs.sarif-file }}" ]; then
+          clrinf "${ARGS[@]}" --format sarif --output "${{ inputs.sarif-file }}" || true
+        fi
         exit "${CODE}"
 
     - name: Run clrinf topology report

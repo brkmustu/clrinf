@@ -33,6 +33,10 @@ pub fn discover_files(root: &Path, extensions: &[&str]) -> Result<Vec<PathBuf>> 
 }
 
 pub fn validate_schemas(schema_dir: &Path) -> Result<usize> {
+    validate_schemas_impl(schema_dir, true)
+}
+
+fn validate_schemas_impl(schema_dir: &Path, verbose: bool) -> Result<usize> {
     let files = discover_files(schema_dir, &["json"])?;
     ensure!(
         !files.is_empty(),
@@ -69,13 +73,23 @@ pub fn validate_schemas(schema_dir: &Path) -> Result<usize> {
                 );
             }
         }
-        eprintln!("  Valid: {}", path.display());
+        if verbose {
+            eprintln!("  Valid: {}", path.display());
+        }
     }
     Ok(files.len())
 }
 
 pub fn check_schemas(schema_dir: &Path) -> Result<usize> {
-    let count = validate_schemas(schema_dir)?;
+    check_schemas_impl(schema_dir, true)
+}
+
+pub fn check_schemas_quiet(schema_dir: &Path) -> Result<usize> {
+    check_schemas_impl(schema_dir, false)
+}
+
+fn check_schemas_impl(schema_dir: &Path, verbose: bool) -> Result<usize> {
+    let count = validate_schemas_impl(schema_dir, verbose)?;
     let mut titles = HashSet::new();
     let mut stems = HashSet::new();
     let mut ts_exports = HashSet::new();

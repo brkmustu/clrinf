@@ -12,10 +12,20 @@ Start with the single-binary CLI (`clrinf`) to enforce layer rules, module bound
 clrinf init --guardrails --ci
 ```
 
-Preview or run full verification at any time:
+Preview or run full verification and diagnostics at any time:
 ```bash
+clrinf doctor            # verify rules, agent instruction sync, hooks, schemas & baseline health
 clrinf verify            # topology + code<->contract drift + [[forbid]] + [[boundaries]]
 clrinf verify --changed  # incremental check (plus generated-file edit protection)
+clrinf verify --format sarif --output clrinf.sarif  # SARIF 2.1.0 for GitHub Code Scanning
+```
+
+If your codebase publishes or handles events without using `clrinf`-generated symbol names, annotate those call sites with a comment so drift and impact checks still track them:
+```ts
+// @clrinf:publishes billing.invoice.issued.v1
+```
+```python
+# @clrinf:handles billing.invoice.issued.v1
 ```
 
 ## 2. Wire-Format Event Contracts First

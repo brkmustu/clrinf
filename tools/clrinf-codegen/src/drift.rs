@@ -6,7 +6,9 @@
 //! topology cannot silently diverge from reality.
 
 use crate::schema::{parse_schema_file, ParsedSchema};
-use crate::scan::{collect_sources, contains_ident, ident_lines, SourceFile};
+use crate::scan::{
+    collect_sources, contains_ident, event_annotations, ident_lines, AnnotationKind, SourceFile,
+};
 use crate::topology::IssueSeverity;
 use crate::validator::discover_files;
 use anyhow::{bail, Context, Result};
@@ -113,6 +115,25 @@ fn first_usage<'a>(sources: &'a [SourceFile], idents: &[String]) -> Option<(&'a 
     None
 }
 
+fn annotation_matches(target: &str, schema: &ParsedSchema) -> bool {
+    schema.event_type.as_deref() == Some(target) || schema.title == target
+}
+
+fn first_annotated_usage<'a>(
+    sources: &'a [SourceFile],
+    kind: AnnotationKind,
+    schema: &ParsedSchema,
+) -> Option<(&'a SourceFile, usize)> {
+    for file in sources.iter().filter(|f| !f.generated) {
+        for ann in event_annotations(&file.content) {
+            if ann.kind == kind && annotation_matches(&ann.target, schema) {
+                return Some((file, ann.line));
+            }
+        }
+    }
+    None
+}
+
 pub fn raw_outbox_writes(file: &SourceFile) -> Vec<usize> {
     let code = file.code_only();
     code.lines()
@@ -153,8 +174,10 @@ pub fn detect(schema_dir: &Path, services: &[ServiceSource]) -> Result<DriftRepo
             let event_type = schema.event_type.clone().unwrap();
             let declared_pub = schema.published_by.iter().any(|s| s == &service.name);
             let declared_sub = schema.subscribed_by.iter().any(|s| s == &service.name);
-            let pub_use = first_usage(&sources, &publish_idents(schema));
-            let sub_use = first_usage(&sources, &subscribe_idents(schema));
+            let pub_use = first_usage(&sources, &publish_idents(schema))
+                .or_else(|| first_annotated_usage(&sources, AnnotationKind::Publishes, schema));
+            let sub_use = first_usage(&sources, &subscribe_idents(schema))
+                .or_else(|| first_annotated_usage(&sources, AnnotationKind::Handles, schema));
 
             if let (Some((file, line)), false) = (pub_use, declared_pub) {
                 issues.push(DriftIssue {
@@ -229,6 +252,22 @@ pub fn detect(schema_dir: &Path, services: &[ServiceSource]) -> Result<DriftRepo
                     line: Some(line),
                 });
             }
+            for ann in event_annotations(&file.content) {
+                if !events.iter().any(|s| annotation_matches(&ann.target, s)) {
+                    issues.push(DriftIssue {
+                        severity: IssueSeverity::Error,
+                        code: "DRIFT_UNKNOWN_ANNOTATED_EVENT".into(),
+                        message: format!(
+                            "Service '{}' references unknown annotated event '{}' (no schema with x-event-type or title matches).",
+                            service.name, ann.target
+                        ),
+                        event_type: Some(ann.target),
+                        service: service.name.clone(),
+                        file: Some(rel(file)),
+                        line: Some(ann.line),
+                    });
+                }
+            }
         }
     }
 
@@ -262,5 +301,72 @@ mod tests {
         let files = [file];
         let usage = first_usage(&files, &["publishOrderPlaced".into()]);
         assert!(usage.is_none());
+    }
+
+    #[test]
+    fn brownfield_annotations_participate_in_drift_and_reject_unknown_events() {
+        let dir = std::env::temp_dir().join(format!("clrinf-drift-ann-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        let schemas = dir.join("schemas");
+        let orders = dir.join("svc/orders");
+        let billing = dir.join("svc/billing");
+        let shipping = dir.join("svc/shipping");
+        std::fs::create_dir_all(&schemas).unwrap();
+        std::fs::create_dir_all(&orders).unwrap();
+        std::fs::create_dir_all(&billing).unwrap();
+        std::fs::create_dir_all(&shipping).unwrap();
+
+        std::fs::write(
+            schemas.join("order-placed.v1.schema.json"),
+            r#"{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.test/OrderPlaced",
+  "title": "OrderPlaced",
+  "type": "object",
+  "x-event-type": "orders.placed.v1",
+  "x-published-by": ["orders"],
+  "x-subscribed-by": ["billing"],
+  "properties": { "orderId": { "type": "string" } }
+}"#,
+        )
+        .unwrap();
+
+        std::fs::write(
+            orders.join("pub.rs"),
+            "// @clrinf:publishes orders.placed.v1\npub fn create_order() {}\n",
+        )
+        .unwrap();
+        std::fs::write(
+            billing.join("sub.ex"),
+            "# @clrinf:handles orders.placed.v1\ndefmodule Billing.Sub do\nend\n",
+        )
+        .unwrap();
+
+        let ok_report = detect(
+            &schemas,
+            &[
+                ServiceSource { name: "orders".into(), dir: orders.clone() },
+                ServiceSource { name: "billing".into(), dir: billing.clone() },
+            ],
+        )
+        .unwrap();
+        assert!(ok_report.is_valid, "{:?}", ok_report.issues);
+        assert!(ok_report.issues.is_empty(), "{:?}", ok_report.issues);
+
+        std::fs::write(
+            shipping.join("extra.ts"),
+            "// @clrinf:handles orders.placed.v1\n// @clrinf:publishes orders.unknown.v1\nexport function run() {}\n",
+        )
+        .unwrap();
+        let bad_report = detect(
+            &schemas,
+            &[ServiceSource { name: "shipping".into(), dir: shipping }],
+        )
+        .unwrap();
+        assert!(!bad_report.is_valid);
+        assert!(bad_report.issues.iter().any(|i| i.code == "DRIFT_UNDECLARED_SUBSCRIBE"));
+        assert!(bad_report.issues.iter().any(|i| i.code == "DRIFT_UNKNOWN_ANNOTATED_EVENT"));
+
+        let _ = std::fs::remove_dir_all(dir);
     }
 }

@@ -65,10 +65,12 @@ Run the one-command onboarding wizard, or configure files individually:
 
 ```bash
 clrinf init --guardrails --ci      # Auto-detects layout, writes clrinf.rules.toml, syncs rules, installs hooks & CI
+clrinf doctor                      # Audits rules, synced instructions, hooks, schemas, verify & worker health
 # Or run individually:
 clrinf agents sync                 # Generates AGENTS.md / CLAUDE.md / GEMINI.md / Cursor rules
 clrinf hook install --agent all    # Installs Claude Code, Cursor, Antigravity & git pre-commit hooks
 clrinf verify                      # Runs topology + drift + import rules + module boundaries + outbox check
+clrinf verify --format sarif --output clrinf.sarif  # Emits SARIF 2.1.0 for GitHub Code Scanning
 ```
 
 **GitHub Actions:**
@@ -76,6 +78,7 @@ clrinf verify                      # Runs topology + drift + import rules + modu
 - uses: brkmustu/clrinf@v0.1.0
   with:
     report-base-ref: origin/main
+    sarif-file: clrinf.sarif
 ```
 
 ---
@@ -99,7 +102,7 @@ Keep only entities and lifecycle hooks on disk so agents never wade through 6 bo
 
 ### 3. Polyglot Event Contract & Topology Governance (Optional Scale-Up)
 When your modular monolith crosses service boundaries, think **`buf` for JSON Schema + CloudEvents** across Rust, C#, TypeScript, and Elixir:
-- **Code ↔ Contract Drift (`clrinf topology drift`):** Compares schema `x-published-by` / `x-subscribed-by` declarations against real service source code and flags raw outbox bypasses (`DRIFT_RAW_OUTBOX_WRITE`).
+- **Code ↔ Contract Drift (`clrinf topology drift`):** Compares schema `x-published-by` / `x-subscribed-by` declarations against real service source code (including brownfield `@clrinf:publishes` / `@clrinf:handles` comment annotations) and flags raw outbox bypasses (`DRIFT_RAW_OUTBOX_WRITE`).
 - **Breaking Change & Upcaster Checks (`clrinf topology check` / `report`):** Detects dead events (`TOPOLOGY_DEAD_EVENT`), orphan subscribers (`TOPOLOGY_ORPHAN_SUBSCRIBER`), and missing schema upcasters (`TOPOLOGY_UPCASTER_MISSING`), plus PR diff summaries with `--fail-on-breaking`.
 - **Event Impact Slicing (`clrinf topology impact <event>`):** Lists affected services, sibling versions, and exact hand-written files before an edit begins.
 - **Schema-Driven Codegen (`generate`, `generate-pubsub`, `generate-upcasters`, `event subscribe|publish`):** Generates CloudEvents 1.0 publishers, idempotent subscriber shells (`IdempotencyStore` `claim`/`complete`/`release`), and multi-language DTOs.

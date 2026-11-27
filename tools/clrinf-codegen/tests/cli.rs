@@ -383,3 +383,86 @@ fn init_guardrails_bootstraps_brownfield_repo_and_passes_verify() {
         String::from_utf8_lossy(&verify_out.stderr)
     );
 }
+
+#[test]
+fn verify_sarif_format_and_output_file() {
+    let scratch = Scratch::new();
+    std::fs::create_dir_all(scratch.0.join("src/domain")).unwrap();
+    std::fs::write(
+        scratch.0.join("clrinf.rules.toml"),
+        r#"[[forbid]]
+id = "domain-no-infra"
+scope = "imports"
+paths = ["src/domain"]
+pattern = "Infrastructure"
+reason = "Domain must stay clean"
+"#,
+    )
+    .unwrap();
+    std::fs::write(
+        scratch.0.join("src/domain/bad.cs"),
+        "using App.Infrastructure.Db;\npublic class Order {}\n",
+    )
+    .unwrap();
+
+    let sarif_path = scratch.0.join("reports/out.sarif");
+    let out = run(
+        &[
+            "verify",
+            "--path",
+            ".",
+            "--format",
+            "sarif",
+            "--output",
+            sarif_path.to_str().unwrap(),
+        ],
+        &scratch.0,
+    );
+    assert!(!out.status.success(), "expected non-zero exit when verify fails");
+    let raw = std::fs::read_to_string(&sarif_path).unwrap();
+    let sarif: serde_json::Value = serde_json::from_str(&raw).unwrap();
+    assert_eq!(sarif["version"], "2.1.0");
+    let results = sarif["runs"][0]["results"].as_array().unwrap();
+    assert!(!results.is_empty());
+    let uri = results[0]["locations"][0]["physicalLocation"]["artifactLocation"]["uri"]
+        .as_str()
+        .unwrap();
+    assert!(!uri.contains('\\'), "SARIF URI must use forward slashes: {uri}");
+    assert_eq!(uri, "src/domain/bad.cs");
+}
+
+#[test]
+fn doctor_json_reports_health_checks() {
+    let scratch = Scratch::new();
+    std::fs::create_dir_all(scratch.0.join("services/orders/src/domain")).unwrap();
+    std::fs::write(
+        scratch.0.join("services/orders/src/domain/order.rs"),
+        "pub struct Order { pub id: String }\n",
+    )
+    .unwrap();
+
+    let init_out = run(&["init", "--guardrails", "--agent", "claude", "--path", "."], &scratch.0);
+    assert!(
+        init_out.status.success(),
+        "stderr: {}",
+        String::from_utf8_lossy(&init_out.stderr)
+    );
+
+    let doc_out = run(&["doctor", "--path", ".", "--json"], &scratch.0);
+    assert!(
+        doc_out.status.success(),
+        "stdout: {}\nstderr: {}",
+        String::from_utf8_lossy(&doc_out.stdout),
+        String::from_utf8_lossy(&doc_out.stderr)
+    );
+    let report: serde_json::Value = serde_json::from_slice(&doc_out.stdout).unwrap();
+    assert_eq!(report["ok"], true);
+    let checks = report["checks"].as_array().unwrap();
+    for expected in ["rules_file", "agents_sync", "hooks", "verify"] {
+        let entry = checks
+            .iter()
+            .find(|c| c["name"] == expected)
+            .unwrap_or_else(|| panic!("missing check {expected}"));
+        assert_eq!(entry["status"], "pass", "check {expected}: {entry}");
+    }
+}

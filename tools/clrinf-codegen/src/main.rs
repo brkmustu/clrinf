@@ -1,5 +1,6 @@
 mod ast;
 mod compat;
+mod doctor;
 mod guardrails_init;
 mod csharp;
 mod drift;
@@ -350,6 +351,21 @@ enum Commands {
         /// Only verify files changed relative to git HEAD (plus untracked)
         #[arg(long)]
         changed: bool,
+        /// Emit machine-readable JSON (shorthand for --format json)
+        #[arg(long)]
+        json: bool,
+        /// Output format: text (default), json, or sarif
+        #[arg(long, value_parser = ["text", "json", "sarif"])]
+        format: Option<String>,
+        /// Optional file path to write the formatted output (e.g. clrinf.sarif)
+        #[arg(short, long)]
+        output: Option<PathBuf>,
+    },
+    /// Diagnose clrinf guardrails, hooks, agent sync, schemas, and worker health
+    Doctor {
+        /// Project root
+        #[arg(long, default_value = ".")]
+        path: PathBuf,
         /// Emit machine-readable JSON
         #[arg(long)]
         json: bool,
@@ -760,7 +776,21 @@ enum AddCommands {
 }
 
 fn main() -> Result<()> {
-    let cli = Cli::parse();
+    // Windows main thread defaults to a 1 MB stack, which unoptimized debug
+    // builds of large clap enums + match frames can overflow. Run the CLI on a
+    // dedicated 8 MB stack thread.
+    let handle = std::thread::Builder::new()
+        .name("clrinf-main".into())
+        .stack_size(8 * 1024 * 1024)
+        .spawn(run_cli)?;
+    match handle.join() {
+        Ok(res) => res,
+        Err(panic_payload) => std::panic::resume_unwind(panic_payload),
+    }
+}
+
+fn run_cli() -> Result<()> {
+    let cli = Box::new(Cli::parse());
 
     match cli.command {
         Commands::Validate { schema_dir } => {
@@ -1864,22 +1894,43 @@ fn main() -> Result<()> {
                 }
             }
         },
-        Commands::Verify { path, changed, json } => {
+        Commands::Verify { path, changed, json, format, output } => {
             let only = if changed { Some(hook::changed_files(&path)) } else { None };
             let report = verify::run(&path, only.as_deref())?;
-            if json {
-                println!("{}", serde_json::to_string_pretty(&report)?);
-            } else {
-                print!("{}", report.format_text(false));
-                println!(
-                    "{} verify: {} check(s) run, {} error(s).",
+            let fmt = format.as_deref().unwrap_or(if json { "json" } else { "text" });
+            let rendered = match fmt {
+                "json" => format!("{}\n", serde_json::to_string_pretty(&report)?),
+                "sarif" => format!("{}\n", serde_json::to_string_pretty(&report.to_sarif())?),
+                _ => format!(
+                    "{}{} verify: {} check(s) run, {} error(s).\n",
+                    report.format_text(false),
                     if report.is_valid { "✅" } else { "❌" },
                     report.checks.len(),
                     report.errors_count()
-                );
+                ),
+            };
+            if let Some(out_path) = output {
+                if let Some(parent) = out_path.parent().filter(|p| !p.as_os_str().is_empty()) {
+                    std::fs::create_dir_all(parent)?;
+                }
+                std::fs::write(&out_path, rendered.as_bytes())?;
+                eprintln!("Wrote {} verify report to {}", fmt, out_path.display());
+            } else {
+                print!("{rendered}");
             }
             if !report.is_valid {
                 anyhow::bail!("Verification failed with {} error(s).", report.errors_count());
+            }
+        }
+        Commands::Doctor { path, json } => {
+            let report = doctor::run(&path);
+            if json {
+                println!("{}", serde_json::to_string_pretty(&report)?);
+            } else {
+                print!("{}", report.format_text());
+            }
+            if !report.ok {
+                anyhow::bail!("clrinf doctor found one or more failing checks.");
             }
         }
         Commands::Bench(BenchCommands::Context { event, schema_dir, src, path, json }) => {

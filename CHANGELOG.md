@@ -8,6 +8,9 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [Unreleased]
 
 ### Added
+- `clrinf doctor [--json]`: environment & guardrails health check across `clrinf.rules.toml`, agent instruction sync, installed hooks, schemas, `verify`, and federated workers
+- SARIF 2.1.0 output via `clrinf verify --format sarif --output <path>` and `action.yml` `sarif-file` input for GitHub Code Scanning annotations
+- Brownfield `@clrinf:publishes <event>` and `@clrinf:handles <event>` comment annotations integrated into `drift.rs` (including `DRIFT_UNKNOWN_ANNOTATED_EVENT`) and `impact.rs`
 - `clrinf init --guardrails [--ci]`: one-command brownfield onboarding wizard detecting schemas, domain folders, and sibling modules
 - `[[boundaries]]` cross-module import isolation rules (`RULE_MODULE_BOUNDARY_VIOLATION`) with configurable `public` contract segments
 - `[generated] protect = true` incremental protection against hand-editing generated files (`RULE_GENERATED_FILE_MODIFIED`)

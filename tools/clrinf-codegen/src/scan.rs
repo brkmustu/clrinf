@@ -86,6 +86,75 @@ pub fn ident_lines(text: &str, ident: &str) -> Vec<usize> {
         .collect()
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum AnnotationKind {
+    Publishes,
+    Handles,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct EventAnnotation {
+    pub kind: AnnotationKind,
+    pub target: String,
+    pub line: usize,
+}
+
+fn line_has_comment_prefix(prefix: &str, line: &str) -> bool {
+    prefix.contains("//")
+        || prefix.contains('#')
+        || prefix.contains("/*")
+        || prefix.contains("--")
+        || line.trim_start().starts_with('*')
+}
+
+/// Extract `@clrinf:publishes <event>` and `@clrinf:handles <event>` annotations from comments.
+pub fn event_annotations(content: &str) -> Vec<EventAnnotation> {
+    const PUBLISHES: &str = "@clrinf:publishes";
+    const HANDLES: &str = "@clrinf:handles";
+
+    let mut out = Vec::new();
+    for (idx, line) in content.lines().enumerate() {
+        let lower = line.to_ascii_lowercase();
+        let mut cursor = 0;
+        while cursor < lower.len() {
+            let rest = &lower[cursor..];
+            let next_pub = rest.find(PUBLISHES).map(|p| (p, AnnotationKind::Publishes, PUBLISHES.len()));
+            let next_hand = rest.find(HANDLES).map(|p| (p, AnnotationKind::Handles, HANDLES.len()));
+            let next = match (next_pub, next_hand) {
+                (Some(a), Some(b)) => if a.0 <= b.0 { Some(a) } else { Some(b) },
+                (Some(a), None) => Some(a),
+                (None, Some(b)) => Some(b),
+                (None, None) => None,
+            };
+            let Some((rel_pos, kind, kw_len)) = next else {
+                break;
+            };
+            let abs_pos = cursor + rel_pos;
+            if line_has_comment_prefix(&line[..abs_pos], line) {
+                let after = &line[abs_pos + kw_len..];
+                let trimmed = after.trim_start_matches(|c: char| {
+                    c.is_ascii_whitespace() || matches!(c, ':' | '(' | '"' | '\'' | '`')
+                });
+                let target: String = trimmed
+                    .chars()
+                    .take_while(|c| {
+                        c.is_ascii_alphanumeric() || matches!(c, '.' | '_' | '-' | ':' | '/')
+                    })
+                    .collect();
+                if !target.is_empty() {
+                    out.push(EventAnnotation {
+                        kind,
+                        target,
+                        line: idx + 1,
+                    });
+                }
+            }
+            cursor = abs_pos + kw_len;
+        }
+    }
+    out
+}
+
 /// Load one supported source file (`None` for unsupported extensions or unreadable files).
 pub fn load_source(path: &Path) -> Option<SourceFile> {
     let lang = ast::detect_lang(path)?;
@@ -154,5 +223,48 @@ mod tests {
     fn ident_lines_are_one_based() {
         let text = "a\nfoo(bar)\nbaz\nbar";
         assert_eq!(ident_lines(text, "bar"), vec![2, 4]);
+    }
+
+    #[test]
+    fn extracts_comment_event_annotations_and_ignores_string_literals() {
+        let src = r#"
+// @clrinf:publishes billing.invoice.issued.v1
+let fake = "@clrinf:publishes fake.event.v1";
+/// @clrinf:handles: order.placed.v1
+# @clrinf:handles billing.invoice.issued.v1
+/* @clrinf:publishes("OrderPlaced") */
+ * @clrinf:handles shipment.dispatched.v1
+"#;
+        let anns = event_annotations(src);
+        assert_eq!(
+            anns,
+            vec![
+                EventAnnotation {
+                    kind: AnnotationKind::Publishes,
+                    target: "billing.invoice.issued.v1".into(),
+                    line: 2,
+                },
+                EventAnnotation {
+                    kind: AnnotationKind::Handles,
+                    target: "order.placed.v1".into(),
+                    line: 4,
+                },
+                EventAnnotation {
+                    kind: AnnotationKind::Handles,
+                    target: "billing.invoice.issued.v1".into(),
+                    line: 5,
+                },
+                EventAnnotation {
+                    kind: AnnotationKind::Publishes,
+                    target: "OrderPlaced".into(),
+                    line: 6,
+                },
+                EventAnnotation {
+                    kind: AnnotationKind::Handles,
+                    target: "shipment.dispatched.v1".into(),
+                    line: 7,
+                },
+            ]
+        );
     }
 }

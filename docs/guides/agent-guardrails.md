@@ -5,6 +5,7 @@
 | Capability | CLI / MCP Tool | What it does |
 |---|---|---|
 | Brownfield onboarding | `clrinf init --guardrails [--ci]` | Scans your repo, creates `clrinf.rules.toml`, syncs agent rules, installs hooks, optionally writes CI workflow |
+| Environment diagnostics | `clrinf doctor [--json]` | Audits `clrinf.rules.toml`, agent sync, hooks, schema validity, `verify` status, and worker availability |
 | Incremental verification | `clrinf hook install`, `clrinf verify` / `clrinf_verify` | Runs targeted checks after every agent edit and feeds violations back to the agent |
 | Targeted change plan | `clrinf plan` / `clrinf_plan_change` | Handles mechanical schema/scaffold updates and hands the agent only the files and symbols to fill in |
 | Single-source agent rules | `clrinf agents sync` | Writes the managed rule block into `AGENTS.md`, `CLAUDE.md`, `GEMINI.md`, and `.cursor/rules/clrinf.mdc` |
@@ -50,10 +51,12 @@ Unknown keys fail loudly so typos are never silently ignored.
 
 ```bash
 clrinf init --guardrails --ci         # auto-detect layout + rules + agents sync + hooks + CI workflow
+clrinf doctor                         # check rules, agent sync, hooks, schemas, verify & worker health
 # Or configure manually:
 clrinf agents sync                    # generate agent instruction blocks (CI drift check: --check)
 clrinf hook install --agent all       # Claude Code + Cursor + Antigravity + git pre-commit
 clrinf verify                         # full repo check; --changed verifies only modified files
+clrinf verify --format sarif --output clrinf.sarif  # SARIF 2.1.0 output for GitHub Code Scanning
 ```
 
 ### Agent Hook Behavior
@@ -65,10 +68,33 @@ clrinf verify                         # full repo check; --changed verifies only
 
 ### What `clrinf verify` Checks
 - Cross-service event topology (`TOPOLOGY_DEAD_EVENT`, `TOPOLOGY_ORPHAN_SUBSCRIBER`, `TOPOLOGY_UPCASTER_MISSING`).
-- Code-vs-contract drift for `[events.services]` (`DRIFT_UNDECLARED_PUBLISH`, `DRIFT_UNDECLARED_SUBSCRIBE`, `DRIFT_RAW_OUTBOX_WRITE`).
+- Code-vs-contract drift for `[events.services]` (`DRIFT_UNDECLARED_PUBLISH`, `DRIFT_UNDECLARED_SUBSCRIBE`, `DRIFT_RAW_OUTBOX_WRITE`, `DRIFT_UNKNOWN_ANNOTATED_EVENT`).
 - `[[forbid]]` dependency rules (`RULE_FORBIDDEN_DEPENDENCY`).
 - `[[boundaries]]` module isolation rules (`RULE_MODULE_BOUNDARY_VIOLATION`).
 - Generated-file edit protection on `--changed` / hooks (`RULE_GENERATED_FILE_MODIFIED`, controlled by `[generated] protect = true`).
+
+### Brownfield Event Annotations (Without Codegen Naming)
+Existing repositories that do not use generated symbol names (`publishOrderPlaced`, `OrderPlacedHandler`) can declare event usage with a one-line comment in any language:
+
+```rust
+// @clrinf:publishes orders.placed.v1
+```
+```elixir
+# @clrinf:handles billing.invoice.issued.v1
+```
+
+Both `clrinf topology drift` / `clrinf verify` and `clrinf topology impact` read these annotations (while ignoring string literals) to catch undeclared publishes/handlers, unknown event names (`DRIFT_UNKNOWN_ANNOTATED_EVENT`), and affected hand-written files.
+
+### GitHub Code Scanning (SARIF 2.1.0)
+```yaml
+- uses: brkmustu/clrinf@v0.1.0
+  with:
+    sarif-file: clrinf.sarif
+- uses: github/codeql-action/upload-sarif@v3
+  if: always()
+  with:
+    sarif_file: clrinf.sarif
+```
 
 ## Targeted Change Plan
 

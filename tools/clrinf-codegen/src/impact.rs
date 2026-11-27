@@ -4,7 +4,7 @@
 //! are affected?" so an AI agent (or a human) only has to load the relevant
 //! slice of the repository instead of everything.
 
-use crate::scan::{collect_sources, contains_ident, ident_lines};
+use crate::scan::{collect_sources, contains_ident, event_annotations, ident_lines, AnnotationKind};
 use crate::schema::{parse_schema_file, ParsedSchema};
 use crate::validator::discover_files;
 use anyhow::{bail, Context, Result};
@@ -69,7 +69,13 @@ fn strip_version(title: &str) -> String {
     title.to_string()
 }
 
-fn classify(schema: &ParsedSchema, content: &str, generated: bool) -> &'static str {
+fn classify(
+    schema: &ParsedSchema,
+    content: &str,
+    generated: bool,
+    ann_pub: bool,
+    ann_sub: bool,
+) -> &'static str {
     let t = &schema.title;
     let s = &schema.file_stem;
     let publisher = [format!("publish{t}"), format!("publish_{s}"), format!("{t}Publisher")];
@@ -80,8 +86,8 @@ fn classify(schema: &ParsedSchema, content: &str, generated: bool) -> &'static s
         format!("handle_{s}_event"),
         format!("{t}Subscriber"),
     ];
-    let uses_pub = publisher.iter().any(|i| contains_ident(content, i));
-    let uses_sub = subscriber.iter().any(|i| contains_ident(content, i));
+    let uses_pub = ann_pub || publisher.iter().any(|i| contains_ident(content, i));
+    let uses_sub = ann_sub || subscriber.iter().any(|i| contains_ident(content, i));
     match (generated, uses_pub, uses_sub) {
         (true, true, _) => "publisher",
         (true, _, true) => "subscriber",
@@ -131,13 +137,27 @@ pub fn analyze(schema_dir: &Path, target: &str, source_roots: &[PathBuf]) -> Res
                     }
                 }
             }
+            let matching_anns: Vec<_> = event_annotations(&file.content)
+                .into_iter()
+                .filter(|a| {
+                    schema.event_type.as_deref() == Some(a.target.as_str())
+                        || schema.title == a.target
+                })
+                .collect();
+            for ann in &matching_anns {
+                if !lines.contains(&ann.line) {
+                    lines.push(ann.line);
+                }
+            }
             lines.sort_unstable();
             if lines.is_empty() {
                 continue;
             }
+            let ann_pub = matching_anns.iter().any(|a| a.kind == AnnotationKind::Publishes);
+            let ann_sub = matching_anns.iter().any(|a| a.kind == AnnotationKind::Handles);
             affected.push(AffectedFile {
                 path: file.path.display().to_string(),
-                role: classify(schema, &code, file.generated).to_string(),
+                role: classify(schema, &code, file.generated, ann_pub, ann_sub).to_string(),
                 generated: file.generated,
                 lines,
             });
@@ -165,5 +185,61 @@ mod tests {
     fn strip_version_handles_suffix() {
         assert_eq!(strip_version("OrderPlacedV2"), "OrderPlaced");
         assert_eq!(strip_version("OrderPlaced"), "OrderPlaced");
+    }
+
+    #[test]
+    fn impact_discovers_and_classifies_brownfield_annotations() {
+        let dir = std::env::temp_dir().join(format!("clrinf-impact-ann-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        let schemas = dir.join("schemas");
+        let src = dir.join("src");
+        std::fs::create_dir_all(&schemas).unwrap();
+        std::fs::create_dir_all(&src).unwrap();
+
+        std::fs::write(
+            schemas.join("invoice-issued.v1.schema.json"),
+            r#"{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.test/InvoiceIssued",
+  "title": "InvoiceIssued",
+  "type": "object",
+  "x-event-type": "billing.invoice.issued.v1",
+  "x-published-by": ["billing"],
+  "x-subscribed-by": ["ledger"],
+  "properties": { "invoiceId": { "type": "string" } }
+}"#,
+        )
+        .unwrap();
+
+        std::fs::write(
+            src.join("billing_pub.cs"),
+            "// @clrinf:publishes billing.invoice.issued.v1\npublic class BillingWorker { }\n",
+        )
+        .unwrap();
+        std::fs::write(
+            src.join("ledger_sub.ex"),
+            "# @clrinf:handles billing.invoice.issued.v1\ndefmodule LedgerWorker do\nend\n",
+        )
+        .unwrap();
+
+        let report = analyze(&schemas, "billing.invoice.issued.v1", &[src]).unwrap();
+        assert_eq!(report.affected_files.len(), 2);
+        let pub_entry = report
+            .affected_files
+            .iter()
+            .find(|f| f.path.ends_with("billing_pub.cs"))
+            .unwrap();
+        assert_eq!(pub_entry.role, "publish-call-site");
+        assert_eq!(pub_entry.lines, vec![1]);
+
+        let sub_entry = report
+            .affected_files
+            .iter()
+            .find(|f| f.path.ends_with("ledger_sub.ex"))
+            .unwrap();
+        assert_eq!(sub_entry.role, "handler");
+        assert_eq!(sub_entry.lines, vec![1]);
+
+        let _ = std::fs::remove_dir_all(dir);
     }
 }
