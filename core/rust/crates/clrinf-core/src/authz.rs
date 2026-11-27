@@ -169,7 +169,10 @@ impl AuthorizationService for MultiTenantCedarAuthorizer {
                 // 1. Multi-Tenant İzolasyon Kontrolü (Default Tenant Guard)
                 if let Some(ref res_tenant) = op.resource_tenant_id {
                     if res_tenant != &claims.tenant_id && !is_platform_admin {
-                        return Ok(AuthzDecision::tenant_violation(&claims.tenant_id, res_tenant));
+                        return Ok(AuthzDecision::tenant_violation(
+                            &claims.tenant_id,
+                            res_tenant,
+                        ));
                     }
                 }
 
@@ -202,7 +205,10 @@ impl AuthorizationService for MultiTenantCedarAuthorizer {
                 }
 
                 // 3. İzin Kontrolü (TenantAdmin, spesifik rol veya Claim)
-                let is_tenant_admin = claims.roles.iter().any(|r| r == "TenantAdmin" || r == "Admin");
+                let is_tenant_admin = claims
+                    .roles
+                    .iter()
+                    .any(|r| r == "TenantAdmin" || r == "Admin");
                 let expected_permission = format!("{}.{}", op.resource, op.action);
                 let has_role_permission = claims
                     .roles

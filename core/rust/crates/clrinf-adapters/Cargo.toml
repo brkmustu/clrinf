@@ -1,14 +1,19 @@
 [package]
 name = "clrinf-adapters"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 license = "Apache-2.0"
-description = "Axum transport and process-local persistence adapters for clrinf-core"
+description = "Axum transport and persistence adapters for clrinf-core"
+
+[features]
+default = []
+sqlite = ["dep:rusqlite"]
 
 [dependencies]
 clrinf-core = { path = "../clrinf-core" }
 async-trait = "0.1"
 axum = "0.7"
+rusqlite = { version = "0.32", features = ["bundled"], optional = true }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 tracing = "0.1"

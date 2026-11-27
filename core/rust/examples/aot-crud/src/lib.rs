@@ -10,9 +10,7 @@ use std::sync::Arc;
 
 pub fn build_app() -> Router {
     let category_store = Arc::new(InMemoryCrudStore::<Category>::new());
-    let category_rules = Arc::new(
-        CrudRuleRunner::new().with_before_delete(ActiveProductsCheck),
-    );
+    let category_rules = Arc::new(CrudRuleRunner::new().with_before_delete(ActiveProductsCheck));
 
     let brand_store = Arc::new(InMemoryCrudStore::<Brand>::new());
     let brand_rules = Arc::new(CrudRuleRunner::new());
@@ -44,7 +42,12 @@ mod tests {
         pub tenant_id: String,
     }
 
-    fn req_with_tenant(method: &str, uri: &str, tenant: &str, body: Option<Value>) -> Request<Body> {
+    fn req_with_tenant(
+        method: &str,
+        uri: &str,
+        tenant: &str,
+        body: Option<Value>,
+    ) -> Request<Body> {
         let builder = Request::builder()
             .method(method)
             .uri(uri)
@@ -76,7 +79,8 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(res.status(), StatusCode::CREATED);
-        let created: Value = serde_json::from_slice(&to_bytes(res.into_body(), 16384).await.unwrap()).unwrap();
+        let created: Value =
+            serde_json::from_slice(&to_bytes(res.into_body(), 16384).await.unwrap()).unwrap();
         let id = created["id"].as_str().unwrap().to_string();
         assert_eq!(created["tenant_id"], "tenant-a");
 
@@ -118,8 +122,13 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(res_del_blocked.status(), StatusCode::BAD_REQUEST);
-        let err_body: Value = serde_json::from_slice(&to_bytes(res_del_blocked.into_body(), 16384).await.unwrap()).unwrap();
-        assert!(err_body["message"].as_str().unwrap().contains("CATEGORY_PROTECTED"));
+        let err_body: Value =
+            serde_json::from_slice(&to_bytes(res_del_blocked.into_body(), 16384).await.unwrap())
+                .unwrap();
+        assert!(err_body["message"]
+            .as_str()
+            .unwrap()
+            .contains("CATEGORY_PROTECTED"));
 
         // 5. Create and list Brand
         let res_brand = app
@@ -139,7 +148,8 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(res_list.status(), StatusCode::OK);
-        let list_json: Value = serde_json::from_slice(&to_bytes(res_list.into_body(), 16384).await.unwrap()).unwrap();
+        let list_json: Value =
+            serde_json::from_slice(&to_bytes(res_list.into_body(), 16384).await.unwrap()).unwrap();
         assert_eq!(list_json["total"], 1);
     }
 
@@ -160,7 +170,9 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(res_create.status(), StatusCode::CREATED);
-        let created: Value = serde_json::from_slice(&to_bytes(res_create.into_body(), 16384).await.unwrap()).unwrap();
+        let created: Value =
+            serde_json::from_slice(&to_bytes(res_create.into_body(), 16384).await.unwrap())
+                .unwrap();
         let id = created["id"].as_str().unwrap();
 
         let res_put = app

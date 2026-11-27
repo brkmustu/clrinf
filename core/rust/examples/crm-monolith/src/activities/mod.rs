@@ -63,7 +63,10 @@ impl InMemoryActivityRepository {
 
     pub async fn save(&self, activity: Activity) -> Activity {
         let mut store = self.storage.write().await;
-        store.insert(format!("{}:{}", activity.tenant_id, activity.id), activity.clone());
+        store.insert(
+            format!("{}:{}", activity.tenant_id, activity.id),
+            activity.clone(),
+        );
         activity
     }
 }

@@ -131,7 +131,7 @@ impl McpServer {
                 "result": {
                     "protocolVersion": "2024-11-05",
                     "capabilities": { "tools": {}, "resources": {} },
-                    "serverInfo": { "name": "clrinf-meta-mcp", "version": "0.1.0" },
+                    "serverInfo": { "name": "clrinf-meta-mcp", "version": env!("CARGO_PKG_VERSION") },
                     "instructions": "clrinf architectural framework and codegen tool suite for polyglot systems."
                 }
             }))),

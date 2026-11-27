@@ -76,7 +76,7 @@ clrinf lsp                         # Starts zero-dependency LSP 3.17 stdio diagn
 
 **GitHub Actions:**
 ```yaml
-- uses: brkmustu/clrinf@v0.1.0
+- uses: brkmustu/clrinf@v0.1.1
   with:
     report-base-ref: origin/main
     sarif-file: clrinf.sarif
@@ -97,7 +97,7 @@ clrinf lsp                         # Starts zero-dependency LSP 3.17 stdio diagn
 ### 2. Zero-Boilerplate Compile-Time CRUD (.NET 10 Native AOT & Rust Proc-Macro)
 Keep only entities and lifecycle hooks on disk so agents never wade through boilerplate files per entity:
 - **C# (.NET 10):** Annotate entities with `[GenerateCrudEndpoints]` (`ClrinfCS.Generators` emits DTOs, handlers, Minimal API endpoints, zero-reflection JSON, and OpenAPI metadata at compile time — **0 trim/AOT warnings**, **90.8% less** on-disk CRUD context). Add lifecycle rules (`IBefore{Create|Update|Delete}Rule<T>`) or eject one operation via Smart Override (`clrinf crud-map`, `clrinf eject Category --operation Update`).
-- **Rust (`core/rust`):** Derive `#[derive(ClrinfCrud)]` (`clrinf-macros`) + `clrinf_adapters::crud_router` + `Before{Create|Update|Delete}Rule<T>` so only `domain/*.rs` structs and lifecycle rules stay on disk (**2,193 → 203 tokens, 90.7% reduction** in the 2-entity benchmark). Inspect with `clrinf crud-map` or eject one handler with `clrinf eject Category --operation Update` (`#[clrinf_crud(skip(update))]` + `src/features/category/update.rs`). See [`core/csharp/examples/AotCrud/`](core/csharp/examples/AotCrud/README.md) and [`core/rust/examples/aot-crud/`](core/rust/examples/aot-crud/README.md).
+- **Rust (`core/rust`):** Derive `#[derive(ClrinfCrud)]` (`clrinf-macros`) + `clrinf_adapters::crud_router` + `Before{Create|Update|Delete}Rule<T>` (backed by `InMemoryCrudStore` or durable `SqliteCrudStore` via `--features sqlite`) so only `domain/*.rs` structs and lifecycle rules stay on disk (**2,193 → 203 tokens, 90.7% reduction** in the 2-entity benchmark). Inspect with `clrinf crud-map` or eject one handler with `clrinf eject Category --operation Update` (`#[clrinf_crud(skip(update))]` + `src/features/category/update.rs`). See [`core/csharp/examples/AotCrud/`](core/csharp/examples/AotCrud/README.md) and [`core/rust/examples/aot-crud/`](core/rust/examples/aot-crud/README.md).
 
 ### 3. Polyglot Event Contract & Topology Governance (Optional Scale-Up)
 When your modular monolith crosses service boundaries, think **`buf` for JSON Schema + CloudEvents** across Rust, C#, TypeScript, and Elixir:
@@ -113,7 +113,7 @@ Copy ready-made domain & infrastructure modules (CRM Deals, Contacts, Activities
 
 ### 5. Optional Reference Runtimes & Language Linters
 The `core/` packages are optional reference implementations, never required to use the guardrail or contract CLI:
-- **Tier-1:** [`core/rust/`](core/rust/README.md) (Syn `RUST_ARCH001`, Axum/CQRS), [`core/csharp/`](core/csharp/README.md) (.NET 10, Roslyn `ARCH001–ARCH005`, `ClrinfCS.Generators` AOT CRUD, Native `FrozenDictionary` dispatcher, `EfCrudStore` / SQLite adapters), [`core/typescript/`](core/typescript/README.md) (Bun, TS AST `ARCH_TS_001`, Event Inspector).
+- **Tier-1:** [`core/rust/`](core/rust/README.md) (Syn `RUST_ARCH001`, Axum/CQRS, `clrinf-macros` CRUD, optional `SqliteCrudStore`), [`core/csharp/`](core/csharp/README.md) (.NET 10, Roslyn `ARCH001–ARCH005`, `ClrinfCS.Generators` AOT CRUD, Native `FrozenDictionary` dispatcher, `EfCrudStore` / SQLite adapters), [`core/typescript/`](core/typescript/README.md) (Bun, TS AST `ARCH_TS_001`, Event Inspector).
 - **Experimental / Streaming Bridge:** [`core/elixir/`](core/elixir/README.md) (OTP core, AST `ARCH_EX_001-004`, NATS live streaming bridge).
 
 ---

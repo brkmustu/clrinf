@@ -47,7 +47,10 @@ impl From<ValidationError> for DispatchError {
 }
 
 impl DispatchError {
-    pub fn to_error_envelope(&self, context: &RequestContext) -> Result<ErrorEnvelope, ValidationError> {
+    pub fn to_error_envelope(
+        &self,
+        context: &RequestContext,
+    ) -> Result<ErrorEnvelope, ValidationError> {
         match self {
             Self::RuleViolation(v) => v.to_error_envelope(context),
             Self::Validation(v) => ErrorEnvelope::new(context, "VALIDATION_FAILED", &v.0, false),
@@ -61,7 +64,11 @@ impl DispatchError {
 /// Handles a specific Request type.
 #[async_trait]
 pub trait RequestHandler<R: Request>: Send + Sync + 'static {
-    async fn handle(&self, request: R, context: &RequestContext) -> Result<R::Response, DispatchError>;
+    async fn handle(
+        &self,
+        request: R,
+        context: &RequestContext,
+    ) -> Result<R::Response, DispatchError>;
 }
 
 /// Wraps a RequestHandler with an isolated business rule evaluation pipeline.
@@ -84,7 +91,11 @@ impl<R: Request, H: RequestHandler<R>> PipelinedHandler<R, H> {
         self
     }
 
-    pub async fn execute(&self, request: R, context: &RequestContext) -> Result<R::Response, DispatchError> {
+    pub async fn execute(
+        &self,
+        request: R,
+        context: &RequestContext,
+    ) -> Result<R::Response, DispatchError> {
         context.validate()?;
         self.rules.evaluate(&request, context).await?;
         self.handler.handle(request, context).await

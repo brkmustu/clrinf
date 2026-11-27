@@ -6,7 +6,7 @@ branding:
 
 inputs:
   version:
-    description: Release tag (e.g. v0.1.0) or 'latest'
+    description: Release tag (e.g. v0.1.1) or 'latest'
     required: false
     default: latest
   working-directory:

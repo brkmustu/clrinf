@@ -46,14 +46,21 @@ impl BusinessRuleViolation {
     }
 
     /// Converts the violation into a canonical, transport-independent ErrorEnvelope.
-    pub fn to_error_envelope(&self, context: &RequestContext) -> Result<ErrorEnvelope, ValidationError> {
+    pub fn to_error_envelope(
+        &self,
+        context: &RequestContext,
+    ) -> Result<ErrorEnvelope, ValidationError> {
         ErrorEnvelope::new(context, &self.error_code, &self.message, false)
     }
 }
 
 impl fmt::Display for BusinessRuleViolation {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "business rule violation [{}]: {}", self.error_code, self.message)
+        write!(
+            f,
+            "business rule violation [{}]: {}",
+            self.error_code, self.message
+        )
     }
 }
 
@@ -69,11 +76,7 @@ pub trait BusinessRule<TContext>: Send + Sync {
     }
 
     /// Evaluates the rule against the given context and request metadata.
-    async fn evaluate(
-        &self,
-        context: &TContext,
-        request_context: &RequestContext,
-    ) -> RuleResult;
+    async fn evaluate(&self, context: &TContext, request_context: &RequestContext) -> RuleResult;
 }
 
 /// Ordered pipeline of business rules for a specific request or entity context.

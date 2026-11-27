@@ -9,9 +9,7 @@ use std::sync::atomic::{AtomicU64, Ordering};
 static MONOTONIC_ID: AtomicU64 = AtomicU64::new(1);
 
 /// Primary key contract for entities managed by [`CrudStore`].
-pub trait CrudId:
-    Clone + Send + Sync + Display + FromStr + Hash + Eq + 'static
-{
+pub trait CrudId: Clone + Send + Sync + Display + FromStr + Hash + Eq + 'static {
     fn generate_id() -> Self;
 }
 
@@ -46,9 +44,7 @@ impl CrudId for u64 {
 }
 
 /// Persistence contract for tenant-scoped CRUD entities.
-pub trait CrudEntity:
-    Clone + Send + Sync + Serialize + DeserializeOwned + 'static
-{
+pub trait CrudEntity: Clone + Send + Sync + Serialize + DeserializeOwned + 'static {
     type Id: CrudId;
 
     fn id(&self) -> Self::Id;

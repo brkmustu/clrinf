@@ -44,5 +44,8 @@ pub trait CachePort: Send + Sync + 'static {
     fn remove(&self, key: &str) -> Pin<Box<dyn Future<Output = CacheResult<()>> + Send + '_>>;
 
     /// Remove all keys that start with `prefix`.
-    fn remove_by_prefix(&self, prefix: &str) -> Pin<Box<dyn Future<Output = CacheResult<()>> + Send + '_>>;
+    fn remove_by_prefix(
+        &self,
+        prefix: &str,
+    ) -> Pin<Box<dyn Future<Output = CacheResult<()>> + Send + '_>>;
 }

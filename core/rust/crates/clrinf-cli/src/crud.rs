@@ -179,9 +179,7 @@ fn discover_rs_files(root: &Path) -> Vec<PathBuf> {
                 .is_none_or(|n| !SKIP_DIRS.contains(&n))
         });
     for entry in walker.flatten() {
-        if entry.file_type().is_file()
-            && entry.path().extension().is_some_and(|ext| ext == "rs")
-        {
+        if entry.file_type().is_file() && entry.path().extension().is_some_and(|ext| ext == "rs") {
             files.push(entry.into_path());
         }
     }
@@ -286,14 +284,20 @@ fn find_struct_line(lines: &[&str], entity: &str) -> Option<usize> {
         let trimmed = line.trim_start();
         !trimmed.starts_with("//")
             && trimmed.contains(&needle)
-            && trimmed
-                .split_whitespace()
-                .any(|tok| tok == entity || tok.starts_with(&format!("{entity}<")) || tok.starts_with(&format!("{entity}{{")))
+            && trimmed.split_whitespace().any(|tok| {
+                tok == entity
+                    || tok.starts_with(&format!("{entity}<"))
+                    || tok.starts_with(&format!("{entity}{{"))
+            })
     })
 }
 
 fn rewrite_skip_attribute(content: &str, entity: &str, op_snake: &str) -> Result<String, String> {
-    let eol = if content.contains("\r\n") { "\r\n" } else { "\n" };
+    let eol = if content.contains("\r\n") {
+        "\r\n"
+    } else {
+        "\n"
+    };
     let mut lines: Vec<String> = content.lines().map(ToString::to_string).collect();
     let line_refs: Vec<&str> = lines.iter().map(String::as_str).collect();
     let Some(struct_idx) = find_struct_line(&line_refs, entity) else {
@@ -311,7 +315,9 @@ fn rewrite_skip_attribute(content: &str, entity: &str, op_snake: &str) -> Result
         }
     }
 
-    if let Some(idx) = (attr_start..struct_idx).find(|&i| lines[i].trim_start().starts_with("#[clrinf_crud")) {
+    if let Some(idx) =
+        (attr_start..struct_idx).find(|&i| lines[i].trim_start().starts_with("#[clrinf_crud"))
+    {
         let line = &lines[idx];
         if let (Some(open), Some(close)) = (line.find('('), line.rfind(')')) {
             let inner = &line[open + 1..close];
@@ -350,7 +356,10 @@ fn rewrite_skip_attribute(content: &str, entity: &str, op_snake: &str) -> Result
             .chars()
             .take_while(|c| c.is_whitespace())
             .collect();
-        lines.insert(struct_idx, format!("{indent}#[clrinf_crud(skip({op_snake}))]"));
+        lines.insert(
+            struct_idx,
+            format!("{indent}#[clrinf_crud(skip({op_snake}))]"),
+        );
     }
 
     let mut out = lines.join(eol);
@@ -360,7 +369,12 @@ fn rewrite_skip_attribute(content: &str, entity: &str, op_snake: &str) -> Result
     Ok(out)
 }
 
-fn render_ejected_handler(entity: &str, op_pascal: &str, op_snake: &str, route_prefix: &str) -> String {
+fn render_ejected_handler(
+    entity: &str,
+    op_pascal: &str,
+    op_snake: &str,
+    route_prefix: &str,
+) -> String {
     let route_suffix = match op_snake {
         "create" | "get_list" => route_prefix.to_string(),
         _ => format!("{route_prefix}/:id"),
@@ -407,7 +421,9 @@ pub fn eject_operation(
     force: bool,
 ) -> Result<EjectReport, Box<dyn std::error::Error>> {
     let (op_pascal, op_snake) = canonical_op(op_raw).ok_or_else(|| {
-        format!("Unknown operation '{op_raw}'. Expected Create, Update, Delete, GetById, or GetList.")
+        format!(
+            "Unknown operation '{op_raw}'. Expected Create, Update, Delete, GetById, or GetList."
+        )
     })?;
 
     let scan_root = if root.is_file() {

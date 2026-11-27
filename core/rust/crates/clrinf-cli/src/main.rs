@@ -14,8 +14,10 @@ use lint::Linter;
 use mcp::McpServer;
 
 #[derive(Parser)]
-#[command(name = "clrinfrs", bin_name = "clrinfrs", author, version = "0.1.0")]
-#[command(about = "Rust için sözleşme öncelikli mimari scaffold, kural motoru, Syn AST linter ve MCP sunucusu")]
+#[command(name = "clrinfrs", bin_name = "clrinfrs", author, version = env!("CARGO_PKG_VERSION"))]
+#[command(
+    about = "Rust için sözleşme öncelikli mimari scaffold, kural motoru, Syn AST linter ve MCP sunucusu"
+)]
 struct Cli {
     #[command(subcommand)]
     command: Commands,
@@ -220,14 +222,25 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }) => {
             println!("{}", "=== clrinfrs İzole Kural Ekleme ===".blue().bold());
             let path = Generator::add_rule(&project, &module, &name, &command)?;
-            println!("{} {}", "✔ Kural başarıyla eklendi:".green().bold(), path.display());
-            println!("{}", "Not: Mevcut hiçbir dosyaya dokunulmadı (Sıfır regresyon).".dimmed());
+            println!(
+                "{} {}",
+                "✔ Kural başarıyla eklendi:".green().bold(),
+                path.display()
+            );
+            println!(
+                "{}",
+                "Not: Mevcut hiçbir dosyaya dokunulmadı (Sıfır regresyon).".dimmed()
+            );
         }
 
         Commands::Add(AddCommands::Module { name, project }) => {
             println!("{}", "=== clrinfrs Modül Oluşturma ===".blue().bold());
             let files = Generator::add_module(&project, &name)?;
-            println!("{} '{}'", "✔ Modül başarıyla oluşturuldu:".green().bold(), name);
+            println!(
+                "{} '{}'",
+                "✔ Modül başarıyla oluşturuldu:".green().bold(),
+                name
+            );
             for f in files {
                 println!("  {} {}", "•".cyan(), f);
             }
@@ -253,7 +266,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .collect();
 
             let files = Generator::add_entity(&project, &module, &name, &parsed_props)?;
-            println!("{} '{}' (Modül: {})", "✔ Entity başarıyla eklendi:".green().bold(), name, module);
+            println!(
+                "{} '{}' (Modül: {})",
+                "✔ Entity başarıyla eklendi:".green().bold(),
+                name,
+                module
+            );
             for f in files {
                 println!("  {} {}", "•".cyan(), f);
             }
@@ -279,7 +297,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             println!("{}: {}\n", "Hedef Dizin".dimmed(), args.path.display());
 
             if violations.is_empty() {
-                println!("{}", "✔ Tebrikler! Hiçbir mimari veya kural ihlali bulunamadı.".green().bold());
+                println!(
+                    "{}",
+                    "✔ Tebrikler! Hiçbir mimari veya kural ihlali bulunamadı."
+                        .green()
+                        .bold()
+                );
             } else {
                 for v in &violations {
                     let color_sev = match v.severity.as_str() {
@@ -312,18 +335,22 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
 
         Commands::Ai(AiArgs {
-            command: AiCommands::Rule {
-                description,
-                module,
-                name,
-                command,
-                project,
-            },
+            command:
+                AiCommands::Rule {
+                    description,
+                    module,
+                    name,
+                    command,
+                    project,
+                },
         }) => {
             let rule_name = name.unwrap_or_else(|| format!("{module}ValidationRule"));
             let cmd_name = command.unwrap_or_else(|| format!("Create{module}Command"));
 
-            println!("{}", "=== clrinfrs AI Kural ve Test Sentezi ===".blue().bold());
+            println!(
+                "{}",
+                "=== clrinfrs AI Kural ve Test Sentezi ===".blue().bold()
+            );
             let res = AiRuleGenerator::generate_rule(
                 &project,
                 &module,
@@ -332,10 +359,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 &description,
             )?;
 
-            println!("{}", "✔ İzole kural ve test başarıyla üretildi:".green().bold());
+            println!(
+                "{}",
+                "✔ İzole kural ve test başarıyla üretildi:".green().bold()
+            );
             println!("  Kural: {}", res.rule_file.display());
             println!("  Test:  {}", res.test_file.display());
-            println!("{}", "Not: Mevcut hiçbir dosyada değişiklik yapılmadı.".dimmed());
+            println!(
+                "{}",
+                "Not: Mevcut hiçbir dosyada değişiklik yapılmadı.".dimmed()
+            );
         }
 
         Commands::CrudMap { path, json } => {

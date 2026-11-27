@@ -11,7 +11,7 @@ This matrix distinguishes shared wire-format contracts from runtime feature pari
 | HTTP adapter / example | Axum | ASP.NET Core | Bun | Plug |
 | Idempotency / outbox port | Yes | Yes | Yes | Behaviour |
 | In-memory reference adapter | Yes (volatile) | Persistent adapter preferred | Yes (volatile) | Yes (volatile) |
-| Local atomic business data + inbox + outbox | Production adapter needed | SQLite reference | Production adapter needed | Production adapter needed |
+| Local atomic business data + inbox + outbox | `SqliteCrudStore` (`clrinf-adapters --features sqlite`); production outbox needed | SQLite reference | Production adapter needed | Production adapter needed |
 | Durable leased outbox / restart recovery | No reference | SQLite | No reference | No reference |
 | Live NATS event inspector / streaming bridge | No | No | Inspector | Streaming bridge |
 | Compile-time AOT CRUD generator & Smart Override eject | `clrinf-macros` (`#[derive(ClrinfCrud)]`) + `clrinfrs eject/crud-map` | `ClrinfCS.Generators` + `EfCrudStore` | No | No |

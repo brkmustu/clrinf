@@ -202,7 +202,7 @@ fn render_rules_toml(
 
 fn render_ci_workflow(has_schemas: bool) -> String {
     let mut out = String::from(
-        "name: clrinf Architecture Guardrails\n\non:\n  pull_request:\n  push:\n    branches: [main, master]\n\njobs:\n  guardrails:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v4\n      - uses: brkmustu/clrinf@v0.1.0\n",
+        "name: clrinf Architecture Guardrails\n\non:\n  pull_request:\n  push:\n    branches: [main, master]\n\njobs:\n  guardrails:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v4\n      - uses: brkmustu/clrinf@v0.1.1\n",
     );
     if has_schemas {
         out.push_str("        # with:\n        #   report-base-ref: origin/main\n");

@@ -89,7 +89,7 @@ Both `clrinf topology drift` / `clrinf verify` and `clrinf topology impact` read
 
 ### GitHub Code Scanning (SARIF 2.1.0)
 ```yaml
-- uses: brkmustu/clrinf@v0.1.0
+- uses: brkmustu/clrinf@v0.1.1
   with:
     sarif-file: clrinf.sarif
 - uses: github/codeql-action/upload-sarif@v3

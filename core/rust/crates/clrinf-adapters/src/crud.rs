@@ -7,7 +7,10 @@ use axum::{
     Extension, Json, Router,
 };
 use clrinf_core::{
-    crud::{CrudEntity, CrudError, CrudId, CrudMetadata, CrudQuery, CrudRuleRunner, CrudStore, PagedResult},
+    crud::{
+        CrudEntity, CrudError, CrudId, CrudMetadata, CrudQuery, CrudRuleRunner, CrudStore,
+        PagedResult,
+    },
     RequestContext,
 };
 use serde::Deserialize;
@@ -121,7 +124,9 @@ impl<T: CrudEntity> CrudStore<T> for InMemoryCrudStore<T> {
             .items
             .write()
             .map_err(|_| CrudError::Storage("store lock poisoned".into()))?;
-        Ok(guard.remove(&(tenant_id.to_string(), id.to_string())).is_some())
+        Ok(guard
+            .remove(&(tenant_id.to_string(), id.to_string()))
+            .is_some())
     }
 }
 
@@ -149,8 +154,7 @@ pub struct CrudListParams {
 fn extract_context(ext: Option<Extension<RequestContext>>) -> Result<RequestContext, AppError> {
     match ext {
         Some(Extension(ctx)) => Ok(ctx),
-        None => RequestContext::new("default", "crud", "crud")
-            .map_err(|e| AppError::Internal(e.0)),
+        None => RequestContext::new("default", "crud", "crud").map_err(|e| AppError::Internal(e.0)),
     }
 }
 

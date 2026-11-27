@@ -66,7 +66,10 @@ impl InMemoryCatalogRepository {
 
     pub async fn save(&self, product: Product) -> Product {
         let mut store = self.storage.write().await;
-        store.insert(format!("{}:{}", product.tenant_id, product.id), product.clone());
+        store.insert(
+            format!("{}:{}", product.tenant_id, product.id),
+            product.clone(),
+        );
         product
     }
 }
@@ -85,7 +88,10 @@ impl BusinessRule<CreateProductCommand> for EnsureProductPricePositiveRule {
         if command.price <= 0.0 {
             return RuleResult::failed(
                 "INVALID_PRODUCT_PRICE",
-                format!("Product price must be positive. Received: {}", command.price),
+                format!(
+                    "Product price must be positive. Received: {}",
+                    command.price
+                ),
             );
         }
         RuleResult::success()
@@ -103,10 +109,18 @@ impl BusinessRule<CreateProductCommand> for EnsureSkuUniqueRule {
         command: &CreateProductCommand,
         _request_context: &RequestContext,
     ) -> RuleResult {
-        if self.repo.get_by_sku(&command.tenant_id, &command.sku).await.is_some() {
+        if self
+            .repo
+            .get_by_sku(&command.tenant_id, &command.sku)
+            .await
+            .is_some()
+        {
             return RuleResult::failed(
                 "DUPLICATE_SKU",
-                format!("Product with SKU '{}' already exists in tenant '{}'.", command.sku, command.tenant_id),
+                format!(
+                    "Product with SKU '{}' already exists in tenant '{}'.",
+                    command.sku, command.tenant_id
+                ),
             );
         }
         RuleResult::success()
@@ -127,7 +141,7 @@ impl RequestHandler<CreateProductCommand> for CreateProductHandler {
         _context: &RequestContext,
     ) -> Result<Product, DispatchError> {
         let product = Product {
-            id: format!("prod_{}", &uuid_short()),
+            id: format!("prod_{}", uuid_short()),
             tenant_id: command.tenant_id,
             sku: command.sku,
             name: command.name,
@@ -149,7 +163,10 @@ impl RequestHandler<GetProductQuery> for GetProductHandler {
         query: GetProductQuery,
         _context: &RequestContext,
     ) -> Result<Option<Product>, DispatchError> {
-        Ok(self.repo.get_by_id(&query.tenant_id, &query.product_id).await)
+        Ok(self
+            .repo
+            .get_by_id(&query.tenant_id, &query.product_id)
+            .await)
     }
 }
 

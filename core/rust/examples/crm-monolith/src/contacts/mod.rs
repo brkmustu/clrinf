@@ -68,7 +68,10 @@ impl InMemoryContactRepository {
 
     pub async fn save(&self, contact: Contact) -> Contact {
         let mut store = self.storage.write().await;
-        store.insert(format!("{}:{}", contact.tenant_id, contact.id), contact.clone());
+        store.insert(
+            format!("{}:{}", contact.tenant_id, contact.id),
+            contact.clone(),
+        );
         contact
     }
 }
@@ -105,10 +108,18 @@ impl BusinessRule<CreateContactCommand> for EnsureContactEmailUniqueRule {
         context: &CreateContactCommand,
         _request_context: &RequestContext,
     ) -> RuleResult {
-        if self.repo.get_by_email(&context.tenant_id, &context.email).await.is_some() {
+        if self
+            .repo
+            .get_by_email(&context.tenant_id, &context.email)
+            .await
+            .is_some()
+        {
             return RuleResult::failed(
                 "DUPLICATE_CONTACT_EMAIL",
-                format!("Contact with email '{}' already exists in tenant '{}'.", context.email, context.tenant_id),
+                format!(
+                    "Contact with email '{}' already exists in tenant '{}'.",
+                    context.email, context.tenant_id
+                ),
             );
         }
         RuleResult::success()
@@ -152,7 +163,10 @@ impl RequestHandler<GetContactQuery> for GetContactHandler {
         request: GetContactQuery,
         _context: &RequestContext,
     ) -> Result<Option<Contact>, DispatchError> {
-        Ok(self.repo.get_by_id(&request.tenant_id, &request.contact_id).await)
+        Ok(self
+            .repo
+            .get_by_id(&request.tenant_id, &request.contact_id)
+            .await)
     }
 }
 

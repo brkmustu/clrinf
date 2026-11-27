@@ -1,6 +1,6 @@
 use async_trait::async_trait;
 use clrinf_core::{
-    BusinessRule, DispatchError, PipelinedHandler, Request, RequestHandler, RequestContext,
+    BusinessRule, DispatchError, PipelinedHandler, Request, RequestContext, RequestHandler,
     RuleResult,
 };
 
@@ -18,7 +18,11 @@ struct CreateProductHandler;
 
 #[async_trait]
 impl RequestHandler<CreateProduct> for CreateProductHandler {
-    async fn handle(&self, request: CreateProduct, _context: &RequestContext) -> Result<String, DispatchError> {
+    async fn handle(
+        &self,
+        request: CreateProduct,
+        _context: &RequestContext,
+    ) -> Result<String, DispatchError> {
         Ok(format!("product_created:{}", request.name))
     }
 }
@@ -31,7 +35,11 @@ impl BusinessRule<CreateProduct> for NameMustNotBeEmptyRule {
         1
     }
 
-    async fn evaluate(&self, context: &CreateProduct, _request_context: &RequestContext) -> RuleResult {
+    async fn evaluate(
+        &self,
+        context: &CreateProduct,
+        _request_context: &RequestContext,
+    ) -> RuleResult {
         if context.name.trim().is_empty() {
             RuleResult::failed("EMPTY_NAME", "Product name cannot be empty")
         } else {
@@ -48,7 +56,11 @@ impl BusinessRule<CreateProduct> for PriceMustBePositiveRule {
         2
     }
 
-    async fn evaluate(&self, context: &CreateProduct, _request_context: &RequestContext) -> RuleResult {
+    async fn evaluate(
+        &self,
+        context: &CreateProduct,
+        _request_context: &RequestContext,
+    ) -> RuleResult {
         if context.price <= 0.0 {
             RuleResult::failed("INVALID_PRICE", "Product price must be positive")
         } else {
@@ -65,7 +77,11 @@ impl BusinessRule<CreateProduct> for EnterpriseTenantLimitRule {
         3
     }
 
-    async fn evaluate(&self, context: &CreateProduct, request_context: &RequestContext) -> RuleResult {
+    async fn evaluate(
+        &self,
+        context: &CreateProduct,
+        request_context: &RequestContext,
+    ) -> RuleResult {
         if request_context.tenant_id == "tenant-enterprise" && context.price > 10_000.0 {
             RuleResult::failed("PRICE_EXCEEDED", "Enterprise price limit is 10,000")
         } else {
@@ -122,8 +138,7 @@ async fn test_multi_tenant_rule_enforcement() {
     let enterprise_context = RequestContext::new("tenant-enterprise", "corr-1", "cause-1").unwrap();
     let standard_context = RequestContext::new("tenant-standard", "corr-2", "cause-2").unwrap();
 
-    let handler = PipelinedHandler::new(CreateProductHandler)
-        .with_rule(EnterpriseTenantLimitRule);
+    let handler = PipelinedHandler::new(CreateProductHandler).with_rule(EnterpriseTenantLimitRule);
 
     let expensive_product = CreateProduct {
         name: "Mainframe".into(),
@@ -131,7 +146,10 @@ async fn test_multi_tenant_rule_enforcement() {
     };
 
     // Fails for enterprise tenant
-    let err = handler.execute(expensive_product.clone(), &enterprise_context).await.unwrap_err();
+    let err = handler
+        .execute(expensive_product.clone(), &enterprise_context)
+        .await
+        .unwrap_err();
     match err {
         DispatchError::RuleViolation(v) => assert_eq!(v.error_code, "PRICE_EXCEEDED"),
         _ => panic!("Expected RuleViolation"),

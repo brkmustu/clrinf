@@ -107,11 +107,17 @@ async fn test_create_contact_fails_when_email_duplicate() {
 #[tokio::test]
 async fn test_deal_stage_progression_rule_prevents_direct_jump() {
     let deal_repo = InMemoryDealRepository::new();
-    let create_handler = PipelinedHandler::new(CreateDealHandler { repo: deal_repo.clone() })
-        .with_rule(EnsureDealAmountPositiveRule);
+    let create_handler = PipelinedHandler::new(CreateDealHandler {
+        repo: deal_repo.clone(),
+    })
+    .with_rule(EnsureDealAmountPositiveRule);
 
-    let stage_handler = PipelinedHandler::new(ChangeDealStageHandler { repo: deal_repo.clone() })
-        .with_rule(StageProgressionRule { repo: deal_repo.clone() });
+    let stage_handler = PipelinedHandler::new(ChangeDealStageHandler {
+        repo: deal_repo.clone(),
+    })
+    .with_rule(StageProgressionRule {
+        repo: deal_repo.clone(),
+    });
 
     let context = RequestContext::new("tenant_acme", "corr_4", "cause_4").unwrap();
 
@@ -163,14 +169,24 @@ async fn test_cannot_log_activity_on_lost_deal() {
     let deal_repo = InMemoryDealRepository::new();
     let activity_repo = InMemoryActivityRepository::new();
 
-    let create_deal_handler = PipelinedHandler::new(CreateDealHandler { repo: deal_repo.clone() })
-        .with_rule(EnsureDealAmountPositiveRule);
+    let create_deal_handler = PipelinedHandler::new(CreateDealHandler {
+        repo: deal_repo.clone(),
+    })
+    .with_rule(EnsureDealAmountPositiveRule);
 
-    let stage_handler = PipelinedHandler::new(ChangeDealStageHandler { repo: deal_repo.clone() })
-        .with_rule(StageProgressionRule { repo: deal_repo.clone() });
+    let stage_handler = PipelinedHandler::new(ChangeDealStageHandler {
+        repo: deal_repo.clone(),
+    })
+    .with_rule(StageProgressionRule {
+        repo: deal_repo.clone(),
+    });
 
-    let activity_handler = PipelinedHandler::new(LogActivityHandler { repo: activity_repo.clone() })
-        .with_rule(CannotLogActivityOnLostDealRule { deal_repo: deal_repo.clone() });
+    let activity_handler = PipelinedHandler::new(LogActivityHandler {
+        repo: activity_repo.clone(),
+    })
+    .with_rule(CannotLogActivityOnLostDealRule {
+        deal_repo: deal_repo.clone(),
+    });
 
     let context = RequestContext::new("tenant_acme", "corr_5", "cause_5").unwrap();
 
@@ -210,7 +226,10 @@ async fn test_cannot_log_activity_on_lost_deal() {
         notes: "Why did we lose?".into(),
     };
 
-    let err = activity_handler.execute(act_cmd, &context).await.unwrap_err();
+    let err = activity_handler
+        .execute(act_cmd, &context)
+        .await
+        .unwrap_err();
     match err {
         DispatchError::RuleViolation(v) => {
             assert_eq!(v.error_code, "CANNOT_LOG_ON_LOST_DEAL");
@@ -237,7 +256,10 @@ async fn test_cedar_forbid_guard_denies_cross_tenant_access() {
 
     let decision = authorizer.authorize(&claims, &[op]).await.unwrap();
     match decision {
-        AuthzDecision::Deny { is_tenant_violation, reason } => {
+        AuthzDecision::Deny {
+            is_tenant_violation,
+            reason,
+        } => {
             assert!(is_tenant_violation);
             assert!(reason.contains("Tenant isolation violation"));
         }

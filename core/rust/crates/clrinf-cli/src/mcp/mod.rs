@@ -99,15 +99,22 @@ impl McpServer {
 
             "tools/call" => {
                 let params = request.get("params");
-                let tool_name = params.and_then(|p| p.get("name")).and_then(|n| n.as_str()).unwrap_or("");
+                let tool_name = params
+                    .and_then(|p| p.get("name"))
+                    .and_then(|n| n.as_str())
+                    .unwrap_or("");
                 let args = params.and_then(|p| p.get("arguments"));
 
                 let res = match tool_name {
                     "clrinfrs_lint" => {
-                        let path = args.and_then(|a| a.get("path")).and_then(|p| p.as_str()).unwrap_or(".");
+                        let path = args
+                            .and_then(|a| a.get("path"))
+                            .and_then(|p| p.as_str())
+                            .unwrap_or(".");
                         let violations = Linter::lint_directory(Path::new(path));
                         let text = if violations.is_empty() {
-                            "✔ Tebrikler! Hiçbir Rust mimari veya kural ihlali bulunamadı.".to_string()
+                            "✔ Tebrikler! Hiçbir Rust mimari veya kural ihlali bulunamadı."
+                                .to_string()
                         } else {
                             serde_json::to_string_pretty(&violations).unwrap_or_default()
                         };
@@ -118,9 +125,18 @@ impl McpServer {
                     }
 
                     "clrinfrs_generate_project" => {
-                        let name = args.and_then(|a| a.get("name")).and_then(|n| n.as_str()).unwrap_or("MyApp");
-                        let arch_str = args.and_then(|a| a.get("arch")).and_then(|a| a.as_str()).unwrap_or("clean-cqrs");
-                        let target_dir = args.and_then(|a| a.get("target_dir")).and_then(|t| t.as_str()).unwrap_or(".");
+                        let name = args
+                            .and_then(|a| a.get("name"))
+                            .and_then(|n| n.as_str())
+                            .unwrap_or("MyApp");
+                        let arch_str = args
+                            .and_then(|a| a.get("arch"))
+                            .and_then(|a| a.as_str())
+                            .unwrap_or("clean-cqrs");
+                        let target_dir = args
+                            .and_then(|a| a.get("target_dir"))
+                            .and_then(|t| t.as_str())
+                            .unwrap_or(".");
                         let arch = ArchStyle::parse_str(arch_str);
 
                         match Generator::new_project(name, Path::new(target_dir), arch, "api") {
@@ -136,12 +152,29 @@ impl McpServer {
                     }
 
                     "clrinfrs_add_rule" => {
-                        let project_path = args.and_then(|a| a.get("project_path")).and_then(|p| p.as_str()).unwrap_or(".");
-                        let module = args.and_then(|a| a.get("module")).and_then(|m| m.as_str()).unwrap_or("Common");
-                        let rule_name = args.and_then(|a| a.get("rule_name")).and_then(|r| r.as_str()).unwrap_or("CustomRule");
-                        let command_name = args.and_then(|a| a.get("command_name")).and_then(|c| c.as_str()).unwrap_or("CustomCommand");
+                        let project_path = args
+                            .and_then(|a| a.get("project_path"))
+                            .and_then(|p| p.as_str())
+                            .unwrap_or(".");
+                        let module = args
+                            .and_then(|a| a.get("module"))
+                            .and_then(|m| m.as_str())
+                            .unwrap_or("Common");
+                        let rule_name = args
+                            .and_then(|a| a.get("rule_name"))
+                            .and_then(|r| r.as_str())
+                            .unwrap_or("CustomRule");
+                        let command_name = args
+                            .and_then(|a| a.get("command_name"))
+                            .and_then(|c| c.as_str())
+                            .unwrap_or("CustomCommand");
 
-                        match Generator::add_rule(Path::new(project_path), module, rule_name, command_name) {
+                        match Generator::add_rule(
+                            Path::new(project_path),
+                            module,
+                            rule_name,
+                            command_name,
+                        ) {
                             Ok(path) => json!({
                                 "content": [{ "type": "text", "text": format!("✔ İzole kural oluşturuldu: {}\nMevcut hiçbir dosyaya dokunulmadı.", path.display()) }],
                                 "isError": false

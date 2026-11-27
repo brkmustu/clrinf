@@ -78,7 +78,10 @@ impl InMemoryInventoryRepository {
 
     pub async fn save(&self, item: StockItem) -> StockItem {
         let mut store = self.storage.write().await;
-        store.insert(format!("{}:{}", item.tenant_id, item.product_id), item.clone());
+        store.insert(
+            format!("{}:{}", item.tenant_id, item.product_id),
+            item.clone(),
+        );
         item
     }
 }
@@ -97,7 +100,10 @@ impl BusinessRule<ReserveStockCommand> for EnsurePositiveQuantityRule {
         if command.quantity <= 0 {
             return RuleResult::failed(
                 "INVALID_QUANTITY",
-                format!("Requested quantity must be positive. Received: {}", command.quantity),
+                format!(
+                    "Requested quantity must be positive. Received: {}",
+                    command.quantity
+                ),
             );
         }
         RuleResult::success()
@@ -115,12 +121,18 @@ impl BusinessRule<ReserveStockCommand> for EnsureStockAvailabilityRule {
         command: &ReserveStockCommand,
         _request_context: &RequestContext,
     ) -> RuleResult {
-        let item = self.repo.get_by_product_id(&command.tenant_id, &command.product_id).await;
+        let item = self
+            .repo
+            .get_by_product_id(&command.tenant_id, &command.product_id)
+            .await;
         match item {
             Some(stock) if stock.available_quantity >= command.quantity => RuleResult::success(),
             Some(stock) => RuleResult::failed(
                 "STOCK_INSUFFICIENT",
-                format!("Insufficient stock for product '{}'. Available: {}, Requested: {}", command.product_id, stock.available_quantity, command.quantity),
+                format!(
+                    "Insufficient stock for product '{}'. Available: {}, Requested: {}",
+                    command.product_id, stock.available_quantity, command.quantity
+                ),
             ),
             None => RuleResult::failed(
                 "STOCK_INSUFFICIENT",
@@ -164,7 +176,10 @@ impl RequestHandler<ReserveStockCommand> for ReserveStockHandler {
         command: ReserveStockCommand,
         _context: &RequestContext,
     ) -> Result<StockItem, DispatchError> {
-        let mut item = self.repo.get_by_product_id(&command.tenant_id, &command.product_id).await
+        let mut item = self
+            .repo
+            .get_by_product_id(&command.tenant_id, &command.product_id)
+            .await
             .ok_or_else(|| DispatchError::NotFound("Stock not found".into()))?;
 
         item.available_quantity -= command.quantity;
@@ -184,7 +199,10 @@ impl RequestHandler<ReleaseStockCommand> for ReleaseStockHandler {
         command: ReleaseStockCommand,
         _context: &RequestContext,
     ) -> Result<StockItem, DispatchError> {
-        let mut item = self.repo.get_by_product_id(&command.tenant_id, &command.product_id).await
+        let mut item = self
+            .repo
+            .get_by_product_id(&command.tenant_id, &command.product_id)
+            .await
             .ok_or_else(|| DispatchError::NotFound("Stock not found".into()))?;
 
         let release_qty = item.reserved_quantity.min(command.quantity);
@@ -205,7 +223,10 @@ impl RequestHandler<CommitStockCommand> for CommitStockHandler {
         command: CommitStockCommand,
         _context: &RequestContext,
     ) -> Result<StockItem, DispatchError> {
-        let mut item = self.repo.get_by_product_id(&command.tenant_id, &command.product_id).await
+        let mut item = self
+            .repo
+            .get_by_product_id(&command.tenant_id, &command.product_id)
+            .await
             .ok_or_else(|| DispatchError::NotFound("Stock not found".into()))?;
 
         let commit_qty = item.reserved_quantity.min(command.quantity);

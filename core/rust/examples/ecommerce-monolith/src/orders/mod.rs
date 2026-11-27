@@ -91,7 +91,10 @@ impl BusinessRule<CreateOrderCommand> for EnsureOrderItemsNotEmptyRule {
         _request_context: &RequestContext,
     ) -> RuleResult {
         if command.items.is_empty() {
-            return RuleResult::failed("EMPTY_ORDER_ITEMS", "Order must contain at least one item.");
+            return RuleResult::failed(
+                "EMPTY_ORDER_ITEMS",
+                "Order must contain at least one item.",
+            );
         }
         RuleResult::success()
     }
@@ -106,11 +109,18 @@ impl BusinessRule<CreateOrderCommand> for MinimumOrderAmountRule {
         command: &CreateOrderCommand,
         _request_context: &RequestContext,
     ) -> RuleResult {
-        let total: f64 = command.items.iter().map(|i| i.quantity as f64 * i.unit_price).sum();
+        let total: f64 = command
+            .items
+            .iter()
+            .map(|i| i.quantity as f64 * i.unit_price)
+            .sum();
         if total < 25.0 {
             return RuleResult::failed(
                 "MINIMUM_ORDER_AMOUNT_NOT_MET",
-                format!("Order total ${:.2} is below minimum required threshold $25.00.", total),
+                format!(
+                    "Order total ${:.2} is below minimum required threshold $25.00.",
+                    total
+                ),
             );
         }
         RuleResult::success()
@@ -130,9 +140,13 @@ impl RequestHandler<CreateOrderCommand> for CreateOrderHandler {
         command: CreateOrderCommand,
         _context: &RequestContext,
     ) -> Result<Order, DispatchError> {
-        let total: f64 = command.items.iter().map(|i| i.quantity as f64 * i.unit_price).sum();
+        let total: f64 = command
+            .items
+            .iter()
+            .map(|i| i.quantity as f64 * i.unit_price)
+            .sum();
         let order = Order {
-            id: format!("ord_{}", &uuid_short()),
+            id: format!("ord_{}", uuid_short()),
             tenant_id: command.tenant_id,
             customer_id: command.customer_id,
             items: command.items,
@@ -154,7 +168,10 @@ impl RequestHandler<CancelOrderCommand> for CancelOrderHandler {
         command: CancelOrderCommand,
         _context: &RequestContext,
     ) -> Result<Order, DispatchError> {
-        let mut order = self.repo.get_by_id(&command.tenant_id, &command.order_id).await
+        let mut order = self
+            .repo
+            .get_by_id(&command.tenant_id, &command.order_id)
+            .await
             .ok_or_else(|| DispatchError::NotFound("Order not found".into()))?;
 
         order.status = "Cancelled".into();

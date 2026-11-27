@@ -165,7 +165,10 @@ pub use models::{pascal};
                 fs::write(&parent_mod, format!("{existing}{export_line}"))?;
             }
         } else {
-            fs::write(&parent_mod, format!("// @clrinf:generated — Application modules\n{export_line}"))?;
+            fs::write(
+                &parent_mod,
+                format!("// @clrinf:generated — Application modules\n{export_line}"),
+            )?;
             created_files.push(parent_mod.display().to_string());
         }
 

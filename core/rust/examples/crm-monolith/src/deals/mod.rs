@@ -107,20 +107,37 @@ impl BusinessRule<ChangeDealStageCommand> for StageProgressionRule {
         context: &ChangeDealStageCommand,
         _request_context: &RequestContext,
     ) -> RuleResult {
-        let valid_stages = ["Prospect", "Qualified", "Proposal", "Negotiation", "ClosedWon", "ClosedLost"];
+        let valid_stages = [
+            "Prospect",
+            "Qualified",
+            "Proposal",
+            "Negotiation",
+            "ClosedWon",
+            "ClosedLost",
+        ];
         if !valid_stages.contains(&context.new_stage.as_str()) {
             return RuleResult::failed(
                 "UNKNOWN_DEAL_STAGE",
-                format!("Stage '{}' is not a recognized CRM deal stage.", context.new_stage),
+                format!(
+                    "Stage '{}' is not a recognized CRM deal stage.",
+                    context.new_stage
+                ),
             );
         }
 
-        let deal = match self.repo.get_by_id(&context.tenant_id, &context.deal_id).await {
+        let deal = match self
+            .repo
+            .get_by_id(&context.tenant_id, &context.deal_id)
+            .await
+        {
             Some(d) => d,
             None => {
                 return RuleResult::failed(
                     "DEAL_NOT_FOUND",
-                    format!("Deal '{}' not found in tenant '{}'.", context.deal_id, context.tenant_id),
+                    format!(
+                        "Deal '{}' not found in tenant '{}'.",
+                        context.deal_id, context.tenant_id
+                    ),
                 );
             }
         };
@@ -128,7 +145,10 @@ impl BusinessRule<ChangeDealStageCommand> for StageProgressionRule {
         if deal.stage == "ClosedWon" || deal.stage == "ClosedLost" {
             return RuleResult::failed(
                 "DEAL_ALREADY_CLOSED",
-                format!("Deal is already finalized as '{}' and cannot transition directly.", deal.stage),
+                format!(
+                    "Deal is already finalized as '{}' and cannot transition directly.",
+                    deal.stage
+                ),
             );
         }
 
@@ -212,7 +232,10 @@ impl RequestHandler<GetDealQuery> for GetDealHandler {
         request: GetDealQuery,
         _context: &RequestContext,
     ) -> Result<Option<Deal>, DispatchError> {
-        Ok(self.repo.get_by_id(&request.tenant_id, &request.deal_id).await)
+        Ok(self
+            .repo
+            .get_by_id(&request.tenant_id, &request.deal_id)
+            .await)
     }
 }
 

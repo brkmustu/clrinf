@@ -7,7 +7,10 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-11-27
+
 ### Added
+- Durable Rust `SqliteCrudStore<T>` (`clrinf-adapters --features sqlite`) with bundled WAL-mode SQLite persistence, strict `tenant_id` partitioning, parameterized pagination/search, and conflict/not-found mapping
 - **Rust Compile-Time CRUD parity:**
   - `clrinf-core::crud` (`CrudId`, `CrudEntity`, `CrudMetadata`, `CrudStore`, `Before{Create|Update|Delete}Rule`, `CrudRuleRunner`)
   - `clrinf-macros` (`#[derive(ClrinfCrud)]`, `#[clrinf_crud(route = ..., skip(...))]`, `#[crud_ignore]`) generating request DTOs & entity metadata at compile time
@@ -25,6 +28,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Translated 4 key entry guides (`agent-guardrails.md`, `benchmarks/README.md`, `parity-matrix.md`, `existing-project.md`) to English
 
 ### Fixed
+- `core/rust` CI greenness: `cargo fmt --all` compliance, workspace clippy cleanups, and lock-free `clrinfrs` CLI integration tests
 - Resolved all Rust `clippy --all-targets -- -D warnings` lints in `tools/clrinf-codegen`
 - Upgraded `SQLitePCLRaw.bundle_e_sqlite3` to `2.1.13` in `CrmMonolith.csproj` to clear `NU1903`
 

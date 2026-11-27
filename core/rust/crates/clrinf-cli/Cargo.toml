@@ -1,6 +1,6 @@
 [package]
 name = "clrinf-cli"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 license = "Apache-2.0"
 description = "Specialized Rust application scaffold, CQRS generator, Syn AST linter and MCP server"
@@ -11,7 +11,6 @@ path = "src/main.rs"
 
 [dependencies]
 clap = { version = "4.5", features = ["derive"] }
-minijinja = { version = "2.7", features = ["loader"] }
 colored = "2.1"
 syn = { version = "2.0", features = ["full", "visit"] }
 quote = "1.0"

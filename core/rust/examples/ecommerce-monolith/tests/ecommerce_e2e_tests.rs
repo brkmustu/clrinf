@@ -106,17 +106,29 @@ async fn test_reserve_stock_success() {
         .with_rule(EnsureStockAvailabilityRule { repo: repo.clone() });
 
     let context = RequestContext::new("tenant_acme", "corr_4", "cause_4").unwrap();
-    set_handler.handle(SetStockCommand {
-        tenant_id: "tenant_acme".into(),
-        product_id: "prod_1".into(),
-        quantity: 10,
-    }, &context).await.unwrap();
+    set_handler
+        .handle(
+            SetStockCommand {
+                tenant_id: "tenant_acme".into(),
+                product_id: "prod_1".into(),
+                quantity: 10,
+            },
+            &context,
+        )
+        .await
+        .unwrap();
 
-    let updated = reserve_handler.execute(ReserveStockCommand {
-        tenant_id: "tenant_acme".into(),
-        product_id: "prod_1".into(),
-        quantity: 3,
-    }, &context).await.unwrap();
+    let updated = reserve_handler
+        .execute(
+            ReserveStockCommand {
+                tenant_id: "tenant_acme".into(),
+                product_id: "prod_1".into(),
+                quantity: 3,
+            },
+            &context,
+        )
+        .await
+        .unwrap();
 
     assert_eq!(updated.available_quantity, 7);
     assert_eq!(updated.reserved_quantity, 3);
@@ -131,17 +143,29 @@ async fn test_reserve_stock_fails_insufficient() {
         .with_rule(EnsureStockAvailabilityRule { repo: repo.clone() });
 
     let context = RequestContext::new("tenant_acme", "corr_5", "cause_5").unwrap();
-    set_handler.handle(SetStockCommand {
-        tenant_id: "tenant_acme".into(),
-        product_id: "prod_2".into(),
-        quantity: 2,
-    }, &context).await.unwrap();
+    set_handler
+        .handle(
+            SetStockCommand {
+                tenant_id: "tenant_acme".into(),
+                product_id: "prod_2".into(),
+                quantity: 2,
+            },
+            &context,
+        )
+        .await
+        .unwrap();
 
-    let err = reserve_handler.execute(ReserveStockCommand {
-        tenant_id: "tenant_acme".into(),
-        product_id: "prod_2".into(),
-        quantity: 5,
-    }, &context).await.unwrap_err();
+    let err = reserve_handler
+        .execute(
+            ReserveStockCommand {
+                tenant_id: "tenant_acme".into(),
+                product_id: "prod_2".into(),
+                quantity: 5,
+            },
+            &context,
+        )
+        .await
+        .unwrap_err();
 
     match err {
         DispatchError::RuleViolation(v) => {
@@ -229,60 +253,102 @@ async fn test_order_cancel_and_release_lifecycle() {
     let inv_repo = InMemoryInventoryRepository::new();
     let ord_repo = InMemoryOrderRepository::new();
 
-    let set_handler = SetStockHandler { repo: inv_repo.clone() };
-    let reserve_handler = PipelinedHandler::new(ReserveStockHandler { repo: inv_repo.clone() })
-        .with_rule(EnsurePositiveQuantityRule)
-        .with_rule(EnsureStockAvailabilityRule { repo: inv_repo.clone() });
-    let release_handler = ReleaseStockHandler { repo: inv_repo.clone() };
+    let set_handler = SetStockHandler {
+        repo: inv_repo.clone(),
+    };
+    let reserve_handler = PipelinedHandler::new(ReserveStockHandler {
+        repo: inv_repo.clone(),
+    })
+    .with_rule(EnsurePositiveQuantityRule)
+    .with_rule(EnsureStockAvailabilityRule {
+        repo: inv_repo.clone(),
+    });
+    let release_handler = ReleaseStockHandler {
+        repo: inv_repo.clone(),
+    };
 
-    let order_handler = PipelinedHandler::new(CreateOrderHandler { repo: ord_repo.clone() })
-        .with_rule(EnsureOrderItemsNotEmptyRule)
-        .with_rule(MinimumOrderAmountRule);
-    let cancel_handler = CancelOrderHandler { repo: ord_repo.clone() };
+    let order_handler = PipelinedHandler::new(CreateOrderHandler {
+        repo: ord_repo.clone(),
+    })
+    .with_rule(EnsureOrderItemsNotEmptyRule)
+    .with_rule(MinimumOrderAmountRule);
+    let cancel_handler = CancelOrderHandler {
+        repo: ord_repo.clone(),
+    };
 
     let context = RequestContext::new("tenant_acme", "corr_9", "cause_9").unwrap();
 
     // 1. Initial stock: 10
-    set_handler.handle(SetStockCommand {
-        tenant_id: "tenant_acme".into(),
-        product_id: "prod_headset".into(),
-        quantity: 10,
-    }, &context).await.unwrap();
+    set_handler
+        .handle(
+            SetStockCommand {
+                tenant_id: "tenant_acme".into(),
+                product_id: "prod_headset".into(),
+                quantity: 10,
+            },
+            &context,
+        )
+        .await
+        .unwrap();
 
     // 2. Reserve 2 items
-    let stock_res = reserve_handler.execute(ReserveStockCommand {
-        tenant_id: "tenant_acme".into(),
-        product_id: "prod_headset".into(),
-        quantity: 2,
-    }, &context).await.unwrap();
+    let stock_res = reserve_handler
+        .execute(
+            ReserveStockCommand {
+                tenant_id: "tenant_acme".into(),
+                product_id: "prod_headset".into(),
+                quantity: 2,
+            },
+            &context,
+        )
+        .await
+        .unwrap();
     assert_eq!(stock_res.available_quantity, 8);
     assert_eq!(stock_res.reserved_quantity, 2);
 
     // 3. Create order
-    let order = order_handler.execute(CreateOrderCommand {
-        tenant_id: "tenant_acme".into(),
-        customer_id: "cust_1".into(),
-        items: vec![OrderItem {
-            product_id: "prod_headset".into(),
-            quantity: 2,
-            unit_price: 50.0,
-        }],
-    }, &context).await.unwrap();
+    let order = order_handler
+        .execute(
+            CreateOrderCommand {
+                tenant_id: "tenant_acme".into(),
+                customer_id: "cust_1".into(),
+                items: vec![OrderItem {
+                    product_id: "prod_headset".into(),
+                    quantity: 2,
+                    unit_price: 50.0,
+                }],
+            },
+            &context,
+        )
+        .await
+        .unwrap();
     assert_eq!(order.status, "Pending");
 
     // 4. Cancel order
-    let cancelled = cancel_handler.handle(CancelOrderCommand {
-        tenant_id: "tenant_acme".into(),
-        order_id: order.id,
-    }, &context).await.unwrap();
+    let cancelled = cancel_handler
+        .handle(
+            CancelOrderCommand {
+                tenant_id: "tenant_acme".into(),
+                order_id: order.id,
+            },
+            &context,
+        )
+        .await
+        .unwrap();
     assert_eq!(cancelled.status, "Cancelled");
 
     // 5. Compensating action: Release stock
-    let released = release_handler.handle(ReleaseStockCommand {
-        tenant_id: "tenant_acme".into(),
-        product_id: "prod_headset".into(),
-        quantity: 2,
-    }, &context).await.unwrap();
+    let released = release_handler
+        .handle(
+            ReleaseStockCommand {
+                tenant_id: "tenant_acme".into(),
+                product_id: "prod_headset".into(),
+                quantity: 2,
+            },
+            &context,
+        )
+        .await
+        .unwrap();
     assert_eq!(released.available_quantity, 10);
     assert_eq!(released.reserved_quantity, 0);
 }
@@ -300,9 +366,15 @@ async fn test_multi_tenant_authorization() {
 
     let target_claim = OperationClaim::with_tenant("Orders", "orders.create", "tenant_acme");
 
-    let decision = authorizer.authorize(&tenant_beta_claims, &[target_claim]).await.unwrap();
+    let decision = authorizer
+        .authorize(&tenant_beta_claims, &[target_claim])
+        .await
+        .unwrap();
     match decision {
-        AuthzDecision::Deny { is_tenant_violation, reason } => {
+        AuthzDecision::Deny {
+            is_tenant_violation,
+            reason,
+        } => {
             assert!(is_tenant_violation);
             assert!(reason.contains("Tenant isolation violation"));
         }
