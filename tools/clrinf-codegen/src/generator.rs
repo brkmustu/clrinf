@@ -548,6 +548,7 @@ impl Generator {
 
     /// Scaffolds an isolated `IBusinessRule<T>` class plus xUnit tests for C#.
     /// Never overwrites existing files.
+    #[allow(clippy::too_many_arguments)]
     pub fn scaffold_rule_csharp(
         &self,
         rule_name: &str,

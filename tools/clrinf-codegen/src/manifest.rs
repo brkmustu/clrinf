@@ -10,7 +10,7 @@ use std::path::{Path, PathBuf};
 
 // ─── Project Section ────────────────────────────────────────────────────────
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct ProjectManifest {
     pub project: ProjectConfig,
     #[serde(default)]
@@ -19,17 +19,6 @@ pub struct ProjectManifest {
     pub declared_modules: Vec<DeclarativeModule>,
     #[serde(default)]
     pub ui: Option<UiConfig>,
-}
-
-impl Default for ProjectManifest {
-    fn default() -> Self {
-        Self {
-            project: ProjectConfig::default(),
-            modules: ModulesConfig::default(),
-            declared_modules: Vec::new(),
-            ui: None,
-        }
-    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -89,19 +78,14 @@ impl Default for ProjectConfig {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum Lang {
+    #[default]
     CSharp,
     Rust,
     TypeScript,
     Elixir,
-}
-
-impl Default for Lang {
-    fn default() -> Self {
-        Lang::CSharp
-    }
 }
 
 impl Lang {
@@ -115,51 +99,37 @@ impl Lang {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum ArchStyle {
     Flat,
     Layered,
+    #[default]
     CleanCqrs,
 }
 
-impl Default for ArchStyle {
-    fn default() -> Self {
-        ArchStyle::CleanCqrs
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum DeploymentMode {
+    #[default]
     Monolith,
     Distributed,
 }
 
-impl Default for DeploymentMode {
-    fn default() -> Self {
-        DeploymentMode::Monolith
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum HostType {
+    #[default]
     Api,
     Mvc,
     Console,
     Worker,
 }
 
-impl Default for HostType {
-    fn default() -> Self {
-        HostType::Api
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum Dispatcher {
+    #[default]
     Native,
     Mediatr,
     #[serde(rename = "mediatornet")]
@@ -176,23 +146,12 @@ impl Dispatcher {
     }
 }
 
-impl Default for Dispatcher {
-    fn default() -> Self {
-        Dispatcher::Native
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum Paradigm {
+    #[default]
     Fp,
     Oop,
-}
-
-impl Default for Paradigm {
-    fn default() -> Self {
-        Paradigm::Fp
-    }
 }
 
 impl Paradigm {
@@ -204,17 +163,12 @@ impl Paradigm {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum ApiStyle {
+    #[default]
     Minimal,
     Controller,
-}
-
-impl Default for ApiStyle {
-    fn default() -> Self {
-        ApiStyle::Minimal
-    }
 }
 
 #[allow(dead_code)]
@@ -227,9 +181,10 @@ impl ApiStyle {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum PatternStyle {
+    #[default]
     #[serde(alias = "vertical-slice", alias = "vertical_slice")]
     Flat,
     Separated,
@@ -237,12 +192,6 @@ pub enum PatternStyle {
     /// Entity-only AOT CRUD: handlers/endpoints are generated at compile time.
     #[serde(rename = "aot")]
     Aot,
-}
-
-impl Default for PatternStyle {
-    fn default() -> Self {
-        PatternStyle::Flat
-    }
 }
 
 impl PatternStyle {
@@ -799,7 +748,7 @@ impl ProjectManifest {
             None => ("App".to_string(), None),
         };
 
-        let backend = raw.backend.unwrap_or_else(|| CodegenTomlBackend {
+        let backend = raw.backend.unwrap_or(CodegenTomlBackend {
             arch_style: None,
             paradigm: None,
             dispatcher: None,
@@ -838,7 +787,7 @@ impl ProjectManifest {
             Some("separated") => PatternStyle::Separated,
             Some("basic") => PatternStyle::Basic,
             Some("aot") => PatternStyle::Aot,
-            Some("flat") | Some("vertical-slice") | _ => PatternStyle::Flat,
+            _ => PatternStyle::Flat,
         };
 
         let folder_name = backend.structure.as_ref().and_then(|s| s.folder_name.clone());

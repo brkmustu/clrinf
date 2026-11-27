@@ -1,5 +1,6 @@
 mod ast;
 mod compat;
+mod guardrails_init;
 mod csharp;
 mod drift;
 mod event_scaffold;
@@ -266,6 +267,22 @@ enum Commands {
         /// Code generation pattern: 'flat', 'aot', 'separated', or 'basic'
         #[arg(long, default_value = "flat")]
         pattern: String,
+
+        /// Configure brownfield AI architecture & event guardrails (clrinf.rules.toml, agents sync, hooks)
+        #[arg(long)]
+        guardrails: bool,
+
+        /// Agent hooks to install when --guardrails is set ('claude', 'cursor', 'antigravity', 'git', 'all', 'none')
+        #[arg(long, default_value = "all")]
+        agent: String,
+
+        /// Also generate .github/workflows/clrinf-guardrails.yml when --guardrails is set
+        #[arg(long)]
+        ci: bool,
+
+        /// Overwrite existing clrinf.rules.toml / CI workflow / foreign git hook when --guardrails is set
+        #[arg(long)]
+        force: bool,
     },
     /// Manage cross-cutting concern modules
     #[command(subcommand)]
@@ -948,7 +965,7 @@ fn main() -> Result<()> {
 
             let tpl_dir = if templates_dir.is_dir() {
                 templates_dir.clone()
-            } else if let Some(ref root) = WorkerManager::new().workspace_root() {
+            } else if let Some(root) = WorkerManager::new().workspace_root() {
                 root.join("tools").join("clrinf-codegen").join("templates")
             } else {
                 templates_dir.clone()
@@ -1328,8 +1345,47 @@ fn main() -> Result<()> {
             profile,
             dispatcher,
             pattern,
+            guardrails,
+            agent,
+            ci,
+            force,
         } => {
             let abs_path = std::fs::canonicalize(&path).unwrap_or_else(|_| path.clone());
+            if guardrails {
+                let report = guardrails_init::init_guardrails(&abs_path, &agent, ci, force)?;
+                println!(
+                    "{} Guardrails initialized in {}",
+                    if report.rules_created { "✅" } else { "ℹ️ " },
+                    abs_path.display()
+                );
+                println!("   Rules file: {}", report.rules_path.display());
+                if let Some(ref sd) = report.detected_schema_dir {
+                    println!("   Detected schemas: {sd}");
+                }
+                if !report.detected_domains.is_empty() {
+                    println!("   Protected domain dirs: {}", report.detected_domains.join(", "));
+                }
+                if !report.detected_modules.is_empty() {
+                    println!("   Isolated modules: {}", report.detected_modules.join(", "));
+                }
+                if !report.synced_agent_files.is_empty() {
+                    println!("   Synced agent files: {}", report.synced_agent_files.join(", "));
+                }
+                if !report.hooks_installed.is_empty() {
+                    println!("   Installed hooks: {}", report.hooks_installed.join(", "));
+                }
+                for note in &report.hook_notes {
+                    println!("   ⚠️  {note}");
+                }
+                if let Some(ref wf) = report.ci_workflow_path {
+                    println!("   CI workflow: {}", wf.display());
+                }
+                println!(
+                    "   Baseline verify: {} error(s) (run `clrinf verify` for details)",
+                    report.verify_errors
+                );
+                return Ok(());
+            }
             let detected = manifest::detect_project(&abs_path);
             if let Some(ref d) = detected {
                 println!(
@@ -1595,7 +1651,7 @@ fn main() -> Result<()> {
             // Resolve templates directory
             let tpl_dir = if templates_dir.is_dir() {
                 templates_dir.clone()
-            } else if let Some(ref root) = WorkerManager::new().workspace_root() {
+            } else if let Some(root) = WorkerManager::new().workspace_root() {
                 root.join("tools").join("clrinf-codegen").join("templates")
             } else {
                 templates_dir.clone()
@@ -1614,7 +1670,7 @@ fn main() -> Result<()> {
             match m.project.lang {
                 manifest::Lang::CSharp => {
                     csharp::project::sync_crud_build_settings(&abs_path, &m)?;
-                    let effective_pattern = pattern.as_deref().unwrap_or_else(|| match m.project.pattern {
+                    let effective_pattern = pattern.as_deref().unwrap_or(match m.project.pattern {
                         manifest::PatternStyle::Aot => "aot",
                         manifest::PatternStyle::Separated => "separated",
                         _ => "vertical-slice",
@@ -1703,7 +1759,7 @@ fn main() -> Result<()> {
             let (m, _) = ProjectManifest::discover(&abs_path)?;
             let tpl_dir = if templates_dir.is_dir() {
                 templates_dir.clone()
-            } else if let Some(ref root) = WorkerManager::new().workspace_root() {
+            } else if let Some(root) = WorkerManager::new().workspace_root() {
                 root.join("tools").join("clrinf-codegen").join("templates")
             } else {
                 templates_dir.clone()

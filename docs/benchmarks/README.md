@@ -1,87 +1,79 @@
-# Benchmark Protokolü
+# Benchmark Protocol & Measured Results
 
-"clrinf ile daha az token, daha az mimari ihlal" iddiası iki katmanda ölçülür.
+The claim **"fewer tokens and fewer architectural violations with clrinf"** is measured in two layers: deterministic context/guardrail measurements and end-to-end LLM A/B runs.
 
-## 1. Deterministik bağlam maliyeti (`clrinf bench context`)
+## 1. Deterministic Context Cost (`clrinf bench context`)
 
 ```bash
-clrinf bench context <event> --schema-dir <schemas> --src <kaynak-kökleri...>
+clrinf bench context <event> --schema-dir <schemas> --src <source-roots...>
 ```
 
-Ölçtükleri:
+What it measures:
+- **Baseline:** All source files under `--src` plus all schemas (simulating full-repo agent exploration).
+- **Slice:** Target event schema + hand-written files referencing the event + generated agent rules block.
+- **MCP schema cost:** Fixed per-session token overhead of `full`, `events`, and `lean` tool definitions.
 
-* **Baseline**: `--src` altındaki tüm kaynak dosyalar + tüm şemalar (ajanın "keşfet" yaklaşımı).
-* **Slice**: olay şeması + olayı anan elle yazılmış dosyalar + üretilmiş kural bloğu.
-* **MCP şema maliyeti**: `full`, `events`, `lean` profillerinin oturum başına sabit token yükü.
-
-Token tahmini `~4 karakter/token` kuralıdır; mutlak değerden çok oranlar anlamlıdır.
+Token counts use the `~4 chars/token` estimate; ratios are what matter rather than absolute counts.
 
 > [!WARNING]
-> Bu yalnızca **okuma** tarafını ölçer. Ajan yeni kod da yazar; yazım maliyeti ve düzeltme turları ancak aşağıdaki A/B çalıştırmasıyla görülür. Olayı henüz hiçbir elle yazılmış dosya anmıyorsa slice yalnızca şemadır ve oran olduğundan iyi görünür. Bu sayıyı tek başına pazarlama iddiası olarak kullanmayın.
+> `bench context` measures **read-side** context only. Write-side tokens and retry turns appear only in an end-to-end A/B run (Section 3). If no hand-written file references the event yet, the slice consists only of the schema and looks artificially small; do not cite empty-slice ratios.
 
-### Ölçülen Deterministik Sonuçlar (`scripts/bench-guardrails.ps1` / `.sh`)
+## 2. Measured Deterministic Results (`scripts/bench-guardrails.ps1` / `.sh`)
 
-Aşağıdaki değerler `clrinf` CLI'ı ile doğrudan bu repoda ölçülmüş, deterministik olarak tekrarlanabilir sonuçlardır:
+The values below are directly measured and reproducible in this repository via `.\scripts\bench-guardrails.ps1` (Windows) or `bash scripts/bench-guardrails.sh` (Linux/macOS):
 
-#### 1. Çok Dilli Olay Dilimleme & Hata Yakalama (`examples/guardrails-benchmark/`)
-- **Temiz taban çizgisi (`clrinf verify`):** 0 hata (Rust + TypeScript + C# servisleri).
-- **Bağlam maliyeti (`orders.placed.v1`):**
-  - Baseline (`services/` + tüm şemalar): **2.015 token** (15 dosya)
-  - `clrinf` slice (ilgili şema + el yazımı 3 servis dosyası + kural bloğu): **1.182 token** (4 dosya) → **%41,3 azalma**
-- **Oturum başı sabit MCP araç şeması maliyeti:**
-  - `full` (27 araç): **3.698 token**
-  - `events` (14 araç): **1.983 token**
-  - `lean` (10 araç): **1.440 token** (`full`'a göre **%61,1 daha az sabit yük**)
-- **Enjekte edilen ajan hatalarının yakalanması (3/3 deterministik):**
-  1. Domain katmanında yasaklı import (`RULE_FORBIDDEN_DEPENDENCY`, `scope = "imports"`) + Claude Code `PostToolUse` hook'undan **çıkış kodu `2`** geri bildirimi.
-  2. Doğrudan outbox yazımı (`DRIFT_RAW_OUTBOX_WRITE`).
-  3. Upcaster olmadan kırıcı `v2` şema ekleme (`TOPOLOGY_UPCASTER_MISSING`).
+### A. Polyglot Guardrails & Event Context Slicing (`examples/guardrails-benchmark/`)
+- **Clean baseline (`clrinf verify`):** `0` errors across Rust (`orders`), TypeScript (`billing`), and C# (`inventory`).
+- **Context cost (`orders.placed.v1`):**
+  - Baseline (`services/` + schemas): **2,015 tokens** (15 files)
+  - `clrinf` slice (schema + 3 hand-written affected files + rules block): **1,246 tokens** (4 files) → **38.2% reduction**
+- **Fixed per-session MCP tool-schema overhead:**
+  - `full` (27 tools): **3,698 tokens**
+  - `events` (14 tools): **1,983 tokens**
+  - `lean` (10 tools): **1,440 tokens** (**61.1% lower fixed overhead** vs. `full`)
+- **Seeded AI-agent failure detection (5/5 caught deterministically):**
+  1. Forbidden domain `Infrastructure` import (`RULE_FORBIDDEN_DEPENDENCY`, `scope = "imports"`) + Claude Code `PostToolUse` hook returning **exit code `2`**.
+  2. Direct outbox bypass (`DRIFT_RAW_OUTBOX_WRITE`).
+  3. Breaking `v2` schema evolution without an upcaster (`TOPOLOGY_UPCASTER_MISSING`).
+  4. Cross-module internal import bypassing public contracts (`RULE_MODULE_BOUNDARY_VIOLATION`).
+  5. Hand-editing a generated file (`RULE_GENERATED_FILE_MODIFIED` via Claude Code `PostToolUse` hook **exit code `2`**).
 
-#### 2. Derleme Anı AOT CRUD vs. Disk Üretimli CRUD (`Category` + `Brand`)
-- **Geleneksel disk üretimi (`clrinf add entity --pattern vertical-slice`):** **3.850 token** (16 `.cs` dosyası).
-- **Native AOT CRUD (`core/csharp/examples/AotCrud/Domain/*.cs`):** **356 token** (3 `.cs` dosyası) → diskteki ajan bağlamında **%90,8 token azalması**.
+### B. Compile-Time Native AOT CRUD vs. Disk-Generated CRUD (`Category` + `Brand`)
+- **Disk-generated CRUD (`clrinf add entity --pattern vertical-slice`):** **3,850 tokens** across `16` `.cs` files.
+- **Native AOT CRUD (`core/csharp/examples/AotCrud/Domain/*.cs`):** **356 tokens** across `3` `.cs` files → **90.8% reduction** in on-disk agent context.
 
-Tekrarlamak için:
-```powershell
-.\scripts\bench-guardrails.ps1   # Windows
-bash scripts/bench-guardrails.sh # Linux / macOS
-```
+---
 
-## 2. Uçtan uca ajan A/B çalıştırması
+## 3. End-to-End Agent A/B Protocol
 
-Aynı görev, aynı model, aynı başlangıç commit'i; yalnızca clrinf açık/kapalı.
+Run the same task, same model, and same starting commit with `clrinf` disabled vs. enabled:
 
-| Kol | Kurulum |
+| Arm | Setup |
 |---|---|
-| A (kontrol) | clrinf yok; ajan repoyu kendisi keşfeder |
-| B (clrinf) | `clrinf agents sync`, `clrinf hook install`, MCP `lean` profili |
+| A (control) | No `clrinf`; agent explores the repository manually |
+| B (`clrinf`) | `clrinf init --guardrails` (`agents sync`, `hook install`, MCP `lean` profile) |
 
-### Araç bazlı B kolu kurulumu
+### Per-Tool Arm B Setup
 
-Gönüllüler farklı araçlar kullanabilir; B kolunu hepsi aynı kural dosyasından kurar. Çalıştırdığınız aracı sonuç tablosuna mutlaka yazın (araç değişkeni sonuçları etkiler; kollar aynı araçta karşılaştırılmalıdır).
+Volunteers may run different coding agents as long as Arm A and Arm B use the same tool and model:
 
-| Araç | Talimat dosyası | Hook kurulumu | MCP |
+| Agent | Rules file | Hook install | MCP |
 |---|---|---|---|
-| Claude Code | CLAUDE.md | `clrinf hook install --agent claude` | `clrinf mcp --profile lean` |
-| Cursor | `.cursor/rules/clrinf.mdc` | `clrinf hook install --agent cursor` | `.cursor/mcp.json` içinde `clrinf mcp --profile lean` |
-| Antigravity | `GEMINI.md` / `AGENTS.md` | `clrinf hook install --agent antigravity` | MCP ayarlarında `clrinf mcp --profile lean` |
-| Diğer / hook'suz | `AGENTS.md` | `clrinf hook install --agent git` (commit anında) | `clrinf mcp --profile lean` |
+| Claude Code | `CLAUDE.md` | `clrinf hook install --agent claude` | `clrinf mcp --profile lean` |
+| Cursor | `.cursor/rules/clrinf.mdc` | `clrinf hook install --agent cursor` | `clrinf mcp --profile lean` in `.cursor/mcp.json` |
+| Antigravity | `GEMINI.md` / `AGENTS.md` | `clrinf hook install --agent antigravity` | `clrinf mcp --profile lean` |
+| Other / hookless | `AGENTS.md` | `clrinf hook install --agent git` (pre-commit) | `clrinf mcp --profile lean` |
 
-Tüm araçlar için ilk adım `clrinf agents sync`'tir. `clrinf hook install --agent all` hepsini birden kurar. Hook'un çalıştığını doğrulamak için alan katmanına yasaklı bir import ekletip ajanın ihlal mesajını görüp görmediğine bakın; görmüyorsa sonuçlara "hook etkisiz" notu düşün (Antigravity hook şeması resmi dokümandan doğrulanamadı, bkz. `docs/guides/agent-guardrails.md`).
-Önerilen görevler (her biri en az 5 tekrar):
+To confirm hooks are active before recording runs, inject a forbidden import into a domain file and verify the agent sees the violation diagnostic. (As noted in [Agent Guardrails](../guides/agent-guardrails.md), the Antigravity hook format has not yet been verified against live official docs; mark runs accordingly if inactive.)
 
-1. Mevcut bir olaya yeni bir servis abone olsun.
-2. Bir olay şemasına zorunlu alan eklensin (v1 → v2 geçişi, upcaster dahil).
-3. Alan katmanına altyapı bağımlılığı ekleme baskısı olan bir özellik istensin.
+Recommended tasks (at least 5 repeats each):
+1. Subscribe a new service to an existing event.
+2. Add a required field to an event schema (`v1` → `v2` with upcaster).
+3. Implement a feature that tempts the agent to import infrastructure inside the domain layer.
 
-Kaydedilecek metrikler:
-
-| Metrik | Nasıl alınır |
-|---|---|
-| Toplam token (girdi + çıktı) | Ajan/sağlayıcı kullanım raporu |
-| Tur / araç çağrısı sayısı | Oturum kaydı |
-| Mimari ihlal sayısı | Görev sonunda `clrinf verify --json` → `errorsCount` |
-| Görev başarısı | Önceden yazılmış kabul testleri |
-| Elle müdahale | İnsanın düzeltmek zorunda kaldığı satır sayısı |
-
-Sonuçları medyan ve aralıkla raporlayın; modeli ve sürümünü belirtin.
+Metrics to record (report median and range, plus exact model/version):
+- Total tokens (input + output)
+- Turn / tool-call count
+- Architectural violations at completion (`clrinf verify --json` → `errorsCount`)
+- Task pass rate against pre-written acceptance tests
+- Manual human lines edited to fix violations

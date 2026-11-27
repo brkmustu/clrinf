@@ -52,6 +52,37 @@ pub struct ForbidRule {
     pub scope: ForbidScope,
 }
 
+#[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct BoundaryRule {
+    pub id: String,
+    /// Module root directories (relative to project root) isolated from each other.
+    pub modules: Vec<String>,
+    /// Optional allowed public segments (e.g. ["contracts", "Contracts", "public", "Public"]).
+    #[serde(default)]
+    pub public: Vec<String>,
+    pub reason: String,
+    #[serde(default)]
+    pub extensions: Vec<String>,
+}
+
+fn default_true() -> bool {
+    true
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct GeneratedConfig {
+    #[serde(default = "default_true")]
+    pub protect: bool,
+}
+
+impl Default for GeneratedConfig {
+    fn default() -> Self {
+        Self { protect: true }
+    }
+}
+
 #[derive(Debug, Clone, Default, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct AgentsConfig {
@@ -72,6 +103,10 @@ pub struct RulesFile {
     pub events: EventsConfig,
     #[serde(default)]
     pub forbid: Vec<ForbidRule>,
+    #[serde(default)]
+    pub boundaries: Vec<BoundaryRule>,
+    #[serde(default)]
+    pub generated: GeneratedConfig,
     #[serde(default)]
     pub agents: AgentsConfig,
     #[serde(default)]
@@ -96,6 +131,15 @@ impl Rules {
         for rule in &file.forbid {
             if rule.id.trim().is_empty() || rule.pattern.is_empty() || rule.paths.is_empty() {
                 bail!("{}: forbid rule '{}' needs id, pattern and at least one path", RULES_FILE, rule.id);
+            }
+        }
+        for rule in &file.boundaries {
+            if rule.id.trim().is_empty() || rule.modules.len() < 2 {
+                bail!(
+                    "{}: boundary rule '{}' needs id and at least two modules",
+                    RULES_FILE,
+                    rule.id
+                );
             }
         }
         Ok(Some(Self { root: root.to_path_buf(), file }))
@@ -218,6 +262,96 @@ pub fn check_forbid(rules: &Rules, only: Option<&[PathBuf]>) -> Result<Vec<RuleI
     Ok(issues)
 }
 
+fn module_segment_name(module_dir: &str) -> String {
+    let trimmed = module_dir.trim_end_matches(['/', '\\']);
+    Path::new(trimmed)
+        .file_name()
+        .and_then(|s| s.to_str())
+        .unwrap_or(trimmed)
+        .to_ascii_lowercase()
+}
+
+fn target_segments(target: &str) -> Vec<String> {
+    target
+        .split(['/', '\\', '.', ':', ';', ' ', '{', '}', ','])
+        .filter(|s| !s.is_empty())
+        .map(str::to_ascii_lowercase)
+        .collect()
+}
+
+/// Enforce `[[boundaries]]` module isolation rules. When `only` is given, restrict to those files.
+pub fn check_boundaries(rules: &Rules, only: Option<&[PathBuf]>) -> Result<Vec<RuleIssue>> {
+    let mut issues = Vec::new();
+    for rule in &rules.file.boundaries {
+        let entries: Vec<(&str, String)> = rule
+            .modules
+            .iter()
+            .map(|m| (m.as_str(), module_segment_name(m)))
+            .collect();
+        let public_lower: Vec<String> = rule
+            .public
+            .iter()
+            .map(|p| p.to_ascii_lowercase())
+            .collect();
+
+        for (mod_dir, self_mod) in &entries {
+            let dir = rules.root.join(mod_dir);
+            for file in collect_sources(&dir)? {
+                if file.generated {
+                    continue;
+                }
+                if let Some(only) = only {
+                    if !only.iter().any(|o| same_file(o, &file.path)) {
+                        continue;
+                    }
+                }
+                if !rule.extensions.is_empty() {
+                    let ext = file.path.extension().and_then(|e| e.to_str()).unwrap_or("");
+                    if !rule.extensions.iter().any(|e| e.eq_ignore_ascii_case(ext)) {
+                        continue;
+                    }
+                }
+
+                let rel_file = file
+                    .path
+                    .strip_prefix(&rules.root)
+                    .unwrap_or(&file.path)
+                    .display()
+                    .to_string();
+
+                for stmt in file.imports() {
+                    let segs = target_segments(&stmt.target);
+                    for (_, other_mod) in &entries {
+                        if other_mod == self_mod {
+                            continue;
+                        }
+                        if segs.iter().any(|s| s == other_mod) {
+                            let is_public = !public_lower.is_empty()
+                                && segs.iter().any(|s| public_lower.iter().any(|p| s == p));
+                            if !is_public {
+                                issues.push(RuleIssue {
+                                    severity: IssueSeverity::Error,
+                                    code: "RULE_MODULE_BOUNDARY_VIOLATION".into(),
+                                    rule_id: rule.id.clone(),
+                                    message: format!(
+                                        "[{}] Module '{}' imports internal target '{}' from module '{}': {}",
+                                        rule.id, self_mod, stmt.target, other_mod, rule.reason
+                                    ),
+                                    file: rel_file.clone(),
+                                    line: stmt.line,
+                                });
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    issues.sort_by(|a, b| (&a.file, a.line, &a.rule_id).cmp(&(&b.file, b.line, &b.rule_id)));
+    issues.dedup_by(|a, b| a.file == b.file && a.line == b.line && a.rule_id == b.rule_id);
+    Ok(issues)
+}
+
 /// Constraint sentences for agents derived from the rules (used by plans and `agents sync`).
 pub fn constraint_lines(rules: Option<&Rules>) -> Vec<String> {
     let mut lines = vec![
@@ -238,6 +372,20 @@ pub fn constraint_lines(rules: Option<&Rules>) -> Vec<String> {
                 f.pattern,
                 scope_note,
                 f.reason
+            ));
+        }
+        for b in &r.file.boundaries {
+            let pub_note = if b.public.is_empty() {
+                String::new()
+            } else {
+                format!(" (allowed public surfaces: `{}`)", b.public.join("`, `"))
+            };
+            lines.push(format!(
+                "[{}] Modules `{}` are isolated{}: {}",
+                b.id,
+                b.modules.join("`, `"),
+                pub_note,
+                b.reason
             ));
         }
         lines.extend(r.file.agents.extra.iter().cloned());
@@ -370,6 +518,41 @@ mod tests {
         let issues = check_forbid(&raw_rules, None).unwrap();
         assert_eq!(issues.len(), 1);
         assert_eq!(issues[0].line, 1);
+        let _ = std::fs::remove_dir_all(dir);
+    }
+
+    #[test]
+    fn boundary_rules_block_internal_cross_module_imports_and_allow_public_contracts() {
+        let dir = std::env::temp_dir().join(format!("clrinf-rules-boundary-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(dir.join("services/orders/src")).unwrap();
+        std::fs::create_dir_all(dir.join("services/billing/src")).unwrap();
+
+        std::fs::write(
+            dir.join("services/orders/src/handler.ts"),
+            "import { Local } from './domain';\nimport { BillingEvent } from '../../billing/contracts/events';\nimport { Ledger } from '../../billing/src/internal/ledger';\n// import { Fake } from '../../billing/src/secret';\n",
+        )
+        .unwrap();
+        std::fs::write(
+            dir.join("services/billing/src/app.rs"),
+            "use crate::billing_internal::Calc;\nuse orders::internal::OrderRepo;\n",
+        )
+        .unwrap();
+
+        let rules = rules_with(
+            "[[boundaries]]\nid=\"module-isolation\"\nmodules=[\"services/orders\", \"services/billing\"]\npublic=[\"contracts\", \"Contracts\"]\nreason=\"Import only public contracts across modules\"\n",
+            &dir,
+        );
+        let issues = check_boundaries(&rules, None).unwrap();
+        assert_eq!(issues.len(), 2, "{issues:?}");
+        assert_eq!(issues[0].code, "RULE_MODULE_BOUNDARY_VIOLATION");
+        assert_eq!(issues[0].file.replace('\\', "/"), "services/billing/src/app.rs");
+        assert_eq!(issues[0].line, 2);
+        assert_eq!(issues[1].file.replace('\\', "/"), "services/orders/src/handler.ts");
+        assert_eq!(issues[1].line, 3);
+
+        let lines = constraint_lines(Some(&rules));
+        assert!(lines.iter().any(|l| l.contains("module-isolation") && l.contains("contracts")));
         let _ = std::fs::remove_dir_all(dir);
     }
 }

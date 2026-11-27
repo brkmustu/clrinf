@@ -18,7 +18,7 @@ use std::collections::BTreeSet;
 use std::path::{Path, PathBuf};
 
 pub fn estimate_tokens(chars: usize) -> usize {
-    (chars + 3) / 4
+    chars.div_ceil(4)
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

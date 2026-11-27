@@ -221,7 +221,7 @@ pub fn parse_schema_file(path: &Path) -> Result<ParsedSchema> {
         .map(|s| s.to_string())
         .or_else(|| {
             event_type.as_ref().and_then(|et| {
-                et.split('.').last().filter(|part| part.starts_with('v') && part[1..].chars().all(|c| c.is_ascii_digit())).map(|s| s.to_string())
+                et.split('.').next_back().filter(|part| part.starts_with('v') && part[1..].chars().all(|c| c.is_ascii_digit())).map(|s| s.to_string())
             })
         });
 

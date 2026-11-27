@@ -17,6 +17,15 @@ paths   = [
 pattern = "Infrastructure"
 reason  = "Domain layers must remain free of infrastructure dependencies"
 
+[[boundaries]]
+id      = "service-isolation"
+modules = ["services/orders", "services/billing", "services/inventory"]
+public  = ["contracts", "Contracts", "public", "Public"]
+reason  = "Services must communicate through event contracts rather than internal imports"
+
+[generated]
+protect = true
+
 [agents]
 extra = [
   "Implement only business logic inside handlers; publish events via generated publishers.",

@@ -111,7 +111,7 @@ fn ensure_compiler_visible_property(xml: &str, name: &str) -> String {
 
 fn upsert_item_group_entry(xml: &str, entry: &str) -> String {
     if let Some(pos) = xml.find("</ItemGroup>") {
-        return format!("{}{}\n{}", &xml[..pos], format!("    {entry}"), &xml[pos..]);
+        return format!("{}    {entry}\n{}", &xml[..pos], &xml[pos..]);
     }
     let block = format!("  <ItemGroup>\n    {entry}\n  </ItemGroup>\n");
     if let Some(pos) = xml.find("</Project>") {

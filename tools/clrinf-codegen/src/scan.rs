@@ -64,8 +64,8 @@ pub fn contains_ident(text: &str, ident: &str) -> bool {
     while let Some(found) = text[start..].find(ident) {
         let begin = start + found;
         let end = begin + ident.len();
-        let before_ok = text[..begin].chars().next_back().map_or(true, |c| !is_ident_char(c));
-        let after_ok = text[end..].chars().next().map_or(true, |c| !is_ident_char(c));
+        let before_ok = text[..begin].chars().next_back().is_none_or(|c| !is_ident_char(c));
+        let after_ok = text[end..].chars().next().is_none_or(|c| !is_ident_char(c));
         if before_ok && after_ok {
             return true;
         }
@@ -112,7 +112,7 @@ pub fn collect_sources(root: &Path) -> Result<Vec<SourceFile>> {
         entry
             .file_name()
             .to_str()
-            .map_or(true, |name| !SKIPPED_DIRS.contains(&name))
+            .is_none_or(|name| !SKIPPED_DIRS.contains(&name))
     });
     for entry in walker {
         let entry = entry?;

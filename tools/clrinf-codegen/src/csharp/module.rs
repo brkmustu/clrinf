@@ -364,9 +364,7 @@ fn resolve_modules_dir(project_path: &Path, manifest: &ProjectManifest) -> Resul
                 in_src
             } else if in_proj.is_dir() {
                 in_proj
-            } else if src.is_dir() {
-                in_src
-            } else if manifest.project.src_path.is_some() {
+            } else if src.is_dir() || manifest.project.src_path.is_some() {
                 in_src
             } else {
                 direct

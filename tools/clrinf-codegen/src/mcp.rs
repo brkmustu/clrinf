@@ -105,7 +105,7 @@ impl McpServer {
                 .and_then(|r| r.pointer_mut("/result/tools"))
                 .and_then(|t| t.as_array_mut())
             {
-                tools.retain(|t| t["name"].as_str().map_or(false, |n| self.profile.allows(n)));
+                tools.retain(|t| t["name"].as_str().is_some_and(|n| self.profile.allows(n)));
             }
         }
         Ok(response)
@@ -1146,7 +1146,7 @@ impl McpServer {
                     let effective_pattern = args
                         .get("pattern")
                         .and_then(|p| p.as_str())
-                        .unwrap_or_else(|| match manifest.project.pattern {
+                        .unwrap_or(match manifest.project.pattern {
                             crate::manifest::PatternStyle::Aot => "aot",
                             crate::manifest::PatternStyle::Separated => "separated",
                             _ => "vertical-slice",
@@ -1173,7 +1173,7 @@ impl McpServer {
                         }));
                     }
 
-                    let templates_dir = if let Some(ref root) = self.worker_mgr.workspace_root() {
+                    let templates_dir = if let Some(root) = self.worker_mgr.workspace_root() {
                         root.join("tools").join("clrinf-codegen").join("templates")
                     } else {
                         PathBuf::from("./templates")
@@ -1224,7 +1224,7 @@ impl McpServer {
                 let abs_path = std::fs::canonicalize(path).unwrap_or_else(|_| path.to_path_buf());
                 let (manifest, _) = ProjectManifest::discover(&abs_path)?;
 
-                let templates_dir = if let Some(ref root) = self.worker_mgr.workspace_root() {
+                let templates_dir = if let Some(root) = self.worker_mgr.workspace_root() {
                     root.join("tools").join("clrinf-codegen").join("templates")
                 } else {
                     PathBuf::from("./templates")

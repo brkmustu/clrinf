@@ -127,7 +127,7 @@ impl TargetProject {
         if let Ok(entries) = fs::read_dir(&path) {
             for entry in entries.flatten() {
                 let p = entry.path();
-                if p.is_file() && p.extension().map_or(false, |ext| ext == "csproj") {
+                if p.is_file() && p.extension().is_some_and(|ext| ext == "csproj") {
                     let name = p
                         .file_stem()
                         .and_then(|n| n.to_str())
@@ -172,7 +172,7 @@ impl TargetProject {
         // 5. Fallback checks for source files
         if path.join("src").is_dir() {
             if fs::read_dir(path.join("src"))
-                .map(|mut r| r.any(|e| e.map_or(false, |x| x.path().extension().map_or(false, |ex| ex == "rs"))))
+                .map(|mut r| r.any(|e| e.is_ok_and(|x| x.path().extension().is_some_and(|ex| ex == "rs"))))
                 .unwrap_or(false)
             {
                 return Ok(Self {
@@ -183,7 +183,7 @@ impl TargetProject {
                 });
             }
             if fs::read_dir(path.join("src"))
-                .map(|mut r| r.any(|e| e.map_or(false, |x| x.path().extension().map_or(false, |ex| ex == "cs"))))
+                .map(|mut r| r.any(|e| e.is_ok_and(|x| x.path().extension().is_some_and(|ex| ex == "cs"))))
                 .unwrap_or(false)
             {
                 return Ok(Self {
@@ -241,17 +241,12 @@ impl TargetProject {
 
 // ─── Module Adoption Options ─────────────────────────────────────────────────
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum AdoptMode {
+    #[default]
     Raw,
     Wired,
-}
-
-impl Default for AdoptMode {
-    fn default() -> Self {
-        AdoptMode::Raw
-    }
 }
 
 impl FromStr for AdoptMode {
@@ -1893,10 +1888,9 @@ forbid (
                 }
             } else if file_name.to_lowercase().starts_with(&raw_name.to_lowercase())
                 && (file_name.ends_with(".cs") || file_name.ends_with(".rs") || file_name.ends_with(".ts"))
+                && found_file.is_none()
             {
-                if found_file.is_none() {
-                    found_file = Some(p.to_path_buf());
-                }
+                found_file = Some(p.to_path_buf());
             }
         }
 

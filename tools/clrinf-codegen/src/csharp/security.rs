@@ -12,16 +12,11 @@ use std::path::{Path, PathBuf};
 use tera::{Context as TeraContext, Tera};
 
 /// Security mode: Basic (JWT + Refresh Token) or Advanced (JWT + 2FA/OTP/Email)
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum SecurityMode {
+    #[default]
     Basic,
     Advanced,
-}
-
-impl Default for SecurityMode {
-    fn default() -> Self {
-        SecurityMode::Basic
-    }
 }
 
 impl SecurityMode {

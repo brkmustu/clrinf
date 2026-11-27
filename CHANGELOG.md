@@ -7,6 +7,16 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+- `clrinf init --guardrails [--ci]`: one-command brownfield onboarding wizard detecting schemas, domain folders, and sibling modules
+- `[[boundaries]]` cross-module import isolation rules (`RULE_MODULE_BOUNDARY_VIOLATION`) with configurable `public` contract segments
+- `[generated] protect = true` incremental protection against hand-editing generated files (`RULE_GENERATED_FILE_MODIFIED`)
+- Translated 4 key entry guides (`agent-guardrails.md`, `benchmarks/README.md`, `parity-matrix.md`, `existing-project.md`) to English
+
+### Fixed
+- Resolved all Rust `clippy --all-targets -- -D warnings` lints in `tools/clrinf-codegen`
+- Upgraded `SQLitePCLRaw.bundle_e_sqlite3` to `2.1.13` in `CrmMonolith.csproj` to clear `NU1903`
+
 ## [0.1.0] - 2026-11-27
 
 ### Added

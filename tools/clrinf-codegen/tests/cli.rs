@@ -346,3 +346,40 @@ fn rejects_symlinked_inputs_and_templates() {
     );
     assert_eq!(std::fs::read_to_string(protected).unwrap(), "unchanged");
 }
+
+#[test]
+fn init_guardrails_bootstraps_brownfield_repo_and_passes_verify() {
+    let scratch = Scratch::new();
+    std::fs::create_dir_all(scratch.0.join("services/orders/src/domain")).unwrap();
+    std::fs::create_dir_all(scratch.0.join("services/billing/src/domain")).unwrap();
+    std::fs::write(
+        scratch.0.join("services/orders/src/domain/order.rs"),
+        "pub struct Order { pub id: String }\n",
+    )
+    .unwrap();
+    std::fs::write(
+        scratch.0.join("services/billing/src/domain/invoice.ts"),
+        "export interface Invoice { id: string; }\n",
+    )
+    .unwrap();
+
+    let init_out = run(&["init", "--guardrails", "--ci", "--path", "."], &scratch.0);
+    assert!(
+        init_out.status.success(),
+        "stdout: {}\nstderr: {}",
+        String::from_utf8_lossy(&init_out.stdout),
+        String::from_utf8_lossy(&init_out.stderr)
+    );
+    assert!(scratch.0.join("clrinf.rules.toml").is_file());
+    assert!(scratch.0.join("AGENTS.md").is_file());
+    assert!(scratch.0.join(".cursor/rules/clrinf.mdc").is_file());
+    assert!(scratch.0.join(".claude/settings.json").is_file());
+    assert!(scratch.0.join(".github/workflows/clrinf-guardrails.yml").is_file());
+
+    let verify_out = run(&["verify"], &scratch.0);
+    assert!(
+        verify_out.status.success(),
+        "stderr: {}",
+        String::from_utf8_lossy(&verify_out.stderr)
+    );
+}
