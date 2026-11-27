@@ -28,9 +28,9 @@ The values below are directly measured and reproducible in this repository via `
   - Baseline (`services/` + schemas): **2,015 tokens** (15 files)
   - `clrinf` slice (schema + 3 hand-written affected files + rules block): **1,246 tokens** (4 files) → **38.2% reduction**
 - **Fixed per-session MCP tool-schema overhead:**
-  - `full` (27 tools): **3,698 tokens**
-  - `events` (14 tools): **1,983 tokens**
-  - `lean` (10 tools): **1,440 tokens** (**61.1% lower fixed overhead** vs. `full`)
+  - `full` (28 tools): **3,891 tokens**
+  - `events` (15 tools): **2,176 tokens**
+  - `lean` (10 tools): **1,519 tokens** (**61.0% lower fixed overhead** vs. `full`)
 - **Seeded AI-agent failure detection (5/5 caught deterministically):**
   1. Forbidden domain `Infrastructure` import (`RULE_FORBIDDEN_DEPENDENCY`, `scope = "imports"`) + Claude Code `PostToolUse` hook returning **exit code `2`**.
   2. Direct outbox bypass (`DRIFT_RAW_OUTBOX_WRITE`).
@@ -39,8 +39,10 @@ The values below are directly measured and reproducible in this repository via `
   5. Hand-editing a generated file (`RULE_GENERATED_FILE_MODIFIED` via Claude Code `PostToolUse` hook **exit code `2`**).
 
 ### B. Compile-Time Native AOT CRUD vs. Disk-Generated CRUD (`Category` + `Brand`)
-- **Disk-generated CRUD (`clrinf add entity --pattern vertical-slice`):** **3,850 tokens** across `16` `.cs` files.
-- **Native AOT CRUD (`core/csharp/examples/AotCrud/Domain/*.cs`):** **356 tokens** across `3` `.cs` files → **90.8% reduction** in on-disk agent context.
+- **C# Disk-generated CRUD (`clrinf add entity --pattern vertical-slice`):** **3,850 tokens** across `16` `.cs` files.
+- **C# Native AOT CRUD (`core/csharp/examples/AotCrud/Domain/*.cs`):** **356 tokens** across `3` `.cs` files → **90.8% reduction** in on-disk agent context.
+- **Rust Disk-generated CRUD (`clrinfrs add entity`):** **2,193 tokens** across `6` `.rs` files.
+- **Rust Compile-Time CRUD (`core/rust/examples/aot-crud/src/domain/{brand,category}.rs`):** **203 tokens** across `2` `.rs` files → **90.7% reduction** in on-disk agent context.
 
 ---
 

@@ -5,7 +5,7 @@ $RepoRoot = Split-Path -Parent $PSScriptRoot
 function Resolve-ClrinfBinary {
     $release = Join-Path $RepoRoot "tools\clrinf-codegen\target\release\clrinf-codegen.exe"
     $debug = Join-Path $RepoRoot "tools\clrinf-codegen\target\debug\clrinf-codegen.exe"
-    $existing = @($release, $debug) | Where-Object { Test-Path $_ } | Sort-Object { (Get-Item $_).LastWriteTimeUtc } -Descending
+    $existing = @(@($release, $debug) | Where-Object { Test-Path $_ } | Sort-Object { (Get-Item $_).LastWriteTimeUtc } -Descending)
     if ($existing.Count -gt 0) {
         return $existing[0]
     }
@@ -219,6 +219,50 @@ try {
 
     Write-Host ("  Disk CRUD (vertical-slice, 2 entities): {0} tokens across {1} .cs files" -f $diskTokens, $diskFiles.Count)
     Write-Host ("  AOT CRUD on-disk (Domain/*, 2 entities): {0} tokens across {1} .cs files ({2:N1}% reduction)" -f $aotTokens, $aotFiles.Count, $crudReduction)
+
+    Write-Host "`n=== Suite 3: Rust Compile-Time CRUD (#[derive(ClrinfCrud)]) vs Disk-Generated CRUD ===" -ForegroundColor Cyan
+
+    $rustAotFiles = @(
+        (Get-Item (Join-Path $RepoRoot "core\rust\examples\aot-crud\src\domain\brand.rs")),
+        (Get-Item (Join-Path $RepoRoot "core\rust\examples\aot-crud\src\domain\category.rs"))
+    )
+    $rustAotChars = ($rustAotFiles | ForEach-Object { (Get-Content $_.FullName -Raw).Length } | Measure-Object -Sum).Sum
+    $rustAotTokens = [int][Math]::Ceiling($rustAotChars / 4.0)
+
+    $clrinfrsRelease = Join-Path $RepoRoot "core\rust\target\release\clrinfrs.exe"
+    $clrinfrsDebug = Join-Path $RepoRoot "core\rust\target\debug\clrinfrs.exe"
+    $clrinfrsExisting = @(@($clrinfrsRelease, $clrinfrsDebug) | Where-Object { Test-Path $_ } | Sort-Object { (Get-Item $_).LastWriteTimeUtc } -Descending)
+    if ($clrinfrsExisting.Count -gt 0) {
+        $RsBin = $clrinfrsExisting[0]
+    } else {
+        cargo build --offline --manifest-path (Join-Path $RepoRoot "core\rust\Cargo.toml") -p clrinf-cli | Out-Null
+        if ($LASTEXITCODE -ne 0) { throw "Failed to build clrinfrs for Suite 3" }
+        $RsBin = $clrinfrsDebug
+    }
+
+    $RustDiskParent = Join-Path $TmpRoot "rust_disk_crud"
+    New-Item -ItemType Directory -Path $RustDiskParent -Force | Out-Null
+    & $RsBin new RustBenchApp --arch clean-cqrs --path $RustDiskParent | Out-Null
+    if ($LASTEXITCODE -ne 0) { throw "clrinfrs new failed for Suite 3" }
+    $RustDiskApp = Join-Path $RustDiskParent "RustBenchApp"
+    & $RsBin add module Catalog --project $RustDiskApp | Out-Null
+    if ($LASTEXITCODE -ne 0) { throw "clrinfrs add module Catalog failed for Suite 3" }
+    & $RsBin add entity Category -m Catalog --prop name:string --prop slug:string --project $RustDiskApp | Out-Null
+    if ($LASTEXITCODE -ne 0) { throw "clrinfrs add entity Category failed for Suite 3" }
+    & $RsBin add entity Brand -m Catalog --prop name:string --project $RustDiskApp | Out-Null
+    if ($LASTEXITCODE -ne 0) { throw "clrinfrs add entity Brand failed for Suite 3" }
+
+    $rustDiskFiles = Get-ChildItem (Join-Path $RustDiskApp "modules\catalog") -Recurse -Filter "*.rs" -File
+    $rustDiskChars = ($rustDiskFiles | ForEach-Object { (Get-Content $_.FullName -Raw).Length } | Measure-Object -Sum).Sum
+    $rustDiskTokens = [int][Math]::Ceiling($rustDiskChars / 4.0)
+    $rustReduction = if ($rustDiskTokens -gt 0) { (1.0 - ($rustAotTokens / $rustDiskTokens)) * 100.0 } else { 0.0 }
+
+    $mapRaw = & $RsBin crud-map (Join-Path $RepoRoot "core\rust\examples\aot-crud") --json
+    if ($LASTEXITCODE -ne 0) { throw "clrinfrs crud-map failed for Suite 3" }
+    $mapJson = $mapRaw | ConvertFrom-Json
+    if ($mapJson.entities.Count -lt 2) { throw "Expected >=2 #[derive(ClrinfCrud)] entities in aot-crud" }
+    Write-Host ("  Rust Disk CRUD (clrinfrs add entity, 2 entities): {0} tokens across {1} .rs files" -f $rustDiskTokens, $rustDiskFiles.Count)
+    Write-Host ("  Rust Compile-Time CRUD (domain/*, 2 entities):   {0} tokens across {1} .rs files ({2:N1}% reduction)" -f $rustAotTokens, $rustAotFiles.Count, $rustReduction)
 } finally {
     Remove-Item -Path $TmpRoot -Recurse -Force -ErrorAction SilentlyContinue
 }

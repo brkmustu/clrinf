@@ -77,8 +77,7 @@ async-trait = "0.1"
         let src = root.join("src");
         fs::create_dir_all(&src)?;
 
-        let main_rs = format!(
-            r#"use axum::{{routing::get, Json, Router}};
+        let main_rs = r#"use axum::{routing::get, Json, Router};
 use std::net::SocketAddr;
 
 mod models;
@@ -86,18 +85,18 @@ mod routes;
 mod rules;
 
 #[tokio::main]
-async fn main() {{
+async fn main() {
     let app = Router::new()
-        .route("/health", get(|| async {{ Json(serde_json::json!({{"status": "healthy"}})) }}))
+        .route("/health", get(|| async { Json(serde_json::json!({"status": "healthy"})) }))
         .merge(routes::routes());
 
     let addr = SocketAddr::from(([0, 0, 0, 0], 8080));
-    println!("Server running on http://{{}}", addr);
+    println!("Server running on http://{}", addr);
     let listener = tokio::net::TcpListener::bind(addr).await.unwrap();
     axum::serve(listener, app).await.unwrap();
-}}
+}
 "#
-        );
+        .to_string();
         fs::write(src.join("main.rs"), main_rs)?;
 
         let models_rs = r#"use serde::{Deserialize, Serialize};

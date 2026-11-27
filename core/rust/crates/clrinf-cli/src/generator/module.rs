@@ -241,7 +241,7 @@ forbid (
 }
 
 fn to_pascal_case(s: &str) -> String {
-    s.split(|c: char| c == '_' || c == '-' || c == ' ')
+    s.split(['_', '-', ' '])
         .filter(|part| !part.is_empty())
         .map(|part| {
             let mut chars = part.chars();

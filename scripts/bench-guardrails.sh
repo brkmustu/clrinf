@@ -122,3 +122,33 @@ DISK_TOKENS=$(( (DISK_CHARS + 3) / 4 ))
 
 echo "  Disk CRUD (vertical-slice, 2 entities): ${DISK_TOKENS} tokens across ${DISK_FILES} .cs files"
 echo "  AOT CRUD on-disk (Domain/*, 2 entities): ${AOT_TOKENS} tokens across ${AOT_FILES} .cs files"
+
+echo ""
+echo "=== Suite 3: Rust Compile-Time CRUD (#[derive(ClrinfCrud)]) vs Disk-Generated CRUD ==="
+RS_AOT_CHARS=$(cat "${REPO_ROOT}/core/rust/examples/aot-crud/src/domain/brand.rs" "${REPO_ROOT}/core/rust/examples/aot-crud/src/domain/category.rs" | wc -c)
+RS_AOT_TOKENS=$(( (RS_AOT_CHARS + 3) / 4 ))
+
+RS_BIN=""
+if [ -x "${REPO_ROOT}/core/rust/target/release/clrinfrs" ]; then
+  RS_BIN="${REPO_ROOT}/core/rust/target/release/clrinfrs"
+elif [ -x "${REPO_ROOT}/core/rust/target/debug/clrinfrs" ]; then
+  RS_BIN="${REPO_ROOT}/core/rust/target/debug/clrinfrs"
+else
+  cargo build --offline --manifest-path "${REPO_ROOT}/core/rust/Cargo.toml" -p clrinf-cli >/dev/null
+  RS_BIN="${REPO_ROOT}/core/rust/target/debug/clrinfrs"
+fi
+
+RS_DISK_PARENT="${TMP_ROOT}/rust_disk_crud"
+mkdir -p "${RS_DISK_PARENT}"
+"${RS_BIN}" new RustBenchApp --arch clean-cqrs --path "${RS_DISK_PARENT}" >/dev/null
+RS_DISK_APP="${RS_DISK_PARENT}/RustBenchApp"
+"${RS_BIN}" add module Catalog --project "${RS_DISK_APP}" >/dev/null
+"${RS_BIN}" add entity Category -m Catalog --prop name:string --prop slug:string --project "${RS_DISK_APP}" >/dev/null
+"${RS_BIN}" add entity Brand -m Catalog --prop name:string --project "${RS_DISK_APP}" >/dev/null
+
+RS_DISK_CHARS=$(find "${RS_DISK_APP}/modules/catalog" -name '*.rs' -type f -exec cat {} + | wc -c)
+RS_DISK_FILES=$(find "${RS_DISK_APP}/modules/catalog" -name '*.rs' -type f | wc -l)
+RS_DISK_TOKENS=$(( (RS_DISK_CHARS + 3) / 4 ))
+
+echo "  Rust Disk CRUD (clrinfrs add entity, 2 entities): ${RS_DISK_TOKENS} tokens across ${RS_DISK_FILES} .rs files"
+echo "  Rust Compile-Time CRUD (domain/*, 2 entities):   ${RS_AOT_TOKENS} tokens across 2 .rs files"

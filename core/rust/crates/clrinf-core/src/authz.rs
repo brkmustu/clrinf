@@ -183,15 +183,15 @@ impl AuthorizationService for MultiTenantCedarAuthorizer {
                     let role_match = forbid_rule
                         .principal_role
                         .as_ref()
-                        .map_or(true, |r| claims.roles.iter().any(|cr| cr == r));
+                        .is_none_or(|r| claims.roles.iter().any(|cr| cr == r));
                     let action_match = forbid_rule
                         .action
                         .as_ref()
-                        .map_or(true, |a| a == &op.action || a == "*");
+                        .is_none_or(|a| a == &op.action || a == "*");
                     let res_match = forbid_rule
                         .resource_type
                         .as_ref()
-                        .map_or(true, |rt| rt == &op.resource || rt == "*");
+                        .is_none_or(|rt| rt == &op.resource || rt == "*");
 
                     if role_match && action_match && res_match {
                         return Ok(AuthzDecision::deny(format!(
@@ -216,15 +216,15 @@ impl AuthorizationService for MultiTenantCedarAuthorizer {
                         let role_match = permit_rule
                             .principal_role
                             .as_ref()
-                            .map_or(false, |r| claims.roles.iter().any(|cr| cr == r));
+                            .is_some_and(|r| claims.roles.iter().any(|cr| cr == r));
                         let action_match = permit_rule
                             .action
                             .as_ref()
-                            .map_or(true, |a| a == &op.action || a == "*");
+                            .is_none_or(|a| a == &op.action || a == "*");
                         let res_match = permit_rule
                             .resource_type
                             .as_ref()
-                            .map_or(true, |rt| rt == &op.resource || rt == "*");
+                            .is_none_or(|rt| rt == &op.resource || rt == "*");
 
                         if role_match && action_match && res_match {
                             permitted = true;

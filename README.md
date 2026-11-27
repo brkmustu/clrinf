@@ -94,12 +94,10 @@ clrinf lsp                         # Starts zero-dependency LSP 3.17 stdio diagn
 - **Token-lean Meta MCP server & resources (`clrinf mcp --profile lean`):** Cuts per-session fixed tool-schema overhead (`lean`: 10 tools including `clrinf_crud_map` & `clrinf_crud_eject`, `events`: 15 tools, `full`: 28 tools) and exposes read-only `clrinf://rules`, `clrinf://health`, and `clrinf://topology` MCP resources.
 - See [Agent Guardrails Guide](docs/guides/agent-guardrails.md) and [Benchmark Protocol](docs/benchmarks/README.md).
 
-### 2. Zero-Boilerplate Compile-Time Native AOT CRUD (.NET 10)
-Keep only entities and lifecycle hooks on disk so agents never wade through 6 boilerplate files per entity:
-- Annotate entities with `[GenerateCrudEndpoints]` (`ClrinfCS.Generators` source generator emits DTOs, per-operation handlers, Minimal API `RequestDelegate` endpoints, zero-reflection `Utf8JsonWriter`/`JsonDocument` JSON support, and AOT-compatible Minimal API `ClrinfCS.OpenApi` metadata at compile time — **0 trim/AOT warnings** under `PublishAot=true`).
-- Add business rules without touching generated handlers: `clrinf rule new ActiveProductsCheck --lang csharp --entity Category --on before-delete` scaffolds `IBefore{Create|Update|Delete}Rule<T>` executed by `CrudRuleRunner`.
-- Inspect or eject a single operation via Smart Override: `clrinf crud-map --json` and `clrinf eject Category --operation Update`.
-- Enforced by Roslyn analyzers `ARCH001–ARCH005`, backed by `ClrinfCS.Adapters.EfCore` (`EfCrudStore`) and `ClrinfCS.Adapters.Sqlite`. See [`core/csharp/examples/AotCrud/`](core/csharp/examples/AotCrud/README.md).
+### 2. Zero-Boilerplate Compile-Time CRUD (.NET 10 Native AOT & Rust Proc-Macro)
+Keep only entities and lifecycle hooks on disk so agents never wade through boilerplate files per entity:
+- **C# (.NET 10):** Annotate entities with `[GenerateCrudEndpoints]` (`ClrinfCS.Generators` emits DTOs, handlers, Minimal API endpoints, zero-reflection JSON, and OpenAPI metadata at compile time — **0 trim/AOT warnings**, **90.8% less** on-disk CRUD context). Add lifecycle rules (`IBefore{Create|Update|Delete}Rule<T>`) or eject one operation via Smart Override (`clrinf crud-map`, `clrinf eject Category --operation Update`).
+- **Rust (`core/rust`):** Derive `#[derive(ClrinfCrud)]` (`clrinf-macros`) + `clrinf_adapters::crud_router` + `Before{Create|Update|Delete}Rule<T>` so only `domain/*.rs` structs and lifecycle rules stay on disk (**2,193 → 203 tokens, 90.7% reduction** in the 2-entity benchmark). Inspect with `clrinf crud-map` or eject one handler with `clrinf eject Category --operation Update` (`#[clrinf_crud(skip(update))]` + `src/features/category/update.rs`). See [`core/csharp/examples/AotCrud/`](core/csharp/examples/AotCrud/README.md) and [`core/rust/examples/aot-crud/`](core/rust/examples/aot-crud/README.md).
 
 ### 3. Polyglot Event Contract & Topology Governance (Optional Scale-Up)
 When your modular monolith crosses service boundaries, think **`buf` for JSON Schema + CloudEvents** across Rust, C#, TypeScript, and Elixir:

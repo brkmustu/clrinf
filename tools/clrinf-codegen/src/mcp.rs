@@ -272,23 +272,25 @@ impl McpServer {
                         },
                         {
                             "name": "clrinf_crud_map",
-                            "description": "Returns entity -> generated/ejected CRUD operations, hook rules, file paths and resolved dispatcher for C# projects. Use before changing CRUD behaviour.",
+                            "description": "Returns entity -> generated/ejected CRUD operations, hook rules, and file paths for C# or Rust projects. Use before changing CRUD behaviour.",
                             "inputSchema": {
                                 "type": "object",
                                 "properties": {
-                                    "path": { "type": "string", "description": "Project or source directory (optional, defaults to current directory)" }
+                                    "path": { "type": "string", "description": "Project or source directory (optional, defaults to current directory)" },
+                                    "lang": { "type": "string", "description": "Optional language override ('csharp' or 'rust'; auto-detected from project)" }
                                 }
                             }
                         },
                         {
                             "name": "clrinf_crud_eject",
-                            "description": "Ejects one AOT CRUD operation into physical handler/endpoint files. Smart Override stops generating that operation.",
+                            "description": "Ejects one compile-time CRUD operation into a physical handler/endpoint file (C# Smart Override or Rust skip(...) rewrite).",
                             "inputSchema": {
                                 "type": "object",
                                 "properties": {
                                     "entity": { "type": "string", "description": "Entity name (e.g. Category)" },
                                     "operation": { "type": "string", "description": "Create, Update, Delete, GetById or GetList" },
-                                    "project": { "type": "string", "description": "Project or solution path (optional)" }
+                                    "project": { "type": "string", "description": "Project or solution path (optional)" },
+                                    "lang": { "type": "string", "description": "Optional language override ('csharp' or 'rust'; auto-detected from project)" }
                                 },
                                 "required": ["entity", "operation"]
                             }
@@ -732,9 +734,10 @@ impl McpServer {
 
             "clrinf_crud_map" => {
                 let path = args.get("path").and_then(|p| p.as_str()).unwrap_or(".");
+                let lang = args.get("lang").and_then(|l| l.as_str());
                 let res = self
                     .worker_mgr
-                    .crud_map(Some(Path::new(path)), true)?;
+                    .crud_map(Some(Path::new(path)), lang, true)?;
                 if !res.success {
                     return Ok(json!({
                         "success": false,
@@ -751,7 +754,8 @@ impl McpServer {
                 let entity = args.get("entity").and_then(|e| e.as_str()).context("entity is required")?;
                 let operation = args.get("operation").and_then(|o| o.as_str()).context("operation is required")?;
                 let project = args.get("project").and_then(|p| p.as_str()).map(Path::new);
-                let res = self.worker_mgr.eject_crud(entity, operation, project, true)?;
+                let lang = args.get("lang").and_then(|l| l.as_str());
+                let res = self.worker_mgr.eject_crud(entity, operation, project, lang, true)?;
                 Ok(json!({
                     "success": res.success,
                     "stdout": res.stdout,

@@ -422,15 +422,61 @@ impl WorkerManager {
         })
     }
 
-    /// Ejects one generated CRUD operation into physical files via the C# worker.
+    /// Detect whether `path` targets a Rust (`Cargo.toml`) or C# (`.csproj`/`.slnx`) project for CRUD commands.
+    pub fn detect_crud_worker(path: Option<&Path>) -> WorkerKind {
+        let probe = path.unwrap_or_else(|| Path::new("."));
+        if probe.is_file() {
+            let is_rust = probe.file_name().is_some_and(|n| n == "Cargo.toml")
+                || probe.extension().is_some_and(|e| e == "rs");
+            return if is_rust {
+                WorkerKind::Rust
+            } else {
+                WorkerKind::CSharp
+            };
+        }
+        if probe.join("Cargo.toml").is_file() {
+            return WorkerKind::Rust;
+        }
+        if let Ok(entries) = std::fs::read_dir(probe) {
+            let mut saw_rust = false;
+            for entry in entries.flatten() {
+                let p = entry.path();
+                if p.extension()
+                    .and_then(|e| e.to_str())
+                    .is_some_and(|ext| ext.eq_ignore_ascii_case("csproj") || ext.eq_ignore_ascii_case("slnx"))
+                {
+                    return WorkerKind::CSharp;
+                }
+                if p.extension().and_then(|e| e.to_str()) == Some("rs") {
+                    saw_rust = true;
+                }
+            }
+            if saw_rust {
+                return WorkerKind::Rust;
+            }
+        }
+        WorkerKind::CSharp
+    }
+
+    fn resolve_crud_worker(&self, path: Option<&Path>, lang: Option<&str>) -> WorkerInfo {
+        let kind = match lang.and_then(WorkerKind::from_str_loose) {
+            Some(WorkerKind::Rust) => WorkerKind::Rust,
+            Some(_) => WorkerKind::CSharp,
+            None => Self::detect_crud_worker(path),
+        };
+        self.resolve_worker(kind)
+    }
+
+    /// Ejects one generated CRUD operation into physical files via the detected C# or Rust worker.
     pub fn eject_crud(
         &self,
         entity: &str,
         operation: &str,
         project: Option<&Path>,
+        lang: Option<&str>,
         json: bool,
     ) -> Result<WorkerExecutionResult> {
-        let worker = self.resolve_worker(WorkerKind::CSharp);
+        let worker = self.resolve_crud_worker(project, lang);
         let project_str;
         let mut args = vec!["eject", entity, "--operation", operation];
         if let Some(path) = project {
@@ -444,9 +490,14 @@ impl WorkerManager {
         self.execute_cmd(&worker, &args)
     }
 
-    /// Returns the agent-oriented CRUD map for a C# project.
-    pub fn crud_map(&self, path: Option<&Path>, json: bool) -> Result<WorkerExecutionResult> {
-        let worker = self.resolve_worker(WorkerKind::CSharp);
+    /// Returns the agent-oriented CRUD map for a C# or Rust project.
+    pub fn crud_map(
+        &self,
+        path: Option<&Path>,
+        lang: Option<&str>,
+        json: bool,
+    ) -> Result<WorkerExecutionResult> {
+        let worker = self.resolve_crud_worker(path, lang);
         let path_str = path.map(|p| p.display().to_string());
         let mut args = vec!["crud-map"];
         if let Some(ref p) = path_str {
@@ -887,6 +938,28 @@ impl WorkerManager {
                 })
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn detect_crud_worker_distinguishes_rust_and_csharp() {
+        let dir = std::env::temp_dir().join(format!("clrinf-worker-detect-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        let rs_dir = dir.join("rs_app");
+        let cs_dir = dir.join("cs_app");
+        std::fs::create_dir_all(&rs_dir).unwrap();
+        std::fs::create_dir_all(&cs_dir).unwrap();
+        std::fs::write(rs_dir.join("Cargo.toml"), "[package]\nname = \"x\"\n").unwrap();
+        std::fs::write(cs_dir.join("App.csproj"), "<Project />\n").unwrap();
+
+        assert_eq!(WorkerManager::detect_crud_worker(Some(&rs_dir)), WorkerKind::Rust);
+        assert_eq!(WorkerManager::detect_crud_worker(Some(&cs_dir)), WorkerKind::CSharp);
+
+        let _ = std::fs::remove_dir_all(dir);
     }
 }
 

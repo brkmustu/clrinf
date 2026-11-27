@@ -207,7 +207,7 @@ enum Commands {
         #[arg(short, long)]
         path: Option<PathBuf>,
     },
-    /// Eject one AOT CRUD operation into physical handler/endpoint files (clrinfcs proxy)
+    /// Eject one AOT CRUD operation into physical handler/endpoint files (C# or Rust worker)
     Eject {
         /// Entity name
         entity: String,
@@ -220,15 +220,23 @@ enum Commands {
         #[arg(short, long)]
         project: Option<PathBuf>,
 
+        /// Optional language worker override ('csharp' or 'rust'; auto-detected when omitted)
+        #[arg(long)]
+        lang: Option<String>,
+
         /// Emit machine-readable JSON
         #[arg(long)]
         json: bool,
     },
-    /// Show entity -> generated/ejected CRUD operations, hooks and dispatcher (clrinfcs proxy)
+    /// Show entity -> generated/ejected CRUD operations and lifecycle hooks (C# or Rust worker)
     CrudMap {
         /// Project or source directory (defaults to current directory)
         #[arg(default_value = ".")]
         path: PathBuf,
+
+        /// Optional language worker override ('csharp' or 'rust'; auto-detected when omitted)
+        #[arg(long)]
+        lang: Option<String>,
 
         /// Emit machine-readable JSON
         #[arg(long)]
@@ -1247,10 +1255,11 @@ fn run_cli() -> Result<()> {
             entity,
             operation,
             project,
+            lang,
             json,
         } => {
             let mgr = WorkerManager::new();
-            let res = mgr.eject_crud(&entity, &operation, project.as_deref(), json)?;
+            let res = mgr.eject_crud(&entity, &operation, project.as_deref(), lang.as_deref(), json)?;
             if res.success {
                 print!("{}", res.stdout);
                 if !res.stderr.trim().is_empty() {
@@ -1261,9 +1270,9 @@ fn run_cli() -> Result<()> {
                 std::process::exit(res.exit_code.unwrap_or(1));
             }
         }
-        Commands::CrudMap { path, json } => {
+        Commands::CrudMap { path, lang, json } => {
             let mgr = WorkerManager::new();
-            let res = mgr.crud_map(Some(&path), json)?;
+            let res = mgr.crud_map(Some(&path), lang.as_deref(), json)?;
             if res.success {
                 print!("{}", res.stdout);
                 if !res.stderr.trim().is_empty() {

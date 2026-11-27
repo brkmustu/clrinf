@@ -3,6 +3,7 @@ use colored::Colorize;
 use std::path::PathBuf;
 
 mod ai;
+mod crud;
 mod generator;
 mod lint;
 mod mcp;
@@ -37,6 +38,39 @@ enum Commands {
 
     /// Doğal dil ile kural tanımından izole kural ve test dosyaları üretir
     Ai(AiArgs),
+
+    /// #[derive(ClrinfCrud)] entity -> üretilen/eject edilmiş operasyon ve kural haritasını gösterir
+    CrudMap {
+        /// Proje veya kaynak dizini (varsayılan: .)
+        #[arg(default_value = ".")]
+        path: PathBuf,
+
+        /// Makine tarafından okunabilir JSON çıktısı verir
+        #[arg(long)]
+        json: bool,
+    },
+
+    /// Tek bir CRUD operasyonunu fiziksel Axum handler dosyasına eject eder (skip listesine ekler)
+    Eject {
+        /// Entity adı (örn. Category)
+        entity: String,
+
+        /// Operasyon: Create, Update, Delete, GetById veya GetList
+        #[arg(short, long)]
+        operation: String,
+
+        /// Proje dizini (varsayılan: .)
+        #[arg(short, long)]
+        project: Option<PathBuf>,
+
+        /// Makine tarafından okunabilir JSON çıktısı verir
+        #[arg(long)]
+        json: bool,
+
+        /// Mevcut handler dosyasının üzerine yaz
+        #[arg(long)]
+        force: bool,
+    },
 }
 
 #[derive(Args)]
@@ -302,6 +336,57 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             println!("  Kural: {}", res.rule_file.display());
             println!("  Test:  {}", res.test_file.display());
             println!("{}", "Not: Mevcut hiçbir dosyada değişiklik yapılmadı.".dimmed());
+        }
+
+        Commands::CrudMap { path, json } => {
+            let report = crud::build_crud_map(&path)?;
+            if json {
+                println!("{}", serde_json::to_string_pretty(&report)?);
+            } else {
+                println!(
+                    "Rust CRUD Map ({} entity found under {}):",
+                    report.entities.len(),
+                    report.root
+                );
+                for e in &report.entities {
+                    println!(
+                        "  {} [{}] ({})",
+                        e.entity.cyan().bold(),
+                        e.route_prefix,
+                        e.file.dimmed()
+                    );
+                    println!("    generated: {}", e.generated.join(", "));
+                    if !e.ejected.is_empty() {
+                        println!("    ejected  : {}", e.ejected.join(", "));
+                    }
+                    for r in &e.rules {
+                        println!("    rule     : {} ({})", r.name, r.hook);
+                    }
+                }
+            }
+        }
+
+        Commands::Eject {
+            entity,
+            operation,
+            project,
+            json,
+            force,
+        } => {
+            let root = project.unwrap_or_else(|| PathBuf::from("."));
+            let res = crud::eject_operation(&root, &entity, &operation, force)?;
+            if json {
+                println!("{}", serde_json::to_string_pretty(&res)?);
+            } else {
+                println!(
+                    "{} Ejected {}::{} -> {} (updated {})",
+                    "✔".green().bold(),
+                    res.entity,
+                    res.operation,
+                    res.handler_file,
+                    res.entity_file
+                );
+            }
         }
     }
 

@@ -1,8 +1,10 @@
 [workspace]
 members = [
     "crates/clrinf-core",
+    "crates/clrinf-macros",
     "crates/clrinf-adapters",
     "crates/clrinf-cli",
+    "examples/aot-crud",
     "examples/clrinf-auth",
     "examples/clrinf-kampanya",
     "examples/generic",

@@ -10,6 +10,7 @@ use std::time::Duration;
 
 /// Result type for cache operations.
 pub type CacheResult<T> = Result<T, CacheError>;
+pub type CacheFuture<'a, T> = Pin<Box<dyn Future<Output = CacheResult<T>> + Send + 'a>>;
 
 /// Errors that can occur during cache operations.
 #[derive(Debug, thiserror::Error)]
@@ -37,7 +38,7 @@ pub trait CachePort: Send + Sync + 'static {
     ) -> Pin<Box<dyn Future<Output = CacheResult<()>> + Send + '_>>;
 
     /// Retrieve a value. Returns `Ok(None)` on miss.
-    fn get(&self, key: &str) -> Pin<Box<dyn Future<Output = CacheResult<Option<Vec<u8>>>> + Send + '_>>;
+    fn get(&self, key: &str) -> CacheFuture<'_, Option<Vec<u8>>>;
 
     /// Remove a single key.
     fn remove(&self, key: &str) -> Pin<Box<dyn Future<Output = CacheResult<()>> + Send + '_>>;

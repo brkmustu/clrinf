@@ -8,6 +8,11 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [Unreleased]
 
 ### Added
+- **Rust Compile-Time CRUD parity:**
+  - `clrinf-core::crud` (`CrudId`, `CrudEntity`, `CrudMetadata`, `CrudStore`, `Before{Create|Update|Delete}Rule`, `CrudRuleRunner`)
+  - `clrinf-macros` (`#[derive(ClrinfCrud)]`, `#[clrinf_crud(route = ..., skip(...))]`, `#[crud_ignore]`) generating request DTOs & entity metadata at compile time
+  - `clrinf-adapters::crud` (`crud_router` for Axum 0.7 + tenant-isolated `InMemoryCrudStore`) and reference example `core/rust/examples/aot-crud` (**2,193 → 203 tokens, 90.7% reduction** in Suite 3 benchmark)
+  - `clrinfrs crud-map` & `clrinfrs eject` (`skip(...)` attribute rewriting + physical handler file output), wired into `clrinf-codegen` (`crud-map`, `eject`, `clrinf_crud_map`, `clrinf_crud_eject`) with auto-detection
 - `clrinf lsp`: pure-Rust LSP 3.17 stdio diagnostics server publishing `verify` violations on `textDocument/didOpen` and `textDocument/didSave`
 - `clrinf doctor --fix`: automatic remediation for stale agent instruction blocks (`clrinf agents sync`) and missing hooks
 - MCP server enrichment: `resources/list` & `resources/read` (`clrinf://rules`, `clrinf://health`, `clrinf://topology`), `clrinf_doctor` tool, and `format: "sarif"` option on `clrinf_verify`

@@ -14,7 +14,7 @@ This matrix distinguishes shared wire-format contracts from runtime feature pari
 | Local atomic business data + inbox + outbox | Production adapter needed | SQLite reference | Production adapter needed | Production adapter needed |
 | Durable leased outbox / restart recovery | No reference | SQLite | No reference | No reference |
 | Live NATS event inspector / streaming bridge | No | No | Inspector | Streaming bridge |
-| Compile-time AOT CRUD generator & Smart Override eject | No | `ClrinfCS.Generators` + `EfCrudStore` | No | No |
+| Compile-time AOT CRUD generator & Smart Override eject | `clrinf-macros` (`#[derive(ClrinfCrud)]`) + `clrinfrs eject/crud-map` | `ClrinfCS.Generators` + `EfCrudStore` | No | No |
 | Zero-dependency CLI static AST/import rules (`clrinf verify`) | Yes (`ast.rs`) | Yes (`ast.rs`) | Yes (`ast.rs`) | Yes (`ast.rs`) |
 | Language-toolchain architectural AST linter (`clrinf lint`) | Syn (`RUST_ARCH001`) | Roslyn (`ARCH001–ARCH005`) | TS Compiler (`ARCH_TS_001`) | Elixir AST (`ARCH_EX_001–004`) |
 | Generic durable Saga orchestrator | No | No | No | No |

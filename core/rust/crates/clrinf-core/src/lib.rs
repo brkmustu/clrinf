@@ -2,6 +2,7 @@ pub mod auth;
 pub mod authz;
 pub mod cache;
 pub mod context;
+pub mod crud;
 pub mod dispatcher;
 pub mod envelope;
 pub mod error;
